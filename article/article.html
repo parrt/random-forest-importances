@@ -69,16 +69,6 @@ def plot_importances(columns,importances,figsize=None):
 plot_importances(X_train.columns,rf.feature_importances_)
 </div>
 
-<span class="sidenote">
-<img src="images/cls_dflt.svg" width="100%">
-<b>Figure 1(a)</b>. RF classifier predicting apartment interest level (low, medium, high) using 5 features. Nothing suspicious.
-</span>
-
-<span class="sidenote">
-<img src="images/cls_dflt_random_annotated.png" width="100%">
-<b>Figure 1(b)</b>. RF classifier predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. Highly suspicious that random column is much more important than the number of bedrooms.
-</span>
-
 <div class="codeblk">import numpy as np
 from sklearn.base import clone
 
@@ -111,18 +101,6 @@ rfcls2 = clone(rfcls)
 rfcls2.fit(X_train2, y_train)
 plot_importances(X_train2.columns,rfcls2.feature_importances_)
 </div>
-
-<span class="sidenote">
-<img src="images/regr_dflt_annotated.png" width="100%">
-<b>Figure 2(a)</b>. RF regressor predicting apartment rental price from 4 features. Highly suspicious that the number of bathrooms is the most important predictor of price.
-</span>
-
-<span class="sidenote">
-<img src="images/regr_dflt_random_annotated.png" width="100%">
-<b>Figure 2(b)</b>. RF regressor predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms is still suspicious.
-</span>
-
-
 
 
 </body>
