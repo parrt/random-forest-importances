@@ -2,5 +2,5 @@
 	"title":"not used",
 	"author":"[Terence Parr](http://parrt.cs.usfca.edu), Chris, Kerem, and [Jeremy Howard](http://www.fast.ai/about/#jeremy)",
         "chapters":["article.md"],
-	"data":"/Users/parrt/github/github/random-forest-importances/data"
+	"data":"/Users/parrt/github/random-forest-importances/notebooks/data"
 }
