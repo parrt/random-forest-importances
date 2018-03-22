@@ -15,28 +15,28 @@
 
 <table border=0>
 <tr>
-	<td><img src="images/cls_dflt_random_annotated.png" width="85%"><br>
+	<td><img src="images/cls_dflt_random_annotated.png" width="90%"><br>
 <b>Figure 1(a)</b>. <tt>scikit-learn</tt> default importances for Random Forest <b>classifier</b>  predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. Highly suspicious that random column is much more important than the number of bedrooms.
 	<td>
-<img src="images/regr_dflt_random_annotated.png" width="85%"><br>
+<img src="images/regr_dflt_random_annotated.png" width="90%"><br>
 <b>Figure 1(b)</b>. <tt>scikit-learn</tt> default importances for Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.
 </tr>
 </table>
 
 <table border=0>
 <tr>
-	<td width="50%"><img src="images/cls_dropcol_random.svg" width="85%"><br>
+	<td width="50%"><img src="images/cls_dropcol_random.svg" width="90%"><br>
 <b>Figure 2(a)</b>. Importances derived by dropping each column, retraining <tt>scikit-learn</tt> Random Forest <b>classifier</b>, and computing change in out-of-bag accuracy. Predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. The importance of the random column is at the bottom as it should be.
-	<td width="50%"><img src="images/regr_dropcol_random.svg" width="85%"><br>
+	<td width="50%"><img src="images/regr_dropcol_random.svg" width="90%"><br>
 <b>Figure 2(b)</b>. Importances derived by dropping each column, retraining <tt>scikit-learn</tt> Random Forest <b>regressor</b>, and computing change in out-of-bag R^2. Predicting apartment rental price from 4 features + a column of random numbers. The importance of the random column is at the bottom as it should be.
 </tr>
 </table>
 
 <table border=0>
 <tr>
-	<td width="50%"><img src="images/cls_permute_random.svg" width="85%"><br>
+	<td width="50%"><img src="images/cls_permute_random.svg" width="90%"><br>
 <b>Figure 3(a)</b>. Importances derived by permuting each column and computing change in out-of-bag accuracy using <tt>scikit-learn</tt> Random Forest <b>classifier</b>.
-	<td width="50%"><img src="images/regr_permute_random.svg" width="85%"><br>
+	<td width="50%"><img src="images/regr_permute_random.svg" width="90%"><br>
 <b>Figure 3(b)</b>. Importances derived by permuting each column and computing change in out-of-bag R^2 using <tt>scikit-learn</tt> <b>regressor</b>. Predicting apartment rental price from 4 features + a column of random numbers.
 </tr>
 </table>
