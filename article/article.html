@@ -9,7 +9,20 @@
 <body>
 <h1>Default Random Forest Importances Are Inaccurate</h1>
 
-<a href="http://parrt.cs.usfca.edu">Terence Parr</a>, Chris, Kerem, and <a href="http://www.fast.ai/about/#jeremy">Jeremy Howard</a>.
+<a href="http://parrt.cs.usfca.edu">Terence Parr</a>, Chris, Kerem, and <a href="http://www.fast.ai/about/#jeremy">Jeremy Howard</a>
+
+<br><br>
+
+<table border=0>
+<tr>
+	<td><img src="images/cls_dflt_random_annotated.png" width="85%"><br>
+<b>Figure 1(a)</b>. <tt>scikit-learn</tt> Random Forest <b>classifier</b> predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. Highly suspicious that random column is much more important than the number of bedrooms.
+	<td>
+<img src="images/regr_dflt_random_annotated.png" width="85%"><br>
+<b>Figure 1(b)</b>. <tt>scikit-learn</tt> Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.
+</tr>
+</table>
+
 
 <div class="codeblk">import pandas as pd
 df = pd.read_csv("data/rent.csv")
@@ -42,12 +55,12 @@ plot_importances(X_train.columns,rf.feature_importances_)
 
 <span class="sidenote">
 <img src="images/cls_dflt.svg" width="100%">
-<b>Figure 1(a)</b>. foo
+<b>Figure 1(a)</b>. RF classifier predicting apartment interest level (low, medium, high) using 5 features. Nothing suspicious.
 </span>
 
 <span class="sidenote">
 <img src="images/cls_dflt_random_annotated.png" width="100%">
-<b>Figure 1(b)</b>. foo
+<b>Figure 1(b)</b>. RF classifier predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. Highly suspicious that random column is much more important than the number of bedrooms.
 </span>
 
 <div class="codeblk">import numpy as np
@@ -85,13 +98,25 @@ plot_importances(X_train2.columns,rfcls2.feature_importances_)
 
 <span class="sidenote">
 <img src="images/regr_dflt_annotated.png" width="100%">
-<b>Figure 2(a)</b>. foo
+<b>Figure 2(a)</b>. RF regressor predicting apartment rental price from 4 features. Highly suspicious that the number of bathrooms is the most important predictor of price.
 </span>
 
 <span class="sidenote">
 <img src="images/regr_dflt_random_annotated.png" width="100%">
-<b>Figure 2(b)</b>. foo
+<b>Figure 2(b)</b>. RF regressor predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms is still suspicious.
 </span>
+
+<span class="sidenote">
+<img src="images/cls_dropcol_random.svg" width="100%">
+<b>Figure 3(a)</b>. RF classifier predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. The importance of the random column is at the bottom as it should be.
+</span>
+
+<span class="sidenote">
+<img src="images/regr_dropcol_random.svg" width="100%">
+<b>Figure 3(b)</b>. RF regressor predicting apartment rental price from 4 features. Much more logical than the default scikit-learn implementation importances.
+</span>
+
+
 
 </body>
 </html>
