@@ -4,10 +4,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
 <link rel="stylesheet" type="text/css" href="css/book.css"/>
-<title>Default Random Forest Importances Are Inaccurate</title>
+<title>Beware Default Random Forest Importances</title>
 </head>
 <body>
-<h1>Default Random Forest Importances Are Inaccurate</h1>
+<h1>Beware Default Random Forest Importances</h1>
 
 <a href="http://parrt.cs.usfca.edu">Terence Parr</a>, Chris, Kerem, and <a href="http://www.fast.ai/about/#jeremy">Jeremy Howard</a>
 
@@ -16,14 +16,30 @@
 <table border=0>
 <tr>
 	<td><img src="images/cls_dflt_random_annotated.png" width="85%"><br>
-<b>Figure 1(a)</b>. <tt>scikit-learn</tt> Random Forest <b>classifier</b> predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. Highly suspicious that random column is much more important than the number of bedrooms.
+<b>Figure 1(a)</b>. <tt>scikit-learn</tt> default importances for Random Forest <b>classifier</b>  predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. Highly suspicious that random column is much more important than the number of bedrooms.
 	<td>
 <img src="images/regr_dflt_random_annotated.png" width="85%"><br>
-<b>Figure 1(b)</b>. <tt>scikit-learn</tt> Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.
+<b>Figure 1(b)</b>. <tt>scikit-learn</tt> default importances for Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.
 </tr>
 </table>
 
+<table border=0>
+<tr>
+	<td width="50%"><img src="images/cls_dropcol_random.svg" width="85%"><br>
+<b>Figure 2(a)</b>. Importances derived by dropping each column and retraining <tt>scikit-learn</tt> Random Forest <b>classifier</b>. Predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. The importance of the random column is at the bottom as it should be.
+	<td width="50%"><img src="images/regr_dropcol_random.svg" width="85%"><br>
+<b>Figure 2(b)</b>. Importances derived by dropping each column and retraining <tt>scikit-learn</tt> Random Forest <b>regressor</b>. Predicting apartment rental price from 4 features + a column of random numbers. The importance of the random column is at the bottom as it should be.
+</tr>
+</table>
 
+<table border=0>
+<tr>
+	<td width="50%"><img src="images/cls_permute_random.svg" width="85%"><br>
+<b>Figure 3(a)</b>. Importances derived by permuting each column and computing drop in out-of-bag accuracy using <tt>scikit-learn</tt> Random Forest <b>classifier</b>.
+	<td width="50%"><img src="images/regr_permute_random.svg" width="85%"><br>
+<b>Figure 3(b)</b>. Importances derived by permuting each column and computing drop in out-of-bag R^2 using <tt>scikit-learn</tt> <b>regressor</b>. Predicting apartment rental price from 4 features + a column of random numbers.
+</tr>
+</table>
 <div class="codeblk">import pandas as pd
 df = pd.read_csv("data/rent.csv")
 df.head(3) # dump first 3 rows
@@ -106,15 +122,6 @@ plot_importances(X_train2.columns,rfcls2.feature_importances_)
 <b>Figure 2(b)</b>. RF regressor predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms is still suspicious.
 </span>
 
-<span class="sidenote">
-<img src="images/cls_dropcol_random.svg" width="100%">
-<b>Figure 3(a)</b>. RF classifier predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. The importance of the random column is at the bottom as it should be.
-</span>
-
-<span class="sidenote">
-<img src="images/regr_dropcol_random.svg" width="100%">
-<b>Figure 3(b)</b>. RF regressor predicting apartment rental price from 4 features. Much more logical than the default scikit-learn implementation importances.
-</span>
 
 
 
