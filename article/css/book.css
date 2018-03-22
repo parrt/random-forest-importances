@@ -1,0 +1,212 @@
+#toc {
+    background: #f9f9f9 none repeat scroll 0 0;
+    border: 1px solid #aaa;
+    display: table;
+    font-size: 83%;
+    padding: 10px;
+    width: auto;
+}
+.toc_title {
+    font-weight: 700;
+    text-align: center;
+}
+#toc li, #toc ul, #toc ul li{
+    list-style: outside none none !important;
+}
+#toc a {
+	color: #3A4145;
+	text-decoration: none;
+}
+#toc a:hover {
+	text-decoration: underline;
+}
+#author {
+	font-size: 100%;
+}
+.sup { position: relative; top: -0.5em; font-size: 80%; }
+.eqnvec {
+	font-family: Merriweather, serif;
+	font-weight: bold;
+	font-size: 100%;
+}
+.eqn {
+	font-family:  Merriweather, serif;
+	font-weight: normal;
+	font-style: italic;
+	font-size: 100%;
+}
+.blkeqn {
+	padding: 10px;
+	margin-left: 100px;
+}
+.inlinecode {
+    font-family: Monaco;
+    font-size: 80%;	
+}
+.codeblk {
+        font-family: Monaco;
+        font-size: 80%;
+        box-sizing: border-box;
+    margin: 0 0 1em 0;
+    border: #E3EDF3 1px solid;
+    width: 100%;
+    padding: 2px;
+    background: #F7FAFB;
+    border-radius: 2px;
+	line-height: 1.3em;
+	white-space: pre-wrap;
+}
+.stdout {
+        font-family: Monaco;
+        font-size: 80%;
+        margin: 0 0 1em 0;
+        width: 100%;
+        padding: 2px;
+        white-space: pre-wrap;
+		line-height: 1.3em;
+}
+.stdout:before {
+        content: "\00bb";
+        position:absolute;
+        left:2%;
+}
+.stderr {
+        font-family: Monaco;
+        font-size: 80%;
+		color: red;
+		margin: 0 0 1em 0;
+		width: 100%;
+		padding: 2px;
+		white-space: pre-wrap;
+        padding-left:10px;
+		line-height: 1.3em;
+}
+.sidenote {
+	/* Adapted from https://github.com/edwardtufte/tufte-css/blob/gh-pages/tufte.css MIT license */
+	float: right;
+	clear: right;
+	margin-right: -35%;
+	width: 33%;
+	margin-top: 10px;
+	margin-bottom: 0;
+	font-size: 80%;
+	line-height: 1.3em;
+	vertical-align: baseline;
+	position: relative;
+}
+.aside { /* Box around content */
+	border: 1px;
+	border-style: solid;
+	padding-left: 8px;
+	padding-right: 8px;
+	padding-top: 5px;
+	padding-bottom: 0px;
+}
+.callout {
+	float: right; 
+	clear: right;
+	margin-right: -36%;
+	width: 32%;
+	font-size: 85%;
+	line-height: 1.4em;
+	vertical-align: baseline;
+	position: relative;
+	padding-left: 8px;
+	padding-right: 8px;
+}
+.callout:before {
+        /* Make top, left, bottom border around "nothing" */
+        content: "";
+        position: absolute; /* Make sure bracket is always on the right */
+        border-left:1px solid;
+        border-top:1px solid;
+        border-bottom:1px solid;
+        padding:4px;
+        top:-4px;
+        bottom:-8px;
+        left: -5px;
+        }
+.callout:after {
+        content: "";
+        position: absolute;
+        border-right:1px solid;
+        border-top:1px solid;
+        border-bottom:1px solid;
+        padding:4px;
+        top:-4px;
+        bottom:-8px;
+        right: -5px;
+}
+
+table {
+	border-spacing: 15px 0px
+}
+body {
+	margin-left: 3%;
+	margin-right: auto;
+	width: 67%;
+	font-family: "Merriweather", serif;
+	font-size: 100%;
+	letter-spacing: 0.01rem;
+	line-height: 1.5em;
+	color: #3A4145;
+	background: #FFFFFF;
+	max-width: 780px;
+	-webkit-text-size-adjust: 100%;
+}
+.scrollbar_wrapper {
+	overflow: auto;
+}
+table.dataframe {
+        max-width: none;
+        padding: 0.5em 0.5em;
+        border: none;
+        display: table; 
+        border-spacing: 0px 0px;
+        border-collapse:separate;
+}       
+table.dataframe td {
+		font-family: "Helvetica", sans-serif;
+        font-size: 85%;
+        text-align: right;
+        text-size-adjust: 100%;
+        vertical-align: top;
+        padding: 2px 10px;
+        line-height: 1.1em;
+}
+table.dataframe th {
+		font-family: "Helvetica", sans-serif;
+        font-size: 85%;
+        text-align: right;
+        text-size-adjust: 100%;
+        vertical-align: bottom;
+        border-bottom: 1px solid;
+        padding: 0px 10px;
+}
+p {
+        margin: 15px 5px 15px 0px;
+}
+h1 {
+        line-height: 1.2em;
+}
+
+@media (max-width: 415px) {
+        /* iphone 6+ 414x628 browser window, iphone 6 is 375 x 559 in browser */
+        .blkeqn {
+                padding: 0px;
+                margin-left: 0px;
+        }
+        body {
+                font-size: 100%;
+        }
+}
+@media (max-width: 736px) {
+        /* iphone7+ 736 wide */
+        .blkeqn {
+                padding: 0px;
+                margin-left: 0px;
+        }
+        body {
+                font-size: 100%;
+        }
+}
