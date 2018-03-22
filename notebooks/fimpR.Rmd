@@ -1,0 +1,145 @@
+---
+title: "R Notebook"
+output: html_notebook
+ ---
+
+
+```{r}
+library(tidyverse)
+library(randomForest)
+library(cowplot)
+library(gridExtra)
+```
+
+```{r}
+rents <- read.csv('./rent-numeric.csv')
+glimpse(rents)
+```
+
+```{r}
+features <- c('bathrooms', 'bedrooms', 'longitude', 'latitude', 'price')
+df <- rents[,features]
+df$price <- log(df$price)
+# with random column
+df['random'] <- runif(nrow(df))
+head(df)
+```
+
+## PLOTTING FUNCTIONS
+
+```{r}
+create_rfplot <- function(rf, type){
+  imp <- importance(rf, type=type)
+  featureImportance <- data.frame(Feature=row.names(imp), Importance=imp[,1])
+  
+  p <- ggplot(featureImportance, aes(x=reorder(Feature, Importance), y=Importance)) +
+       geom_bar(stat="identity", fill="#53cfff") +
+       coord_flip() + 
+       theme_light(base_size=20) +
+       xlab("") +
+       ylab("Importance") + 
+       ggtitle("Feature Importance\n") +
+       theme(plot.title=element_text(size=18))
+  return(p)
+}
+
+create_ggplot <- function(featureImportance){
+  p <- ggplot(featureImportance, aes(x=reorder(Feature, Importance), y=Importance)) +
+       geom_bar(stat="identity", fill="#53cfff") +
+       coord_flip() + 
+       theme_light(base_size=20) +
+       xlab("") +
+       ylab("Importance") + 
+       ggtitle("Feature Importance\n") +
+       theme(plot.title=element_text(size=18))
+  return(p)
+}
+```
+
+## BUILT-IN IMPORTANCE
+
+Here are the definitions of the variable importance measures. The first measure is computed from permuting OOB data: For each tree, the prediction error on the out-of-bag portion of the data is recorded (error rate for classification, MSE for regression). Then the same is done after permuting each predictor variable. The difference between the two are then averaged over all trees, and normalized by the standard deviation of the differences. If the standard deviation of the differences is equal to 0 for a variable, the division is not done (but the average is almost always equal to 0 in that case).
+
+The second measure is the total decrease in node impurities from splitting on the variable, averaged over all trees. For classification, the node impurity is measured by the Gini index. For regression, it is measured by residual sum of squares.
+
+#### TYPE 1 = Mean decrease in MSE
+
+```{r}
+# type = either 1 or 2, specifying the type of importance measure (1=mean decrease in accuracy, 2=mean decrease in node impurity).
+# PARAMS : ntree = 30, max_features/mtry = auto/sqrt(n_features) = 2
+
+# without random column
+rf1 <- randomForest(price~., data = df[, 1:5], mtry=4,
+                 ntree = 40, importance=T)
+p1 <- create_rfplot(rf1, type = 1)
+
+# with random column
+rf2 <- randomForest(price~., data = df, mtry = 4,
+                 ntree = 40, importance=T)
+p2 <- create_rfplot(rf2, type = 1)
+# plot
+grid.arrange(p1, p2, nrow=2)
+```
+
+#### TYPE 2 = Mean decrease in node impurity (RSS)
+
+```{r}
+# type = either 1 or 2, specifying the type of importance measure (1=mean decrease in accuracy, 2=mean decrease in node impurity).
+# PARAMS : ntree = 30, max_features/mtry = auto/sqrt(n_features) = 2
+
+# without random column
+rf1 <- randomForest(price~., data = df[, 1:5], mtry=4,
+                 ntree = 40, importance=T)
+p1 <- create_rfplot(rf1, type = 2)
+
+# with random column
+rf2 <- randomForest(price~., data = df, mtry = 4,
+                 ntree = 40, importance=T)
+p2 <- create_rfplot(rf2, type = 2)
+# plot
+grid.arrange(p1, p2, nrow=2)
+```
+
+
+
+## EXAMINE COST BY DROPPING
+
+
+```{r}
+# PARAMS : ntree = 40, mtry = 2, nodesize = 1
+
+get_drop_imp <- function(df, columns){
+  X <- df[,c(columns, 'price')] # data
+  rf <- randomForest(price~., data = X,
+                   ntree = 40, mtry=2, nodesize=1, importance=T)
+  full_rsq <- mean(rf$rsq) # R-squared
+  
+  imp <- c()
+  for (c in columns){
+    X_sub <- X[, !(colnames(X) == c)]
+    rf <- randomForest(price~., data = X_sub,
+                   ntree = 40, mtry=2, nodesize=1, importance=T)
+    sub_rsq <- mean(rf$rsq) # R-squared
+    diff_rsq <- full_rsq - sub_rsq
+    imp <- c(imp, diff_rsq)
+  }
+  featureImportance <- data.frame(Feature=columns, Importance=imp)
+  return(featureImportance)
+}
+```
+
+```{r}
+columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude')
+featureImportance <- get_drop_imp(df, columns)
+p1 <- create_ggplot(featureImportance)
+
+columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude', 'random')
+featureImportance <- get_drop_imp(df, columns)
+p2 <- create_ggplot(featureImportance)
+
+#plot(p1)
+#plot(p2)
+grid.arrange(p1, p2, ncol=2)
+```
+
+
