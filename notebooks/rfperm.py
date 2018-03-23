@@ -67,6 +67,7 @@ def permutation_importances(rf, X_train, y_train, metric):
         X_train[col] = save
         imp.append(baseline - m)
     return np.array(imp)
+<<<<<<< HEAD
 
 
 def dropcol_importances(rf, X_train, y_train):
@@ -83,3 +84,5 @@ def dropcol_importances(rf, X_train, y_train):
         o = rf_.oob_score_
         imp.append(baseline - o)
     return np.array(imp)
+=======
+>>>>>>> 1f7999c4a03f427b4c1ba3ab95b581ee291e6cc8
