@@ -123,30 +123,48 @@ The good news is that a permutation importance implementation is pretty simple:
 
 The key to the &ldquo;baseline versus drop in performance&rdquo; computation is to use a test set or the OOB samples, not the training set (for the same reason we measure model generality with a test set or OOB samples). Our <tt>permutation_importances()</tt> function expects the <tt>metric</tt> argument to use out-of-bag samples when computing accuracy or R^2 because there is no test set argument.
 
+Notice that the function does not normalize the importance values, such as dividing by the standard deviation. According to <a href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-307">Conditional variable importance for random forests</a>, &ldquo;<i>the raw [permutation] importance ... has better statistical properties</i>.&rdquo;
+
 <div class="fig-container">
 	<div>
 <img src="images/regr_permute_random.svg" width="90%"><br>
-<font size=-1><b>Figure 3(b)</b>. Importances derived by permuting each column and computing change in out-of-bag R^2 using <tt>scikit-learn</tt> <b>regressor</b>. Predicting apartment rental price from 4 features + a column of random numbers.</font>
+<font size=-1><b>Figure 2(a)</b>. Importances derived by permuting each column and computing change in out-of-bag R^2 using <tt>scikit-learn</tt> <b>regressor</b>. Predicting apartment rental price from 4 features + a column of random numbers.</font>
 	</div>
 	<div>
 		<img src="images/cls_permute_random.svg" width="90%"><br>
-<font size=-1><b>Figure 3(a)</b>. Importances derived by permuting each column and computing change in out-of-bag accuracy using <tt>scikit-learn</tt> Random Forest <b>classifier</b>.</font>
+<font size=-1><b>Figure 2(b)</b>. Importances derived by permuting each column and computing change in out-of-bag accuracy using <tt>scikit-learn</tt> Random Forest <b>classifier</b>.</font>
 	</div>
 </div>
 
 that is also biased a bit... 2008:
-<a href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-307">Conditional variable importance for random forests</a>
+
 
 <h2>Drop-column importances</h2>
+
+<div class="codeblk">def dropcol_importances(rf, X_train, y_train):
+    rf_ = clone(rf)
+    rf_.random_state = 999
+    rf_.fit(X_train, y_train)
+    baseline = rf_.oob_score_
+    imp = []
+    for col in X_train.columns:
+        X = X_train.drop(col, axis=1)
+        rf_ = clone(rf)
+        rf_.random_state = 999
+        rf_.fit(X, y_train)
+        o = rf_.oob_score_
+        imp.append(baseline - o)
+    return np.array(imp)
+</div>
 
 <div class="fig-container">
 	<div>
 <img src="images/regr_dropcol_random.svg" width="90%"><br>
-<font size=-1><b>Figure 2(b)</b>. Importances derived by dropping each column, retraining <tt>scikit-learn</tt> Random Forest <b>regressor</b>, and computing change in out-of-bag R^2. Predicting apartment rental price from 4 features + a column of random numbers. The importance of the random column is at the bottom as it should be.</font>
+<font size=-1><b>Figure 3(a)</b>. Importances derived by dropping each column, retraining <tt>scikit-learn</tt> Random Forest <b>regressor</b>, and computing change in out-of-bag R^2. Predicting apartment rental price from 4 features + a column of random numbers. The importance of the random column is at the bottom as it should be.</font>
 	</div>
 	<div>
 		<img src="images/cls_dropcol_random.svg" width="90%"><br>
-<font size=-1><b>Figure 2(a)</b>. Importances derived by dropping each column, retraining <tt>scikit-learn</tt> Random Forest <b>classifier</b>, and computing change in out-of-bag accuracy. Predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. The importance of the random column is at the bottom as it should be.</font>
+<font size=-1><b>Figure 3(b)</b>. Importances derived by dropping each column, retraining <tt>scikit-learn</tt> Random Forest <b>classifier</b>, and computing change in out-of-bag accuracy. Predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. The importance of the random column is at the bottom as it should be.</font>
 	</div>
 </div>
 
