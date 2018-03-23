@@ -29,7 +29,7 @@
 
 <h2>Trouble in paradise</h2>
 
-Have you ever noticed that the feature importances provided by <a href="http://scikit-learn.org/">scikit-learn</a>'s Random Forests(tm) seem a bit off, perhaps not jiving with your domain knowledge?  We've got some bad news&mdash;you can't trust them. It's time to revisit any business or marketing decisions you've made based upon the default feature importances (e.g., which customer attributes are most predictive of sales). This is not a bug in the implementation, but rather an inappropriate algorithm choice for many data sets, as we discuss below. First, let's take a look at how we stumbled across this problem.
+Have you ever noticed that the feature importances provided by <a href="http://scikit-learn.org/">scikit-learn</a>'s Random Forests(tm) seem a bit off, perhaps not jiving with your domain knowledge?  We've got some bad news&mdash;you can't always trust them. It's time to revisit any business or marketing decisions you've made based upon the default feature importances (e.g., which customer attributes are most predictive of sales). This is not a bug in the implementation, but rather an inappropriate algorithm choice for many data sets, as we discuss below. First, let's take a look at how we stumbled across this problem.
 
 <p>
 To prepare educational material on regression and classification with random forests (RFs), we pulled data from Kaggle's <a href="https://www.kaggle.com/c/two-sigma-connect-rental-listing-inquiries">Two Sigma Connect: Rental Listing Inquiries</a> competition and selected a few columns. Here are the first three rows of data in our data frame, <tt>df</tt>:
@@ -84,24 +84,58 @@ and then plotted the <tt>rf.feature_importances_</tt> as shown in <b>Figure 1(a)
 In order to explain feature selection, we added a column of random numbers and retrained a random forest regressor. (Any feature less important than a random column is junk and should be tossed out.) As expected, <b>Figure 1(a)</b> shows the random column as the least important.
 
 <p>
-Next, we built an RF classifier that predicts <tt>interest_level</tt> (number of inquiries on the website) using the other five features and plotted the importances, again with a random column. <b>Figure 1(b)</b> shows that RF thinks the random column is more predictive of the interest level than the number of bedrooms and bathrooms. Ok, it's clear there's a problem.
+Next, we built an RF classifier that predicts <tt>interest_level</tt> (number of inquiries on the website) using the other five features and plotted the importances, again with a random column. <b>Figure 1(b)</b> shows that RF thinks the random column is more predictive of the interest level than the number of bedrooms and bathrooms. What the hell? Ok, something is definitely wrong.
 
 <h2>Default feature importance mechanism</h2>
 
 <p>
-The most common mechanism, in the one used in scikit-learn's <a href="http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html">RandomForestClassifier</a> and <a href="http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html">RandomForestRegressor</a>, is <i>gini importance</i>
-
-permutation importance
+The most common mechanism to compute feature importances, and the one used in scikit-learn's <a href="http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html">RandomForestClassifier</a> and <a href="http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html">RandomForestRegressor</a>, is <i>mean decrease in impurity</i> (or <i>gini importance</i>) mechanism (check out the <a href="https://stackoverflow.com/questions/15810339/how-are-feature-importances-in-randomforestclassifier-determined">stackoverflow conversation</a>). The mean decrease in impurity importance of a feature is computed by measuring how effective the feature is at reducing uncertainty (classifiers) or variance (regressors) when creating decision trees within random forests.  The problem is that this mechanism, while fast, does not always give an accurate picture of importance. Breiman and Cutler, the inventors of RFs, <a href="https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm#varimp">indicate</a> that this method of &ldquo;<i>adding up the gini decreases for each individual variable over all trees in the forest gives a <b>fast</b> variable importance that is <b>often very consistent</b> with the permutation importance measure.</i>&rdquo; (We'll get to permutation importance shortly.)
 
 <p>
-We've known for years that the most common mechanism for computing feature importance is biased. In 2007, Strobl et al wrote in <a href="https://link.springer.com/article/10.1186%2F1471-2105-8-25">Bias in random forest variable importance measures: Illustrations, sources and a solution</a> that &ldquo;<i>the variable importance measures of Breiman's original random forest method ... are not reliable in situations where potential predictor variables vary in their scale of meas- urement or their number of categories</i>&rdquo;.
+We've known for years that this common mechanism for computing feature importance is biased; i.e., not always accurate.  For example, in 2007 Strobl et al, in <a href="https://link.springer.com/article/10.1186%2F1471-2105-8-25">Bias in random forest variable importance measures: Illustrations, sources and a solution</a>, pointed out that &ldquo;<i>the variable importance measures of Breiman's original random forest method ... are not reliable in situations where potential predictor variables vary in their scale of measurement or their number of categories</i>.&rdquo; That's unfortunate because not having to normalize or otherwise futz with predictor variables for random forests is very convenient.
+
+<h2>Permutation importances</h2>
 
 <p>
+Breiman and Cutler also described <i>permutation importance</i>, which measures the importance of a feature as follows. Record a baseline accuracy (classifier) or R^2 score (regressor) by passing a test set or the out-of-bag (OOB) samples through the random forest.  Permute the column values of a single predictor feature and then pass all test samples back through the random forest and recompute the accuracy or R^2. The importance of that feature is the difference between the baseline and the drop in overall accuracy or R^2 caused by permuting the column. This mechanism is much more computationally expensive than the mean decrease in impurity mechanism but results are much more accurate.
 
-2008:
+<p>
+The good news is that a permutation importance implementation is pretty simple:
+
+<div class="codeblk">def permutation_importances(rf, X_train, y_train, metric):
+    """
+    Return importances from pre-fit rf; this function
+    works for regressors and classifiers. The metric
+    arg is function that measures accuracy or R^2 or
+    similar; it should use the out-of-bag samples from
+    training set.
+    """
+    baseline = metric(rf, X_train, y_train)
+    imp = []
+    for col in X_train.columns:
+        save = X_train[col].copy()
+        X_train[col] = np.random.permutation(X_train[col])
+        m = metric(rf, X_train, y_train)
+        X_train[col] = save
+        imp.append(baseline - m)
+    return np.array(imp)
+</div>
+
+The key to the &ldquo;baseline versus drop in performance&rdquo; computation is to use a test set or the OOB samples, not the training set (for the same reason we measure model generality with a test set or OOB samples). Our <tt>permutation_importances()</tt> function expects the <tt>metric</tt> argument to use out-of-bag samples when computing accuracy or R^2 because there is no test set argument.
+
+<div class="fig-container">
+	<div>
+<img src="images/regr_permute_random.svg" width="90%"><br>
+<font size=-1><b>Figure 3(b)</b>. Importances derived by permuting each column and computing change in out-of-bag R^2 using <tt>scikit-learn</tt> <b>regressor</b>. Predicting apartment rental price from 4 features + a column of random numbers.</font>
+	</div>
+	<div>
+		<img src="images/cls_permute_random.svg" width="90%"><br>
+<font size=-1><b>Figure 3(a)</b>. Importances derived by permuting each column and computing change in out-of-bag accuracy using <tt>scikit-learn</tt> Random Forest <b>classifier</b>.</font>
+	</div>
+</div>
+
+that is also biased a bit... 2008:
 <a href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-307">Conditional variable importance for random forests</a>
-
-
 
 <h2>Drop-column importances</h2>
 
@@ -116,80 +150,6 @@ We've known for years that the most common mechanism for computing feature impor
 	</div>
 </div>
 
-<h2>Permutation importances</h2>
-
-<div class="fig-container">
-	<div>
-<img src="images/regr_permute_random.svg" width="90%"><br>
-<font size=-1><b>Figure 3(b)</b>. Importances derived by permuting each column and computing change in out-of-bag R^2 using <tt>scikit-learn</tt> <b>regressor</b>. Predicting apartment rental price from 4 features + a column of random numbers.</font>
-	</div>
-	<div>
-		<img src="images/cls_permute_random.svg" width="90%"><br>
-<font size=-1><b>Figure 3(a)</b>. Importances derived by permuting each column and computing change in out-of-bag accuracy using <tt>scikit-learn</tt> Random Forest <b>classifier</b>.</font>
-	</div>
-</div>
-
-<div class="codeblk">import pandas as pd
-df = pd.read_csv("data/rent.csv")
-df.head(3) # dump first 3 rows
-</div>
-
-<div class="codeblk">from sklearn.ensemble import RandomForestClassifier
-
-X_train, y_train = df.drop('interest_level',axis=1), df['interest_level']
-rf = RandomForestClassifier(n_estimators=100,
-                            min_samples_leaf=5,
-                            n_jobs=-1,
-                            oob_score=True)
-rf.fit(X_train, y_train)
-print(f"RF OOB accuracy {rf.oob_score_:.4f}")
-</div>
-
-<div class="codeblk">import matplotlib.pyplot as plt
-
-def plot_importances(columns,importances,figsize=None):
-    I = pd.DataFrame(data={'Feature':columns, 'Importance':importances})
-    I = I.set_index('Feature')
-    I = I.sort_values('Importance', ascending=True)
-    I.plot(kind='barh', figsize=figsize, legend=False, fontsize=16)
-    plt.tight_layout()
-    plt.show()
-	
-plot_importances(X_train.columns,rf.feature_importances_)
-</div>
-
-<div class="codeblk">import numpy as np
-from sklearn.base import clone
-
-X_train2 = X_train.copy()
-X_train2['random'] = np.random.random(size=len(X_train2))
-rf2 = clone(rf)
-rf2.fit(X_train2, y_train)
-plot_importances(X_train2.columns,rf2.feature_importances_)
-</div>
-
-<div class="codeblk">dfcls = df.copy()
-dfcls['price'] = np.log(dfcls['price'])
-X_train, y_train = dfcls.drop(['price','interest_level'],axis=1), dfcls['price']
-dfcls.head(2)
-</div>
-
-<div class="codeblk">from sklearn.ensemble import RandomForestRegressor
-
-rfcls = RandomForestRegressor(n_estimators=100,
-	                          min_samples_leaf=1,
-	                          n_jobs=-1,
-	                          oob_score=True)
-rfcls.fit(X_train, y_train)
-plot_importances(X_train.columns, rfcls.feature_importances_)
-</div>
-
-<div class="codeblk">X_train2 = X_train.copy()
-X_train2['random'] = np.random.random(size=len(X_train2))
-rfcls2 = clone(rfcls)
-rfcls2.fit(X_train2, y_train)
-plot_importances(X_train2.columns,rfcls2.feature_importances_)
-</div>
 
 
 </body>
