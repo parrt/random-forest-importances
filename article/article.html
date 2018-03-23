@@ -5,6 +5,20 @@
 <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
 <link rel="stylesheet" type="text/css" href="css/book.css"/>
 <title>Beware Default Random Forest Importances</title>
+<style>
+	.fig-container {
+  	  display: flex;
+	  overflow-x: scroll;	  
+/*	  flex-wrap: wrap;
+	  flex-flow: row wrap;*/
+	}
+	.row {
+	  flex: 1;
+	}
+	.fig-container > div {
+	  flex: 1;
+	}
+</style>
 </head>
 <body>
 <h1>Beware Default Random Forest Importances</h1>
@@ -13,33 +27,108 @@
 
 <br><br>
 
-<table border=0>
-<tr>
-	<td><img src="images/cls_dflt_random_annotated.png" width="90%"><br>
-<b>Figure 1(a)</b>. <tt>scikit-learn</tt> default importances for Random Forest <b>classifier</b>  predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. Highly suspicious that random column is much more important than the number of bedrooms.
-	<td>
-<img src="images/regr_dflt_random_annotated.png" width="90%"><br>
-<b>Figure 1(b)</b>. <tt>scikit-learn</tt> default importances for Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.
-</tr>
-</table>
+<h2>Trouble in paradise</h2>
 
-<table border=0>
-<tr>
-	<td width="50%"><img src="images/cls_dropcol_random.svg" width="90%"><br>
-<b>Figure 2(a)</b>. Importances derived by dropping each column, retraining <tt>scikit-learn</tt> Random Forest <b>classifier</b>, and computing change in out-of-bag accuracy. Predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. The importance of the random column is at the bottom as it should be.
-	<td width="50%"><img src="images/regr_dropcol_random.svg" width="90%"><br>
-<b>Figure 2(b)</b>. Importances derived by dropping each column, retraining <tt>scikit-learn</tt> Random Forest <b>regressor</b>, and computing change in out-of-bag R^2. Predicting apartment rental price from 4 features + a column of random numbers. The importance of the random column is at the bottom as it should be.
-</tr>
-</table>
+Have you ever noticed that the feature importances provided by <a href="http://scikit-learn.org/">scikit-learn</a>'s Random Forests(tm) seem a bit off, perhaps not jiving with your domain knowledge?  We've got some bad news&mdash;you can't trust them. It's time to revisit any business or marketing decisions you've made based upon the default feature importances (e.g., which customer attributes are most predictive of sales). This is not a bug in the implementation, but rather an inappropriate algorithm choice for many data sets, as we discuss below. First, let's take a look at how we stumbled across this problem.
 
-<table border=0>
-<tr>
-	<td width="50%"><img src="images/cls_permute_random.svg" width="90%"><br>
-<b>Figure 3(a)</b>. Importances derived by permuting each column and computing change in out-of-bag accuracy using <tt>scikit-learn</tt> Random Forest <b>classifier</b>.
-	<td width="50%"><img src="images/regr_permute_random.svg" width="90%"><br>
-<b>Figure 3(b)</b>. Importances derived by permuting each column and computing change in out-of-bag R^2 using <tt>scikit-learn</tt> <b>regressor</b>. Predicting apartment rental price from 4 features + a column of random numbers.
-</tr>
+<p>
+To prepare educational material on regression and classification with random forests (RFs), we pulled data from Kaggle's <a href="https://www.kaggle.com/c/two-sigma-connect-rental-listing-inquiries">Two Sigma Connect: Rental Listing Inquiries</a> competition and selected a few columns. Here are the first three rows of data in our data frame, <tt>df</tt>:
+
+<div class="scrollbar_wrapper">
+<table class="dataframe">
+<thead>
+	<tr><th>bathrooms</th><th>bedrooms</th><th>price</th><th>longitude</th><th>latitude</th><th>interest_level</th></tr>
+</thead>
+<tbody>
+	<tr>
+	<td>1.5000</td><td>3</td><td>3000</td><td>-73.9425</td><td>40.7145</td><td>2</td>
+	</tr>
+	<tr>
+	<td>1.0000</td><td>2</td><td>5465</td><td>-73.9667</td><td>40.7947</td><td>1</td>
+	</tr>
+	<tr>
+	<td>1.0000</td><td>1</td><td>2850</td><td>-74.0018</td><td>40.7388</td><td>3</td>
+	</tr>
+</tbody>
 </table>
+</div>
+
+<p>
+We trained a regressor to predict New York City apartment rent prices using four apartment features in the usual scikit way:
+
+<div class="codeblk">features = ['bathrooms','bedrooms','longitude','latitude']
+df = df[features]
+X_train, y_train = df.drop('price',axis=1), df['price']
+rf = RandomForestRegressor(n_estimators=100,
+                           min_samples_leaf=1,
+                           n_jobs=-1,
+                           oob_score=True)
+rf.fit(X_train, y_train)
+</div>
+
+<p>
+and then plotted the <tt>rf.feature_importances_</tt> as shown in <b>Figure 1(a)</b>. Wow! New Yorkers really care about bathrooms. The number of bathrooms is the strongest predictor of rent price.  That's weird, but interesting.
+
+<div class="fig-container">
+	<div>
+		<img src="images/regr_dflt_random_annotated.png" width="90%"><br>
+		<font size=-1><b>Figure 1(a)</b>. <tt>scikit-learn</tt> default importances for Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.</font>
+	</div>
+	<div>
+		<img src="images/cls_dflt_random_annotated.png" width="90%"><br>
+		<font size=-1><b>Figure 1(b)</b>. <tt>scikit-learn</tt> default importances for Random Forest <b>classifier</b> predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. Highly suspicious that random column is much more important than the number of bedrooms.</font>
+	</div>
+</div>
+
+<p>
+In order to explain feature selection, we added a column of random numbers and retrained a random forest regressor. (Any feature less important than a random column is junk and should be tossed out.) As expected, <b>Figure 1(a)</b> shows the random column as the least important.
+
+<p>
+Next, we built an RF classifier that predicts <tt>interest_level</tt> (number of inquiries on the website) using the other five features and plotted the importances, again with a random column. <b>Figure 1(b)</b> shows that RF thinks the random column is more predictive of the interest level than the number of bedrooms and bathrooms. Ok, it's clear there's a problem.
+
+<h2>Default feature importance mechanism</h2>
+
+<p>
+The most common mechanism, in the one used in scikit-learn's <a href="http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html">RandomForestClassifier</a> and <a href="http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html">RandomForestRegressor</a>, is <i>gini importance</i>
+
+permutation importance
+
+<p>
+We've known for years that the most common mechanism for computing feature importance is biased. In 2007, Strobl et al wrote in <a href="https://link.springer.com/article/10.1186%2F1471-2105-8-25">Bias in random forest variable importance measures: Illustrations, sources and a solution</a> that &ldquo;<i>the variable importance measures of Breiman's original random forest method ... are not reliable in situations where potential predictor variables vary in their scale of meas- urement or their number of categories</i>&rdquo;.
+
+<p>
+
+2008:
+<a href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-307">Conditional variable importance for random forests</a>
+
+
+
+<h2>Drop-column importances</h2>
+
+<div class="fig-container">
+	<div>
+<img src="images/regr_dropcol_random.svg" width="90%"><br>
+<font size=-1><b>Figure 2(b)</b>. Importances derived by dropping each column, retraining <tt>scikit-learn</tt> Random Forest <b>regressor</b>, and computing change in out-of-bag R^2. Predicting apartment rental price from 4 features + a column of random numbers. The importance of the random column is at the bottom as it should be.</font>
+	</div>
+	<div>
+		<img src="images/cls_dropcol_random.svg" width="90%"><br>
+<font size=-1><b>Figure 2(a)</b>. Importances derived by dropping each column, retraining <tt>scikit-learn</tt> Random Forest <b>classifier</b>, and computing change in out-of-bag accuracy. Predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. The importance of the random column is at the bottom as it should be.</font>
+	</div>
+</div>
+
+<h2>Permutation importances</h2>
+
+<div class="fig-container">
+	<div>
+<img src="images/regr_permute_random.svg" width="90%"><br>
+<font size=-1><b>Figure 3(b)</b>. Importances derived by permuting each column and computing change in out-of-bag R^2 using <tt>scikit-learn</tt> <b>regressor</b>. Predicting apartment rental price from 4 features + a column of random numbers.</font>
+	</div>
+	<div>
+		<img src="images/cls_permute_random.svg" width="90%"><br>
+<font size=-1><b>Figure 3(a)</b>. Importances derived by permuting each column and computing change in out-of-bag accuracy using <tt>scikit-learn</tt> Random Forest <b>classifier</b>.</font>
+	</div>
+</div>
+
 <div class="codeblk">import pandas as pd
 df = pd.read_csv("data/rent.csv")
 df.head(3) # dump first 3 rows

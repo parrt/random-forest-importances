@@ -81,19 +81,6 @@
         padding-left:10px;
 		line-height: 1.3em;
 }
-.sidenote {
-	/* Adapted from https://github.com/edwardtufte/tufte-css/blob/gh-pages/tufte.css MIT license */
-	float: right;
-	clear: right;
-	margin-right: -35%;
-	width: 33%;
-	margin-top: 10px;
-	margin-bottom: 0;
-	font-size: 80%;
-	line-height: 1.3em;
-	vertical-align: baseline;
-	position: relative;
-}
 .aside { /* Box around content */
 	border: 1px;
 	border-style: solid;
@@ -144,14 +131,14 @@ table {
 body {
 	margin-left: 3%;
 	margin-right: auto;
-	width: 67%;
+	width: 100%;
 	font-family: "Merriweather", serif;
 	font-size: 100%;
 	letter-spacing: 0.01rem;
 	line-height: 1.5em;
 	color: #3A4145;
 	background: #FFFFFF;
-	max-width: 780px;
+	max-width: 850px;
 	-webkit-text-size-adjust: 100%;
 }
 .scrollbar_wrapper {
