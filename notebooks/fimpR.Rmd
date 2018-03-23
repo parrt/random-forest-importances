@@ -1,6 +1,6 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output: pdf_notebook
  ---
 
 
