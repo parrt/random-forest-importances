@@ -4,7 +4,7 @@ output: html_notebook
  ---
 
 
-```{r}
+```{r warning=FALSE, message=FALSE}
 library(tidyverse)
 library(randomForest)
 library(cowplot)
@@ -12,7 +12,7 @@ library(gridExtra)
 ```
 
 ```{r}
-rents <- read.csv('./rent-numeric.csv')
+rents <- read.csv('./data/rent.csv')
 glimpse(rents)
 ```
 
@@ -29,7 +29,7 @@ head(df)
 
 ```{r}
 create_rfplot <- function(rf, type){
-  imp <- importance(rf, type=type)
+  imp <- importance(rf, type=type, scale = F)
   featureImportance <- data.frame(Feature=row.names(imp), Importance=imp[,1])
   
   p <- ggplot(featureImportance, aes(x=reorder(Feature, Importance), y=Importance)) +
@@ -58,46 +58,47 @@ create_ggplot <- function(featureImportance){
 
 ## BUILT-IN IMPORTANCE
 
+**Important Note: Unscaled Feature importances are used while assessing built-in feature importances**
+
 Here are the definitions of the variable importance measures. The first measure is computed from permuting OOB data: For each tree, the prediction error on the out-of-bag portion of the data is recorded (error rate for classification, MSE for regression). Then the same is done after permuting each predictor variable. The difference between the two are then averaged over all trees, and normalized by the standard deviation of the differences. If the standard deviation of the differences is equal to 0 for a variable, the division is not done (but the average is almost always equal to 0 in that case).
 
 The second measure is the total decrease in node impurities from splitting on the variable, averaged over all trees. For classification, the node impurity is measured by the Gini index. For regression, it is measured by residual sum of squares.
 
-#### TYPE 1 = Mean decrease in MSE
+#### TYPE 1 = Mean decrease in MSE by Permutation
 
 ```{r}
-# type = either 1 or 2, specifying the type of importance measure (1=mean decrease in accuracy, 2=mean decrease in node impurity).
-# PARAMS : ntree = 30, max_features/mtry = auto/sqrt(n_features) = 2
-
 # without random column
 rf1 <- randomForest(price~., data = df[, 1:5], mtry=4,
                  ntree = 40, importance=T)
 p1 <- create_rfplot(rf1, type = 1)
+p1
+```
 
+```{r}
 # with random column
 rf2 <- randomForest(price~., data = df, mtry = 4,
                  ntree = 40, importance=T)
 p2 <- create_rfplot(rf2, type = 1)
-# plot
-grid.arrange(p1, p2, nrow=2)
+p2
 ```
 
-#### TYPE 2 = Mean decrease in node impurity (RSS)
+#### TYPE 2 = Mean decrease in node impurity (RSS) by splitting on columns
 
 ```{r}
-# type = either 1 or 2, specifying the type of importance measure (1=mean decrease in accuracy, 2=mean decrease in node impurity).
-# PARAMS : ntree = 30, max_features/mtry = auto/sqrt(n_features) = 2
-
 # without random column
 rf1 <- randomForest(price~., data = df[, 1:5], mtry=4,
                  ntree = 40, importance=T)
 p1 <- create_rfplot(rf1, type = 2)
+p1
+```
 
+
+```{r}
 # with random column
 rf2 <- randomForest(price~., data = df, mtry = 4,
                  ntree = 40, importance=T)
 p2 <- create_rfplot(rf2, type = 2)
-# plot
-grid.arrange(p1, p2, nrow=2)
+p2
 ```
 
 
@@ -132,14 +133,15 @@ get_drop_imp <- function(df, columns){
 columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude')
 featureImportance <- get_drop_imp(df, columns)
 p1 <- create_ggplot(featureImportance)
+p1
+```
 
+```{r}
 columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude', 'random')
 featureImportance <- get_drop_imp(df, columns)
 p2 <- create_ggplot(featureImportance)
-
-#plot(p1)
-#plot(p2)
-grid.arrange(p1, p2, ncol=2)
+p2
 ```
+
 
 
