@@ -220,19 +220,61 @@ We force the <tt>random_state</tt> of each model to be the same. For the purpose
 </div>
 
 <p>
-The upshot of all this is that the most popular RF implementation in Python (scikit) does not give an accurate picture of feature importance when &ldquo;<i>... potential predictor variables vary in their scale of measurement or their number of categories</i>.&rdquo; (Strobl <i>et al</i>). Rather than figuring out whether your data set conforms to one that gets accurate results, simply use permutation importance.
+That settles it for Python, so let's take a look at R, another popular language used for machine learning.
  
 <h3>R</h3>
 
 <p>
-The R language is favored by statisticians and one might expect R's random forest implementation to give reliable feature importances by default. Unfortunately, the default is to give the mean-decrease-in-impurity results, rather than permutation importances.
+The R language is favored by statisticians and one might expect R's random forest implementation to give reliable feature importances by default. Unfortunately, the default is to give the mean-decrease-in-impurity results, rather than permutation importances. If you turn on <tt>importance=T</tt> you get both mean-decrease-in-impurity and permutation importance. Here's how to get the permutation importances (or <i>mean decreasing accuracy</i> as the R documentation calls it):
 
 <div class="codeblk">rf <- randomForest(price~., data = df, mtry = 4,
                    ntree = 40, importance=T)
+imp <- importance(rf, type=1, scale = F)				 
+</div>
+
+As a second means of checking our work in Python, we plotted and compared feature importances side-by-side.
+
+<div class="fig-container">
+<div>
+<img src="images/regr_dflt_random_R_annotated.png" width="85%"><br>
+<font size=-1><b>Figure 1(a)</b>. foo</font>
+</div>
+<div>
+<img src="images/regr_dflt_random_annotated.png" width="80%"><br>
+<font size=-1><b>Figure 1(a)</b>. foo</font>
+</div>
+</div>
+
+<p>
+	
+<div class="fig-container">
+<div>
+<img src="images/regr_perm_random_R.svg" width="85%"><br>
+<font size=-1><b>Figure 1(a)</b>. foo</font>
+</div>
+<div>
+<img src="images/regr_permute_random.svg" width="85%"><br>
+<font size=-1><b>Figure 1(a)</b>. foo</font>
+</div>
+</div>
+
+<p>
+
+<div class="fig-container">
+<div>
+<img src="images/regr_drop_random_R.svg" width="85%"><br>
+<font size=-1><b>Figure 1(a)</b>. foo</font>
+</div>
+<div>
+<img src="images/regr_dropcol_random.svg" width="85%"><br>
+<font size=-1><b>Figure 1(a)</b>. foo</font>
+</div>
 </div>
 
 <h3>Summary</h3>
 
+<p>
+The upshot of all this is that the most popular RF implementation in Python (scikit) and R's RF default importance strategy do not give reliable feature importances when &ldquo;<i>... potential predictor variables vary in their scale of measurement or their number of categories</i>.&rdquo; (Strobl <i>et al</i>). Rather than figuring out whether your data set conforms to one that gets accurate results, simply use permutation importance. You can either use our Python implementation or turn on R's <tt>randomForest</tt> argument <tt>importance=T</tt>.
 
 
 </body>
