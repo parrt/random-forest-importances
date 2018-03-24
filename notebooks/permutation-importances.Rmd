@@ -151,7 +151,7 @@ columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude', 'random')
 featureImportance <- get_drop_imp(df, columns)
 p2 <- create_ggplot(featureImportance)
 ggsave('../article/fixed_images/regr_drop_random_R.svg',
-       plot = p1, device = 'svg', height = 7, width = 10)
+       plot = p2, device = 'svg', height = 7, width = 10)
 ```
 
 
