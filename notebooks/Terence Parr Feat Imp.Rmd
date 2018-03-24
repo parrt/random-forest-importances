@@ -21,8 +21,7 @@ library(randomForest)
 library(cowplot)
 library(gridExtra)
 
-setwd("~/Downloads/")
-rent <- read.csv(file = "rent-numeric.csv", header = TRUE)
+rent <- read.csv('./data/rent.csv')
 class(rent$interest_level)
 #interest.map <- c("low"=1, "medium"=2, "high"=3)
 
@@ -41,9 +40,10 @@ create_rfplot <- function(rf, type){
        coord_flip() + 
        theme_light(base_size=20) +
        xlab("") +
-       ylab("Importance") + 
-       ggtitle("Feature Importance\n") +
-       theme(plot.title=element_text(size=18))
+       ylab("") + 
+       ggtitle("") +
+       theme(plot.title=element_text(size=14),
+             axis.text.x = element_text(angle = 45, hjust = 1))
   return(p)
 }
 
@@ -53,12 +53,19 @@ create_ggplot <- function(featureImportance){
        coord_flip() + 
        theme_light(base_size=20) +
        xlab("") +
-       ylab("Importance") + 
-       ggtitle("Feature Importance\n") +
-       theme(plot.title=element_text(size=18))
+       ylab("") + 
+       ggtitle("") +
+       theme(plot.title=element_text(size=14),
+             axis.text.x = element_text(angle = 45, hjust = 1))
   return(p)
 }
 ```
+
+```{r}
+rent$interest_level <- as.factor(rent$interest_level)
+head(rent)
+```
+
 
 ## Type = 1, mean decrease in Accuracy
 
@@ -83,8 +90,8 @@ rf1 = randomForest(interest_level ~ .,
            #main="Top - Variable Importance")
 
 p1 <- create_rfplot(rf1, type = 1)
-p1
-
+ggsave('../article/fixed_images/cls_permute_R.svg',
+       plot = p1, device = 'svg', height = 7, width = 10)
 ######## with random column ########
 
 
@@ -104,8 +111,8 @@ rf2 = randomForest(interest_level ~ .,
            #main="Top - Variable Importance")
 
 p2 <- create_rfplot(rf2, type = 1)
-p2
-
+ggsave('../article/fixed_images/cls_permute_random_R.svg',
+       plot = p2, device = 'svg', height = 7, width = 10)
 ```
 
 ## Type = 2, mean decrease in Gini
@@ -115,12 +122,14 @@ p2
 
 
 p1 <- create_rfplot(rf1, type = 2)
-p1
+ggsave('../article/fixed_images/cls_dflt_R.svg',
+       plot = p1, device = 'svg', height = 7, width = 10)
 
 ######## with random column ########
 
 p2 <- create_rfplot(rf2, type = 2)
-p2
+ggsave('../article/fixed_images/cls_dflt_random_R.svg',
+       plot = p2, device = 'svg', height = 7, width = 10)
 
 ```
 
@@ -150,12 +159,14 @@ get_drop_imp <- function(rent, columns){
 columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude', 'price')
 featureImportance <- get_drop_imp(rent[, 1:6], columns)
 p1 <- create_ggplot(featureImportance)
-p1
+ggsave('../article/fixed_images/cls_drop_R.svg',
+       plot = p1, device = 'svg', height = 7, width = 10)
 
 columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude', 'random', 'price')
 featureImportance <- get_drop_imp(rent, columns)
 p2 <- create_ggplot(featureImportance)
-p2
+ggsave('../article/fixed_images/cls_drop_random_R.svg',
+       plot = p2, device = 'svg', height = 7, width = 10)
 ```
 
 ## Takeaways 

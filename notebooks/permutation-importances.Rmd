@@ -37,9 +37,10 @@ create_rfplot <- function(rf, type){
        coord_flip() + 
        theme_light(base_size=20) +
        xlab("") +
-       ylab("Importance") + 
-       ggtitle("Feature Importance\n") +
-       theme(plot.title=element_text(size=18))
+       ylab("") + 
+       ggtitle("") +
+       theme(plot.title=element_text(size=14),
+             axis.text.x = element_text(angle = 45, hjust = 1))
   return(p)
 }
 
@@ -49,9 +50,10 @@ create_ggplot <- function(featureImportance){
        coord_flip() + 
        theme_light(base_size=20) +
        xlab("") +
-       ylab("Importance") + 
-       ggtitle("Feature Importance\n") +
-       theme(plot.title=element_text(size=18))
+       ylab("") + 
+       ggtitle("") +
+       theme(plot.title=element_text(size=14),
+             axis.text.x = element_text(angle = 45, hjust = 1))
   return(p)
 }
 ```
@@ -60,18 +62,22 @@ create_ggplot <- function(featureImportance){
 
 **Important Note: Unscaled Feature importances are used while assessing built-in feature importances**
 
-Here are the definitions of the variable importance measures. The first measure is computed from permuting OOB data: For each tree, the prediction error on the out-of-bag portion of the data is recorded (error rate for classification, MSE for regression). Then the same is done after permuting each predictor variable. The difference between the two are then averaged over all trees, and normalized by the standard deviation of the differences. If the standard deviation of the differences is equal to 0 for a variable, the division is not done (but the average is almost always equal to 0 in that case).
+"Here are the definitions of the variable importance measures. The first measure is computed from permuting OOB data: For each tree, the prediction error on the out-of-bag portion of the data is recorded (error rate for classification, MSE for regression). Then the same is done after permuting each predictor variable. The difference between the two are then averaged over all trees, and normalized by the standard deviation of the differences. If the standard deviation of the differences is equal to 0 for a variable, the division is not done (but the average is almost always equal to 0 in that case).
 
-The second measure is the total decrease in node impurities from splitting on the variable, averaged over all trees. For classification, the node impurity is measured by the Gini index. For regression, it is measured by residual sum of squares.
+The second measure is the total decrease in node impurities from splitting on the variable, averaged over all trees. For classification, the node impurity is measured by the Gini index. For regression, it is measured by residual sum of squares."
 
-#### TYPE 1 = Mean decrease in MSE by Permutation
+From : http://ugrad.stat.ubc.ca/R/library/randomForest/html/importance.html
+
+
+#### TYPE 1 = Mean decrease in MSE by **Permutation**
 
 ```{r}
 # without random column
 rf1 <- randomForest(price~., data = df[, 1:5], mtry=4,
                  ntree = 40, importance=T)
 p1 <- create_rfplot(rf1, type = 1)
-p1
+ggsave('../article/fixed_images/regr_permute_R.svg',
+       plot = p1, device = 'svg', height = 7, width = 10)
 ```
 
 ```{r}
@@ -79,17 +85,19 @@ p1
 rf2 <- randomForest(price~., data = df, mtry = 4,
                  ntree = 40, importance=T)
 p2 <- create_rfplot(rf2, type = 1)
-p2
+ggsave('../article/fixed_images/regr_permute_random_R.svg',
+       plot = p2, device = 'svg', height = 7, width = 10)
 ```
 
-#### TYPE 2 = Mean decrease in node impurity (RSS) by splitting on columns
+#### TYPE 2 = Mean decrease in node impurity (RSS) by splitting on columns, **Python's default**
 
 ```{r}
 # without random column
 rf1 <- randomForest(price~., data = df[, 1:5], mtry=4,
                  ntree = 40, importance=T)
 p1 <- create_rfplot(rf1, type = 2)
-p1
+ggsave('../article/fixed_images/regr_dflt_R.svg',
+       plot = p1, device = 'svg', height = 7, width = 10)
 ```
 
 
@@ -98,7 +106,8 @@ p1
 rf2 <- randomForest(price~., data = df, mtry = 4,
                  ntree = 40, importance=T)
 p2 <- create_rfplot(rf2, type = 2)
-p2
+ggsave('../article/fixed_images/regr_dflt_random_R.svg',
+       plot = p2, device = 'svg', height = 7, width = 10)
 ```
 
 
@@ -133,14 +142,16 @@ get_drop_imp <- function(df, columns){
 columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude')
 featureImportance <- get_drop_imp(df, columns)
 p1 <- create_ggplot(featureImportance)
-p1
+ggsave('../article/fixed_images/regr_drop_R.svg',
+       plot = p1, device = 'svg', height = 7, width = 10)
 ```
 
 ```{r}
 columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude', 'random')
 featureImportance <- get_drop_imp(df, columns)
 p2 <- create_ggplot(featureImportance)
-p2
+ggsave('../article/fixed_images/regr_drop_random_R.svg',
+       plot = p1, device = 'svg', height = 7, width = 10)
 ```
 
 
