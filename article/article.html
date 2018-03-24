@@ -225,36 +225,40 @@ That settles it for Python, so let's take a look at R, another popular language 
 <h3>R</h3>
 
 <p>
-The R language is favored by statisticians and one might expect R's random forest implementation to give reliable feature importances by default. Unfortunately, the default is to give the mean-decrease-in-impurity results, rather than permutation importances. If you turn on <tt>importance=T</tt> you get both mean-decrease-in-impurity and permutation importance. Here's how to get the permutation importances (or <i>mean decreasing accuracy</i> as the R documentation calls it):
+The feature importances situation is better in R because the default RF gives importances using both permutation and mean-decrease-in-impurity strategies. Because both are computed anyway, it's unclear why one would ever use mean-decrease-in-impurity. Here's a snippet to get the reliable, permutation importances (type 1, not type 2):
 
 <div class="codeblk">rf <- randomForest(price~., data = df, mtry = 4,
                    ntree = 40, importance=T)
-imp <- importance(rf, type=1, scale = F)				 
+imp <- importance(rf, type=1, scale = F) # permutation importances
 </div>
 
-As a second means of checking our work in Python, we plotted and compared feature importances side-by-side.
+<p>
+To corroborate that scikit is doing mean-decrease-in-impurity importances, we trained RF regressors and classifiers in R using the same data set and compared feature importances, as shown in <b>Figure 4(a)</b> and <b>Figure 4(b)</b>.
 
 <div class="fig-container">
 <div>
 <img src="images/regr_dflt_random_R_annotated.png" width="85%"><br>
-<font size=-1><b>Figure 1(a)</b>. foo</font>
+<font size=-1><b>Figure 4(a)</b>. foo</font>
 </div>
 <div>
 <img src="images/regr_dflt_random_annotated.png" width="80%"><br>
-<font size=-1><b>Figure 1(a)</b>. foo</font>
+<font size=-1><b>Figure 4(b)</b>. foo</font>
 </div>
 </div>
+
+<p>
+As a means of checking our permutation implementation in Python, we plotted and compared our feature importances side-by-side with those of R, as shown in <b>Figure 5(a)</b> and <b>Figure 5(b)</b>.
 
 <p>
 	
 <div class="fig-container">
 <div>
 <img src="images/regr_perm_random_R.svg" width="85%"><br>
-<font size=-1><b>Figure 1(a)</b>. foo</font>
+<font size=-1><b>Figure 5(a)</b>. foo</font>
 </div>
 <div>
 <img src="images/regr_permute_random.svg" width="85%"><br>
-<font size=-1><b>Figure 1(a)</b>. foo</font>
+<font size=-1><b>Figure 5(a)</b>. foo</font>
 </div>
 </div>
 
