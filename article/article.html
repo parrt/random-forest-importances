@@ -8,12 +8,10 @@
 <style>
 	.fig-container {
   	  display: flex;
-	  overflow-x: scroll;	  
+	  overflow-x: scroll;	
+	  flex: auto;  
 /*	  flex-wrap: wrap;
 	  flex-flow: row wrap;*/
-	}
-	.row {
-	  flex: 1;
 	}
 	.fig-container > div {
 	  flex: 1;
@@ -29,7 +27,7 @@
 
 <h3>TL;DR</h3>
 
-The scikit-learn Random Forest feature importance and R's default Random Forest feature importance are unreliable. To get reliable results, use permutation importance, provided here for Python or use argument <tt>importance=T</tt> in R to get reliable feature importances along with the unreliable ones.
+The scikit-learn Random Forest feature importances and one of R's two default Random Forest feature importances are unreliable. To get reliable results, use permutation importance, provided here for Python, or make sure to use <tt>type=1</tt> in R's <tt>importance()</tt> function.
 
 <!--
 It's not normally enough to just to know that a model can make accurate predictions. We also want to know how it's making predictions. The most important way to see this is with <i>feature importance</i>. We demonstrate that the default feature importance for Python's scikit-learn and R's random forest can give very inaccurate and strange results, depending on your data set.  This article includes a discussion of the various strategies for computing feature importance and provides implementations for strategies that give reliable results. We include python and R <a href="https://github.com/parrt/random-forest-importances/tree/master/notebooks">notebooks</a> that demonstrate the problem with and solutions to the default feature importance provided by common machine learning libraries.
@@ -79,11 +77,11 @@ and then plotted the <tt>rf.feature_importances_</tt> as shown in <b>Figure 1(a)
 
 <div class="fig-container">
 	<div>
-		<img src="images/regr_dflt_random_annotated.png" width="85%"><br>
+		<img src="images/regr_dflt_random_annotated.png" width="65%"><br>
 		<font size=-1><b>Figure 1(a)</b>. <tt>scikit-learn</tt> default importances for Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.</font>
 	</div>
 	<div>
-		<img src="images/cls_dflt_random_annotated.png" width="85%"><br>
+		<img src="images/cls_dflt_random_annotated.png" width="65%"><br>
 		<font size=-1><b>Figure 1(b)</b>. <tt>scikit-learn</tt> default importances for Random Forest <b>classifier</b> predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. Highly suspicious that random column is much more important than the number of bedrooms.</font>
 	</div>
 </div>
@@ -162,11 +160,11 @@ To test permutation importances, we plotted the regressor and classifier importa
 
 <div class="fig-container">
 	<div>
-<img src="images/regr_permute_random.svg" width="85%"><br>
+<img src="images/regr_permute_random.svg" width="65%"><br>
 <font size=-1><b>Figure 2(a)</b>. Importances derived by permuting each column and computing change in out-of-bag R^2 using <tt>scikit-learn</tt> <b>regressor</b>. Predicting apartment rental price from 4 features + a column of random numbers.</font>
 	</div>
 	<div>
-		<img src="images/cls_permute_random.svg" width="85%"><br>
+		<img src="images/cls_permute_random.svg" width="65%"><br>
 <font size=-1><b>Figure 2(b)</b>. Importances derived by permuting each column and computing change in out-of-bag accuracy using <tt>scikit-learn</tt> Random Forest <b>classifier</b>.</font>
 	</div>
 </div>
@@ -210,11 +208,11 @@ We force the <tt>random_state</tt> of each model to be the same. For the purpose
 
 <div class="fig-container">
 	<div>
-<img src="images/regr_dropcol_random.svg" width="85%"><br>
+<img src="images/regr_dropcol_random.svg" width="65%"><br>
 <font size=-1><b>Figure 3(a)</b>. Importances derived by dropping each column, retraining <tt>scikit-learn</tt> Random Forest <b>regressor</b>, and computing change in out-of-bag R^2. Predicting apartment rental price from 4 features + a column of random numbers. The importance of the random column is at the bottom as it should be.</font>
 	</div>
 	<div>
-		<img src="images/cls_dropcol_random.svg" width="85%"><br>
+		<img src="images/cls_dropcol_random.svg" width="65%"><br>
 <font size=-1><b>Figure 3(b)</b>. Importances derived by dropping each column, retraining <tt>scikit-learn</tt> Random Forest <b>classifier</b>, and computing change in out-of-bag accuracy. Predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. The importance of the random column is at the bottom as it should be.</font>
 	</div>
 </div>
@@ -222,7 +220,7 @@ We force the <tt>random_state</tt> of each model to be the same. For the purpose
 <p>
 That settles it for Python, so let's take a look at R, another popular language used for machine learning.
  
-<h3>R</h3>
+<h3>Comparing R to scikit-learn importances</h3>
 
 <p>
 The feature importances situation is better in R because the default RF gives importances using both permutation and mean-decrease-in-impurity strategies. Because both are computed anyway, it's unclear why one would ever use mean-decrease-in-impurity. Here's a snippet to get the reliable, permutation importances (type 1, not type 2):
@@ -237,11 +235,22 @@ To corroborate that scikit is doing mean-decrease-in-impurity importances, we tr
 
 <div class="fig-container">
 <div>
-<img src="images/regr_dflt_random_R_annotated.png" width="85%"><br>
+<img src="images/regr_dflt_random_R_annotated.png" width="65%"><br>
 <font size=-1><b>Figure 4(a)</b>. foo</font>
 </div>
 <div>
-<img src="images/regr_dflt_random_annotated.png" width="80%"><br>
+<img src="images/regr_dflt_random_annotated.png" width="65%"><br>
+<font size=-1><b>Figure 4(b)</b>. foo</font>
+</div>
+</div>
+
+<div class="fig-container">
+<div>
+<img src="images/cls_dflt_random_R_annotated.png" width="65%"><br>
+<font size=-1><b>Figure 4(a)</b>. foo</font>
+</div>
+<div>
+<img src="images/cls_dflt_random_annotated.png" width="65%"><br>
 <font size=-1><b>Figure 4(b)</b>. foo</font>
 </div>
 </div>
@@ -249,37 +258,66 @@ To corroborate that scikit is doing mean-decrease-in-impurity importances, we tr
 <p>
 As a means of checking our permutation implementation in Python, we plotted and compared our feature importances side-by-side with those of R, as shown in <b>Figure 5(a)</b> and <b>Figure 5(b)</b>.
 
+<h4>R permutation importance comparison</h4>
+
 <p>
 	
 <div class="fig-container">
 <div>
-<img src="images/regr_perm_random_R.svg" width="85%"><br>
+<img src="images/regr_perm_random_R.svg" width="65%"><br>
 <font size=-1><b>Figure 5(a)</b>. foo</font>
 </div>
 <div>
-<img src="images/regr_permute_random.svg" width="85%"><br>
+<img src="images/regr_permute_random.svg" width="65%"><br>
 <font size=-1><b>Figure 5(a)</b>. foo</font>
 </div>
 </div>
 
 <p>
+	
+<div class="fig-container">
+<div>
+<img src="images/cls_permute_random_R.svg" width="65%"><br>
+<font size=-1><b>Figure 6(a)</b>. foo</font>
+</div>
+<div>
+<img src="images/cls_permute_random.svg" width="65%"><br>
+<font size=-1><b>Figure 6(b)</b>. foo</font>
+</div>
+</div>
+
+
+<h4>R drop-column importance comparison</h4>
+	<p>
 
 <div class="fig-container">
 <div>
-<img src="images/regr_drop_random_R.svg" width="85%"><br>
+<img src="images/regr_drop_random_R.svg" width="65%"><br>
 <font size=-1><b>Figure 1(a)</b>. foo</font>
 </div>
 <div>
-<img src="images/regr_dropcol_random.svg" width="85%"><br>
+<img src="images/regr_dropcol_random.svg" width="65%"><br>
 <font size=-1><b>Figure 1(a)</b>. foo</font>
 </div>
 </div>
 
+<p>
+	
+<div class="fig-container">
+<div>
+<img src="images/cls_drop_random_R.svg" width="65%"><br>
+<font size=-1><b>Figure 1(a)</b>. foo</font>
+</div>
+<div>
+<img src="images/cls_dropcol_random.svg" width="65%"><br>
+<font size=-1><b>Figure 1(a)</b>. foo</font>
+</div>
+</div>
+	
 <h3>Summary</h3>
 
 <p>
 The upshot of all this is that the most popular RF implementation in Python (scikit) and R's RF default importance strategy do not give reliable feature importances when &ldquo;<i>... potential predictor variables vary in their scale of measurement or their number of categories</i>.&rdquo; (Strobl <i>et al</i>). Rather than figuring out whether your data set conforms to one that gets accurate results, simply use permutation importance. You can either use our Python implementation or turn on R's <tt>randomForest</tt> argument <tt>importance=T</tt>.
-
 
 </body>
 </html>
