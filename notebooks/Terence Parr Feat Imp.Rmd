@@ -1,0 +1,172 @@
+---
+title: "Terence Parr Feat Imp"
+author: "Christopher Csiszar"
+date: "3/22/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Biases in RF importance calculations
+
+Simple RF Classification done in R to see how biases their RF feature importance metrics are
+
+```{r cars}
+# RF Classification - feature importances
+
+library(tidyverse)
+library(randomForest)
+library(cowplot)
+library(gridExtra)
+
+setwd("~/Downloads/")
+rent <- read.csv(file = "rent-numeric.csv", header = TRUE)
+class(rent$interest_level)
+#interest.map <- c("low"=1, "medium"=2, "high"=3)
+
+#ent$interest_level <- interest.map[as.character(rent$interest_level)]
+
+summary(rent)
+
+## plotting functions ##
+
+create_rfplot <- function(rf, type){
+  imp <- importance(rf, type=type, scale = F)
+  featureImportance <- data.frame(Feature=row.names(imp), Importance=imp[,1])
+  
+  p <- ggplot(featureImportance, aes(x=reorder(Feature, Importance), y=Importance)) +
+       geom_bar(stat="identity", fill="#53cfff") +
+       coord_flip() + 
+       theme_light(base_size=20) +
+       xlab("") +
+       ylab("Importance") + 
+       ggtitle("Feature Importance\n") +
+       theme(plot.title=element_text(size=18))
+  return(p)
+}
+
+create_ggplot <- function(featureImportance){
+  p <- ggplot(featureImportance, aes(x=reorder(Feature, Importance), y=Importance)) +
+       geom_bar(stat="identity", fill="#53cfff") +
+       coord_flip() + 
+       theme_light(base_size=20) +
+       xlab("") +
+       ylab("Importance") + 
+       ggtitle("Feature Importance\n") +
+       theme(plot.title=element_text(size=18))
+  return(p)
+}
+```
+
+## Type = 1, mean decrease in Accuracy
+
+```{r cars3}
+####### no random column #########
+set.seed(1)
+rent$random <- sample(100, size = nrow(rent), replace = TRUE)
+
+#Fit Random Forest Model
+rf1 = randomForest(interest_level ~ .,  
+                  ntree = 40,
+                  data = rent[, 1:6],
+                  nodesize = 1, importance = TRUE)
+#print(rf)
+
+#round(importance(rf, type = 1), 2)
+#round(importance(rf), 2)
+
+# Variable Importance
+#varImpPlot(rf,  
+           #sort = T,
+           #main="Top - Variable Importance")
+
+p1 <- create_rfplot(rf1, type = 1)
+p1
+
+######## with random column ########
+
+
+#Fit Random Forest Model
+rf2 = randomForest(interest_level ~ .,  
+                  ntree = 40,
+                  data = rent,
+                  nodesize = 1, importance = TRUE)
+#print(rf)
+
+#round(importance(rf, type = 1), 2)
+#round(importance(rf), 2)
+
+# Variable Importance
+#varImpPlot(rf,  
+           #sort = T,
+           #main="Top - Variable Importance")
+
+p2 <- create_rfplot(rf2, type = 1)
+p2
+
+```
+
+## Type = 2, mean decrease in Gini
+
+```{r cars4}
+####### no random column #########
+
+
+p1 <- create_rfplot(rf1, type = 2)
+p1
+
+######## with random column ########
+
+p2 <- create_rfplot(rf2, type = 2)
+p2
+
+```
+
+## Cost by dropping column analysis
+
+```{r cars5}
+####### no random column #########
+get_drop_imp <- function(rent, columns){
+  X <- rent[,c(columns, 'interest_level')] # data
+  rf <- randomForest(interest_level~., data = X,
+                   ntree = 40, mtry=2, nodesize=1, importance=T)
+  full_rsq <- -1*mean(rf$err.rate) # 
+  
+  imp <- c()
+  for (c in columns){
+    X_sub <- X[, !(colnames(X) == c)]
+    rf <- randomForest(interest_level~., data = X_sub,
+                   ntree = 40, mtry=2, nodesize=1, importance=T)
+    sub_rsq <- -1*mean(rf$err.rate) # 
+    diff_rsq <- full_rsq - sub_rsq
+    imp <- c(imp, diff_rsq)
+  }
+  featureImportance <- data.frame(Feature=columns, Importance=imp)
+  return(featureImportance)
+}
+
+columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude', 'price')
+featureImportance <- get_drop_imp(rent[, 1:6], columns)
+p1 <- create_ggplot(featureImportance)
+p1
+
+columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude', 'random', 'price')
+featureImportance <- get_drop_imp(rent, columns)
+p2 <- create_ggplot(featureImportance)
+p2
+```
+
+## Takeaways 
+
+It appears that RF feature importance in R has several different metrics when evaluating. It seems that the "decrease in accuracy" metric places the `random` column dead last, as expected, while the "decrease in Gini" metric is terribly biased due to high cardinality, placing the `random` column as second most important.
+
+Another thing to note is, due to low cardinality, `bedrooms` is a less important feature for Gini decrease metrics.
+
+More of RF feature importance interpretation in R:
+
+https://cran.r-project.org/web/packages/randomForest/randomForest.pdf
+
+https://stats.stackexchange.com/questions/197827/how-to-interpret-mean-decrease-in-accuracy-and-mean-decrease-gini-in-random-fore
+https://stackoverflow.com/questions/736514/r-random-forests-variable-importance
