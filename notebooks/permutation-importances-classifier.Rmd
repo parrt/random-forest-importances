@@ -39,10 +39,9 @@ create_rfplot <- function(rf, type){
        geom_bar(stat="identity", fill="#53cfff", width = 0.65) +
        coord_flip() + 
        theme_light(base_size=20) +
-       xlab("") +
-       ylab("") + 
-       ggtitle("") +
-       theme(axis.text.x = element_text(size = 15, color = "black"),
+       theme(axis.title.x=element_blank(),
+             axis.title.y=element_blank(),
+             axis.text.x = element_text(size = 15, color = "black"),
              axis.text.y = element_text(size = 15, color = "black")) 
   return(p)
 }
@@ -52,11 +51,10 @@ create_ggplot <- function(featureImportance){
        geom_bar(stat="identity", fill="#53cfff", width = 0.65) +
        coord_flip() + 
        theme_light(base_size=20) +
-       xlab("") +
-       ylab("") + 
-       ggtitle("") +
-       theme(axis.text.x = element_text(size = 15, color = "black"),
-             axis.text.y = element_text(size = 15, color = "black"))
+       theme(axis.title.x=element_blank(),
+             axis.title.y=element_blank(),
+             axis.text.x = element_text(size = 15, color = "black"),
+             axis.text.y = element_text(size = 15, color = "black")) 
   return(p)
 }
 ```
