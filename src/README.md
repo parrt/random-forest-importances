@@ -20,7 +20,7 @@ rf = RandomForestRegressor(n_estimators=100,
 X_train, y_train = df.drop('price',axis=1), df['price']
 rf.fit(X_train, y_train)
 
-imp = importances_df(rf, X_train, y_train)
+imp = importances(rf, X_train, y_train)
 plot_importances(X_train.columns, imp)
 
 imp = dropcol_importances(rf, X_train, y_train)
