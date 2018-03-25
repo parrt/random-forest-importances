@@ -29,7 +29,7 @@
 
 <h3>TL;DR</h3>
 
-The scikit-learn Random Forest feature importances and one of R's default Random Forest feature importance strategies are unreliable. To get reliable results, use permutation importance, provided here for Python, or make sure to use <tt>type=1</tt> in R's <tt>importance()</tt> function.
+The scikit-learn Random Forest feature importance and R's default Random Forest feature importance strategies are unreliable. To get reliable results in Python, use permutation importance, provided here and in <tt>rfpimp</tt> package. For R, use <tt>importance=T</tt> in the random forest constructor then <tt>type=1</tt> in R's <tt>importance()</tt> function.
 
 <!--
 It's not normally enough to just to know that a model can make accurate predictions. We also want to know how it's making predictions. The most important way to see this is with <i>feature importance</i>. We demonstrate that the default feature importance for Python's scikit-learn and R's random forest can give very inaccurate and strange results, depending on your data set.  This article includes a discussion of the various strategies for computing feature importance and provides implementations for strategies that give reliable results. We include python and R <a href="https://github.com/parrt/random-forest-importances/tree/master/notebooks">notebooks</a> that demonstrate the problem with and solutions to the default feature importance provided by common machine learning libraries.
@@ -225,10 +225,16 @@ That settles it for Python, so let's take a look at R, another popular language 
 <h3>Comparing R to scikit-learn importances</h3>
 
 <p>
-The feature importances situation is better in R because the default RF gives importances using both permutation and mean-decrease-in-impurity strategies. Because both are computed anyway, it's unclear why one would ever use mean-decrease-in-impurity. Here's a snippet to get the reliable, permutation importances (type 1, not type 2):
+Unfortunately, R's default importance strategy is mean-decrease-in-impurity, just like scikit, and so results are unreliable. For example, here's a typical code snippet to create a random forest and get the feature importances that traps the unwary:
 
-<div class="codeblk">rf <- randomForest(price~., data = df, mtry = 4,
-                   ntree = 40, importance=T)
+<div class="codeblk">rf <- randomForest(price~., data = df[, 1:5], mtry=4, ntree = 40)
+imp <- importance(rf) # default is mean-decrease-in-impurity
+</div>
+
+<p>
+To get reliable results, we have to turn on <tt>importance=T</tt> in the random forest constructor function, which computes both mean-decrease-in-impurity and permutation importances. Then, we have to use <tt>type=1</tt> (not <tt>type=2</tt>) in the <tt>importances()</tt> function call:
+
+<div class="codeblk">rf <- randomForest(price~., data = df, mtry = 4, ntree = 40, importance=T)
 imp <- importance(rf, type=1, scale = F) # permutation importances
 </div>
 
