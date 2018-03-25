@@ -29,7 +29,7 @@
 
 <h3>TL;DR</h3>
 
-The scikit-learn Random Forest feature importance and R's default Random Forest feature importance strategies are unreliable. To get reliable results in Python, use permutation importance, provided here and in our <tt>rfpimp</tt> package (via <tt>pip</tt>). For R, use <tt>importance=T</tt> in the random forest constructor then <tt>type=1</tt> in R's <tt>importance()</tt> function.
+The scikit-learn Random Forest feature importance and R's default Random Forest feature importance strategies are unreliable. To get reliable results in Python, use permutation importance, provided here and in our <a href="https://github.com/parrt/random-forest-importances/tree/master/src">rfpimp</a> package (via <tt>pip</tt>). For R, use <tt>importance=T</tt> in the random forest constructor then <tt>type=1</tt> in R's <tt>importance()</tt> function.
 
 <!--
 It's not normally enough to just to know that a model can make accurate predictions. We also want to know how it's making predictions. The most important way to see this is with <i>feature importance</i>. We demonstrate that the default feature importance for Python's scikit-learn and R's random forest can give very inaccurate and strange results, depending on your data set.  This article includes a discussion of the various strategies for computing feature importance and provides implementations for strategies that give reliable results. We include python and R <a href="https://github.com/parrt/random-forest-importances/tree/master/notebooks">notebooks</a> that demonstrate the problem with and solutions to the default feature importance provided by common machine learning libraries.
@@ -102,7 +102,6 @@ rf = RandomForestClassifier(n_estimators=100,
                             min_samples_leaf=5, # better generality with 5
                             n_jobs=-1,
                             oob_score=True)
-
 rf.fit(X_train, y_train)
 </div>
 
@@ -320,7 +319,7 @@ For completeness, we implemented drop-column importance in R and compared to our
 <h3>Summary</h3>
 
 <p>
-The upshot of all this is that the most popular RF implementation in Python (scikit) and R's RF default importance strategy do not give reliable feature importances when &ldquo;<i>... potential predictor variables vary in their scale of measurement or their number of categories</i>.&rdquo; (Strobl <i>et al</i>). Rather than figuring out whether your data set conforms to one that gets accurate results, simply use permutation importance. You can either use our Python implementation or, if using R, make sure to use <tt>importance=T</tt> in the random forest constructor then <tt>type=1</tt> in R's <tt>importance()</tt> function.
+The upshot of all this is that the most popular RF implementation in Python (scikit) and R's RF default importance strategy do not give reliable feature importances when &ldquo;<i>... potential predictor variables vary in their scale of measurement or their number of categories</i>.&rdquo; (Strobl <i>et al</i>). Rather than figuring out whether your data set conforms to one that gets accurate results, simply use permutation importance. You can either use our Python implementation (<a href="https://github.com/parrt/random-forest-importances/tree/master/src">rfpimp</a> via <tt>pip</tt>)  or, if using R, make sure to use <tt>importance=T</tt> in the random forest constructor then <tt>type=1</tt> in R's <tt>importance()</tt> function.
 
 </body>
 </html>
