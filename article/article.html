@@ -237,19 +237,20 @@ It's worth comparing R and scikit in detail.  It not only gives us an opportunit
 <h4>R mean-decrease-in-impurity importance comparison</h4>
 
 <p>
-R's mean-decrease-in-impurity importance (type=2) gives the same implausible results as we saw with scikit.  To demonstrate this, we trained am RF regressor and classifier in R using the same data set and generated the importance graphs in <b>Figure 4(a)</b> and <b>Figure 4(b)</b>. The graphs mirror the implausible scikit graphs.
+R's mean-decrease-in-impurity importance (type=2) gives the same implausible results as we saw with scikit.  To demonstrate this, we trained an RF regressor and classifier in R using the same data set and generated the importance graphs in <b>Figure 4(a)</b> and <b>Figure 4(b)</b>. The graphs mirror the implausible scikit graphs.
 
 <div class="fig-container">
 <div>
 <img src="images/regr_dflt_random_R_annotated.png" width="75%"><br>
-<font size=-1><b>Figure 4(a)</b>. foo</font>
+<font size=-1><b>Figure 4(a)</b>. R's type=2 importances for Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.</font>
 </div>
 <div>
 <img src="images/cls_dflt_random_R_annotated.png" width="75%"><br>
-<font size=-1><b>Figure 4(b)</b>. foo</font>
+<font size=-1><b>Figure 4(b)</b>. R's type=2 importances for Random Forest <b>classifier</b> predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. Highly suspicious that random column is much more important than the number of bedrooms.</font>
 </div>
 </div>
 
+		
 <h4>R permutation importance comparison</h4>
 
 <p>
@@ -258,11 +259,11 @@ As a means of checking our permutation implementation in Python, we plotted and 
 <div class="fig-container">
 <div>
 <img src="images/regr_permute_random_R.svg" width="75%"><br>
-<font size=-1><b>Figure 5(a)</b>. foo</font>
+<font size=-1><b>Figure 5(a)</b>. R's type=1 permutation importance for RF <b>regressor</b>.</font>
 </div>
 <div>
 <img src="images/regr_permute_random.svg" width="75%"><br>
-<font size=-1><b>Figure 5(a)</b>. foo</font>
+<font size=-1><b>Figure 5(a)</b>. Python permutation importance for RF <b>regressor</b></font>
 </div>
 </div>
 
@@ -271,11 +272,11 @@ As a means of checking our permutation implementation in Python, we plotted and 
 <div class="fig-container">
 <div>
 <img src="images/cls_permute_random_R.svg" width="75%"><br>
-<font size=-1><b>Figure 6(a)</b>. foo</font>
+<font size=-1><b>Figure 6(a)</b>. R's type=1 permutation importance for RF <b>classifier</b>.</font>
 </div>
 <div>
 <img src="images/cls_permute_random.svg" width="75%"><br>
-<font size=-1><b>Figure 6(b)</b>. foo</font>
+<font size=-1><b>Figure 6(b)</b>. Python permutation importance for RF <b>classifier</b></font>
 </div>
 </div>
 
@@ -288,11 +289,11 @@ For completeness, we implemented drop-column importance in R and compared to our
 <div class="fig-container">
 <div>
 <img src="images/regr_drop_random_R.svg" width="75%"><br>
-<font size=-1><b>Figure 8(a)</b>. foo</font>
+<font size=-1><b>Figure 8(a)</b>. Importances derived by dropping each column, retraining an RF <b>regressor</b> in R, and computing the change in out-of-bag R<sup>2</sup>.</font>
 </div>
 <div>
 <img src="images/regr_dropcol_random.svg" width="75%"><br>
-<font size=-1><b>Figure 8(b)</b>. foo</font>
+<font size=-1><b>Figure 8(b)</b>. Importances derived by dropping each column, retraining a <tt>scikit</tt> RF <b>regressor</b>, and computing the change in out-of-bag R<sup>2</sup>.</font>
 </div>
 </div>
 
@@ -301,11 +302,11 @@ For completeness, we implemented drop-column importance in R and compared to our
 <div class="fig-container">
 <div>
 <img src="images/cls_drop_random_R.svg" width="75%"><br>
-<font size=-1><b>Figure 9(a)</b>. foo</font>
+<font size=-1><b>Figure 9(a)</b>. Importances derived by dropping each column, retraining an RF <b>classifier</b> in R, and computing the change in out-of-bag accuracy.</font>
 </div>
 <div>
 <img src="images/cls_dropcol_random.svg" width="75%"><br>
-<font size=-1><b>Figure 9(b)</b>. foo</font>
+<font size=-1><b>Figure 9(b)</b>. Importances derived by dropping each column, retraining a <tt>scikit</tt> RF <b>classifier</b>, and computing the change in out-of-bag accuracy.</font>
 </div>
 </div>
 	
