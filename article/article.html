@@ -29,7 +29,7 @@
 
 <h3>TL;DR</h3>
 
-The scikit-learn Random Forest feature importance and R's default Random Forest feature importance strategies are unreliable. To get reliable results in Python, use permutation importance, provided here and in <tt>rfpimp</tt> package. For R, use <tt>importance=T</tt> in the random forest constructor then <tt>type=1</tt> in R's <tt>importance()</tt> function.
+The scikit-learn Random Forest feature importance and R's default Random Forest feature importance strategies are unreliable. To get reliable results in Python, use permutation importance, provided here and in our <tt>rfpimp</tt> package (via <tt>pip</tt>). For R, use <tt>importance=T</tt> in the random forest constructor then <tt>type=1</tt> in R's <tt>importance()</tt> function.
 
 <!--
 It's not normally enough to just to know that a model can make accurate predictions. We also want to know how it's making predictions. The most important way to see this is with <i>feature importance</i>. We demonstrate that the default feature importance for Python's scikit-learn and R's random forest can give very inaccurate and strange results, depending on your data set.  This article includes a discussion of the various strategies for computing feature importance and provides implementations for strategies that give reliable results. We include python and R <a href="https://github.com/parrt/random-forest-importances/tree/master/notebooks">notebooks</a> that demonstrate the problem with and solutions to the default feature importance provided by common machine learning libraries.
@@ -261,7 +261,7 @@ R's mean-decrease-in-impurity importance (type=2) gives the same implausible res
 <h4>R permutation importance comparison</h4>
 
 <p>
-As a means of checking our permutation implementation in Python, we plotted and compared our feature importances side-by-side with those of R, as shown in <b>Figure 5</b> for regression and <b>Figure 6</b> for classification.
+As a means of checking our permutation implementation in Python, we plotted and compared our feature importances side-by-side with those of R, as shown in <b>Figure 5</b> for regression and <b>Figure 6</b> for classification. The importance of values themselves are different, but the feature order and relative levels are very similar, which is what we care about.
 
 <div class="fig-container">
 <div>
