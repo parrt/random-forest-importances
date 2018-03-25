@@ -1,7 +1,7 @@
 # Feature importances for scikit random forests
 
 ```
-from rfimpo import *
+from rfpimp import *
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 

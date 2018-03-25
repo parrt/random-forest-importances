@@ -10,6 +10,14 @@ import warnings
 from sklearn.ensemble.forest import _generate_unsampled_indices
 
 
+def importances_raw(rf, X_train, y_train):
+    if isinstance(rf, RandomForestClassifier):
+        return permutation_importances_raw(rf, X_train, y_train, oob_classifier_accuracy)
+    elif isinstance(rf, RandomForestRegressor):
+        return permutation_importances_raw(rf, X_train, y_train, oob_regression_r2_score)
+    return None
+
+
 def importances(rf, X_train, y_train):
     if isinstance(rf, RandomForestClassifier):
         return permutation_importances(rf, X_train, y_train, oob_classifier_accuracy)
@@ -18,15 +26,7 @@ def importances(rf, X_train, y_train):
     return None
 
 
-def importances_df(rf, X_train, y_train):
-    if isinstance(rf, RandomForestClassifier):
-        return permutation_importances_df(rf, X_train, y_train, oob_classifier_accuracy)
-    elif isinstance(rf, RandomForestRegressor):
-        return permutation_importances_df(rf, X_train, y_train, oob_regression_r2_score)
-    return None
-
-
-def permutation_importances(rf, X_train, y_train, metric):
+def permutation_importances_raw(rf, X_train, y_train, metric):
     """
     Return importances from pre-fit rf; metric is function
     that measures accuracy or R^2 or similar. This function
@@ -43,8 +43,8 @@ def permutation_importances(rf, X_train, y_train, metric):
     return np.array(imp)
 
 
-def permutation_importances_df(rf, X_train, y_train, metric):
-    imp = permutation_importances(rf, X_train, y_train, metric)
+def permutation_importances(rf, X_train, y_train, metric):
+    imp = permutation_importances_raw(rf, X_train, y_train, metric)
     I = pd.DataFrame(data={'Feature':X_train.columns, 'Importance':imp})
     I = I.set_index('Feature')
     I = I.sort_values('Importance', ascending=True)
@@ -64,7 +64,11 @@ def dropcol_importances(rf, X_train, y_train):
         rf_.fit(X, y_train)
         o = rf_.oob_score_
         imp.append(baseline - o)
-    return np.array(imp)
+    imp = np.array(imp)
+    I = pd.DataFrame(data={'Feature':X_train.columns, 'Importance':imp})
+    I = I.set_index('Feature')
+    I = I.sort_values('Importance', ascending=True)
+    return I
 
 
 def oob_classifier_accuracy(rf, X_train, y_train):
