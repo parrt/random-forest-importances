@@ -164,10 +164,14 @@ def plot_importances(df_importances, save=None, xrot=None, tickstep=2):
     """
     I = df_importances
 
-    figsize=(len(I.Importance)/2, len(I.index)/3.5)
-    fig = plt.figure(figsize=figsize)
+    fig = plt.figure()
+    fig.bbox_inches.y1 *= 0.3
     ax = plt.gca()
     ax.barh(np.arange(len(I.index)), I.Importance, height=.7, tick_label=I.index)
+
+    x0, x1 = ax.get_xlim()
+    y0, y1 = ax.get_ylim()
+    ax.set_aspect((x1 - x0) / (y1 - y0))
 
     # rotate x-ticks
     if xrot is not None:
@@ -180,8 +184,6 @@ def plot_importances(df_importances, save=None, xrot=None, tickstep=2):
     ax.set_xticks(new_ticks)
 
     plt.tight_layout()
-    plt.savefig("/tmp/t.png", bbox_inches="tight", pad_inches=0.03)
-
     if save:
         plt.savefig(save, bbox_inches="tight", pad_inches=0.03)
     plt.show()
