@@ -164,7 +164,7 @@ def plot_importances(df_importances, save=None, xrot=None, tickstep=2):
     """
     I = df_importances
 
-    figsize=(len(I.Importance)/2, len(I.index)/3)
+    figsize=(len(I.Importance)/2, len(I.index)/3.5)
     fig = plt.figure(figsize=figsize)
     ax = plt.gca()
     ax.barh(np.arange(len(I.index)), I.Importance, height=.7, tick_label=I.index)
