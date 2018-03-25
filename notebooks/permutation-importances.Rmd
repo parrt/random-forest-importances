@@ -42,9 +42,8 @@ create_rfplot <- function(rf, type){
        xlab("") +
        ylab("") + 
        ggtitle("") +
-       theme(text=element_text(size=20), 
-             axis.text.x = element_text(size = 20),
-             axis.text.y = element_text(size = 20))
+       theme(axis.text.x = element_text(size = 15, color = "black"),
+             axis.text.y = element_text(size = 15, color = "black")) 
   return(p)
 }
 
@@ -56,9 +55,8 @@ create_ggplot <- function(featureImportance){
        xlab("") +
        ylab("") + 
        ggtitle("") +
-       theme(text=element_text(size=20), 
-             axis.text.x = element_text(size = 20),
-             axis.text.y = element_text(size = 20))
+       theme(axis.text.x = element_text(size = 15, color = "black"),
+             axis.text.y = element_text(size = 15, color = "black"))
   return(p)
 }
 ```
@@ -82,8 +80,9 @@ rf1 <- randomForest(price~., data = df[, 1:5], mtry=4,
                  ntree = 40, importance=T)
 
 p1 <- create_rfplot(rf1, type = 1)
+p1
 ggsave('../article/images/regr_permute_R.svg',
-       plot = p1, device = 'svg', height = 7, width = 10)
+       plot = p1, device = 'svg', height = 4, width = 6)
 ```
 
 ```{r}
@@ -92,7 +91,7 @@ rf2 <- randomForest(price~., data = df, mtry = 4,
                  ntree = 40, importance=T)
 p2 <- create_rfplot(rf2, type = 1)
 ggsave('../article/images/regr_permute_random_R.svg',
-       plot = p2, device = 'svg', height = 7, width = 10)
+       plot = p2, device = 'svg', height = 4, width = 6)
 ```
 
 #### TYPE 2 = Mean decrease in node impurity (RSS) by splitting on columns, **Python's default**
@@ -103,7 +102,7 @@ rf1 <- randomForest(price~., data = df[, 1:5], mtry=4,
                  ntree = 40, importance=T)
 p1 <- create_rfplot(rf1, type = 2)
 ggsave('../article/images/regr_dflt_R.svg',
-       plot = p1, device = 'svg', height = 7, width = 10)
+       plot = p1, device = 'svg', height = 4, width = 6)
 ```
 
 
@@ -113,7 +112,7 @@ rf2 <- randomForest(price~., data = df, mtry = 4,
                  ntree = 40, importance=T)
 p2 <- create_rfplot(rf2, type = 2)
 ggsave('../article/images/regr_dflt_random_R.svg',
-       plot = p2, device = 'svg', height = 7, width = 10)
+       plot = p2, device = 'svg', height = 4, width = 6)
 ```
 
 
@@ -149,7 +148,7 @@ columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude')
 featureImportance <- get_drop_imp(df, columns)
 p1 <- create_ggplot(featureImportance)
 ggsave('../article/images/regr_drop_R.svg',
-       plot = p1, device = 'svg', height = 7, width = 10)
+       plot = p1, device = 'svg', height = 4, width = 6)
 ```
 
 ```{r}
@@ -157,7 +156,7 @@ columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude', 'random')
 featureImportance <- get_drop_imp(df, columns)
 p2 <- create_ggplot(featureImportance)
 ggsave('../article/images/regr_drop_random_R.svg',
-       plot = p2, device = 'svg', height = 7, width = 10)
+       plot = p2, device = 'svg', height = 4, width = 6)
 ```
 
 

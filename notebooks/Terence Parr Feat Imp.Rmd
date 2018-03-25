@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = F, message = F)
 ```
 
 ## Biases in RF importance calculations
@@ -36,27 +36,27 @@ create_rfplot <- function(rf, type){
   featureImportance <- data.frame(Feature=row.names(imp), Importance=imp[,1])
   
   p <- ggplot(featureImportance, aes(x=reorder(Feature, Importance), y=Importance)) +
-       geom_bar(stat="identity", fill="#53cfff") +
+       geom_bar(stat="identity", fill="#53cfff", width = 0.65) +
        coord_flip() + 
        theme_light(base_size=20) +
        xlab("") +
        ylab("") + 
        ggtitle("") +
-       theme(plot.title=element_text(size=14),
-             axis.text.x = element_text(angle = 45, hjust = 1))
+       theme(axis.text.x = element_text(size = 15, color = "black"),
+             axis.text.y = element_text(size = 15, color = "black")) 
   return(p)
 }
 
 create_ggplot <- function(featureImportance){
   p <- ggplot(featureImportance, aes(x=reorder(Feature, Importance), y=Importance)) +
-       geom_bar(stat="identity", fill="#53cfff") +
+       geom_bar(stat="identity", fill="#53cfff", width = 0.65) +
        coord_flip() + 
        theme_light(base_size=20) +
        xlab("") +
        ylab("") + 
        ggtitle("") +
-       theme(plot.title=element_text(size=14),
-             axis.text.x = element_text(angle = 45, hjust = 1))
+       theme(axis.text.x = element_text(size = 15, color = "black"),
+             axis.text.y = element_text(size = 15, color = "black"))
   return(p)
 }
 ```
@@ -90,8 +90,8 @@ rf1 = randomForest(interest_level ~ .,
            #main="Top - Variable Importance")
 
 p1 <- create_rfplot(rf1, type = 1)
-ggsave('../article/fixed_images/cls_permute_R.svg',
-       plot = p1, device = 'svg', height = 7, width = 10)
+ggsave('../article/images/cls_permute_R.svg',
+       plot = p1, device = 'svg', height = 4, width = 6)
 ######## with random column ########
 
 
@@ -111,8 +111,8 @@ rf2 = randomForest(interest_level ~ .,
            #main="Top - Variable Importance")
 
 p2 <- create_rfplot(rf2, type = 1)
-ggsave('../article/fixed_images/cls_permute_random_R.svg',
-       plot = p2, device = 'svg', height = 7, width = 10)
+ggsave('../article/images/cls_permute_random_R.svg',
+       plot = p2, device = 'svg', height = 4, width = 6)
 ```
 
 ## Type = 2, mean decrease in Gini
@@ -122,14 +122,14 @@ ggsave('../article/fixed_images/cls_permute_random_R.svg',
 
 
 p1 <- create_rfplot(rf1, type = 2)
-ggsave('../article/fixed_images/cls_dflt_R.svg',
-       plot = p1, device = 'svg', height = 7, width = 10)
+ggsave('../article/images/cls_dflt_R.svg',
+       plot = p1, device = 'svg', height = 4, width = 6)
 
 ######## with random column ########
 
 p2 <- create_rfplot(rf2, type = 2)
-ggsave('../article/fixed_images/cls_dflt_random_R.svg',
-       plot = p2, device = 'svg', height = 7, width = 10)
+ggsave('../article/images/cls_dflt_random_R.svg',
+       plot = p2, device = 'svg', height = 4, width = 6)
 
 ```
 
@@ -159,14 +159,14 @@ get_drop_imp <- function(rent, columns){
 columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude', 'price')
 featureImportance <- get_drop_imp(rent[, 1:6], columns)
 p1 <- create_ggplot(featureImportance)
-ggsave('../article/fixed_images/cls_drop_R.svg',
-       plot = p1, device = 'svg', height = 7, width = 10)
+ggsave('../article/images/cls_drop_R.svg',
+       plot = p1, device = 'svg', height = 4, width = 6)
 
 columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude', 'random', 'price')
 featureImportance <- get_drop_imp(rent, columns)
 p2 <- create_ggplot(featureImportance)
-ggsave('../article/fixed_images/cls_drop_random_R.svg',
-       plot = p2, device = 'svg', height = 7, width = 10)
+ggsave('../article/images/cls_drop_random_R.svg',
+       plot = p2, device = 'svg', height = 4, width = 6)
 ```
 
 ## Takeaways 
