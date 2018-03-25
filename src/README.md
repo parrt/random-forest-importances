@@ -29,7 +29,7 @@ from sklearn.ensemble import RandomForestRegressor
 
 df = pd.read_csv("/Users/parrt/github/random-forest-importances/notebooks/data/rent.csv")
 
-df = df.iloc[0:5000]
+#df = df.iloc[0:5000]
 
 print(df.head(5))
 
@@ -51,7 +51,7 @@ X_train, y_train = dfr.drop('price',axis=1), dfr['price']
 X_train['random'] = np.random.random(size=len(X_train))
 rf.fit(X_train, y_train)
 
-imp = importances(rf, X_train, y_train)
+imp = importances(rf, X_train, y_train) # permutation
 plot_importances(imp)
 
 imp = dropcol_importances(rf, X_train, y_train)
@@ -62,19 +62,24 @@ plot_importances(imp)
 features = ['bathrooms','bedrooms','price','longitude','latitude',
             'interest_level']
 dfc = df[features].copy()
-rf = RandomForestClassifier(n_estimators=100,
-                            min_samples_leaf=5,
-                            n_jobs=-1,
-                            oob_score=True)
 
 X_train, y_train = dfc.drop('interest_level',axis=1), dfc['interest_level']
 # Add column of random numbers
 X_train['random'] = np.random.random(size=len(X_train))
+
+rf = RandomForestClassifier(n_estimators=100,
+                            min_samples_leaf=5,
+                            n_jobs=-1,
+                            oob_score=True)
 rf.fit(X_train, y_train)
 
-imp = importances(rf, X_train, y_train)
+imp = importances(rf, X_train, y_train) # permutation
 plot_importances(imp)
 
+rf = RandomForestClassifier(n_estimators=100,
+                            min_samples_leaf=5,
+                            n_jobs=-1,
+                            oob_score=True)
 imp = dropcol_importances(rf, X_train, y_train)
 plot_importances(imp)
 ```
