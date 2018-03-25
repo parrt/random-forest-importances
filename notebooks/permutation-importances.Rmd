@@ -3,6 +3,9 @@ title: "R Notebook"
 output: pdf_notebook
  ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = F, message = F)
+```
 
 ```{r warning=FALSE, message=FALSE}
 library(tidyverse)
@@ -33,27 +36,29 @@ create_rfplot <- function(rf, type){
   featureImportance <- data.frame(Feature=row.names(imp), Importance=imp[,1])
   
   p <- ggplot(featureImportance, aes(x=reorder(Feature, Importance), y=Importance)) +
-       geom_bar(stat="identity", fill="#53cfff") +
+       geom_bar(stat="identity", fill="#53cfff", width = 0.65) +
        coord_flip() + 
        theme_light(base_size=20) +
        xlab("") +
        ylab("") + 
        ggtitle("") +
-       theme(plot.title=element_text(size=14),
-             axis.text.x = element_text(angle = 45, hjust = 1))
+       theme(text=element_text(size=20), 
+             axis.text.x = element_text(size = 20),
+             axis.text.y = element_text(size = 20))
   return(p)
 }
 
 create_ggplot <- function(featureImportance){
   p <- ggplot(featureImportance, aes(x=reorder(Feature, Importance), y=Importance)) +
-       geom_bar(stat="identity", fill="#53cfff") +
+       geom_bar(stat="identity", fill="#53cfff", width = 0.65) +
        coord_flip() + 
        theme_light(base_size=20) +
        xlab("") +
        ylab("") + 
        ggtitle("") +
-       theme(plot.title=element_text(size=14),
-             axis.text.x = element_text(angle = 45, hjust = 1))
+       theme(text=element_text(size=20), 
+             axis.text.x = element_text(size = 20),
+             axis.text.y = element_text(size = 20))
   return(p)
 }
 ```
@@ -75,8 +80,9 @@ From : http://ugrad.stat.ubc.ca/R/library/randomForest/html/importance.html
 # without random column
 rf1 <- randomForest(price~., data = df[, 1:5], mtry=4,
                  ntree = 40, importance=T)
+
 p1 <- create_rfplot(rf1, type = 1)
-ggsave('../article/fixed_images/regr_permute_R.svg',
+ggsave('../article/images/regr_permute_R.svg',
        plot = p1, device = 'svg', height = 7, width = 10)
 ```
 
@@ -85,7 +91,7 @@ ggsave('../article/fixed_images/regr_permute_R.svg',
 rf2 <- randomForest(price~., data = df, mtry = 4,
                  ntree = 40, importance=T)
 p2 <- create_rfplot(rf2, type = 1)
-ggsave('../article/fixed_images/regr_permute_random_R.svg',
+ggsave('../article/images/regr_permute_random_R.svg',
        plot = p2, device = 'svg', height = 7, width = 10)
 ```
 
@@ -96,7 +102,7 @@ ggsave('../article/fixed_images/regr_permute_random_R.svg',
 rf1 <- randomForest(price~., data = df[, 1:5], mtry=4,
                  ntree = 40, importance=T)
 p1 <- create_rfplot(rf1, type = 2)
-ggsave('../article/fixed_images/regr_dflt_R.svg',
+ggsave('../article/images/regr_dflt_R.svg',
        plot = p1, device = 'svg', height = 7, width = 10)
 ```
 
@@ -106,7 +112,7 @@ ggsave('../article/fixed_images/regr_dflt_R.svg',
 rf2 <- randomForest(price~., data = df, mtry = 4,
                  ntree = 40, importance=T)
 p2 <- create_rfplot(rf2, type = 2)
-ggsave('../article/fixed_images/regr_dflt_random_R.svg',
+ggsave('../article/images/regr_dflt_random_R.svg',
        plot = p2, device = 'svg', height = 7, width = 10)
 ```
 
@@ -142,7 +148,7 @@ get_drop_imp <- function(df, columns){
 columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude')
 featureImportance <- get_drop_imp(df, columns)
 p1 <- create_ggplot(featureImportance)
-ggsave('../article/fixed_images/regr_drop_R.svg',
+ggsave('../article/images/regr_drop_R.svg',
        plot = p1, device = 'svg', height = 7, width = 10)
 ```
 
@@ -150,7 +156,7 @@ ggsave('../article/fixed_images/regr_drop_R.svg',
 columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude', 'random')
 featureImportance <- get_drop_imp(df, columns)
 p2 <- create_ggplot(featureImportance)
-ggsave('../article/fixed_images/regr_drop_random_R.svg',
+ggsave('../article/images/regr_drop_random_R.svg',
        plot = p2, device = 'svg', height = 7, width = 10)
 ```
 
