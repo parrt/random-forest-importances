@@ -10,6 +10,7 @@
   	  display: flex;
 	  overflow-x: scroll;	
 	  flex: auto;  
+	  width: 85%;
 /*	  flex-wrap: wrap;
 	  flex-flow: row wrap;*/
 	}
@@ -77,11 +78,11 @@ and then plotted the <tt>rf.feature_importances_</tt> as shown in <b>Figure 1(a)
 
 <div class="fig-container">
 	<div>
-		<img src="images/regr_dflt_random_annotated.png" width="65%"><br>
+		<img src="images/regr_dflt_random_annotated.png" width="75%"><br>
 		<font size=-1><b>Figure 1(a)</b>. <tt>scikit-learn</tt> default importances for Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.</font>
 	</div>
 	<div>
-		<img src="images/cls_dflt_random_annotated.png" width="65%"><br>
+		<img src="images/cls_dflt_random_annotated.png" width="75%"><br>
 		<font size=-1><b>Figure 1(b)</b>. <tt>scikit-learn</tt> default importances for Random Forest <b>classifier</b> predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. Highly suspicious that random column is much more important than the number of bedrooms.</font>
 	</div>
 </div>
@@ -160,11 +161,11 @@ To test permutation importances, we plotted the regressor and classifier importa
 
 <div class="fig-container">
 	<div>
-<img src="images/regr_permute_random.svg" width="65%"><br>
+<img src="images/regr_permute_random.svg" width="75%"><br>
 <font size=-1><b>Figure 2(a)</b>. Importances derived by permuting each column and computing change in out-of-bag R<sup>2</sup> using <tt>scikit-learn</tt> <b>regressor</b>. Predicting apartment rental price from 4 features + a column of random numbers.</font>
 	</div>
 	<div>
-		<img src="images/cls_permute_random.svg" width="65%"><br>
+		<img src="images/cls_permute_random.svg" width="75%"><br>
 <font size=-1><b>Figure 2(b)</b>. Importances derived by permuting each column and computing change in out-of-bag accuracy using <tt>scikit-learn</tt> Random Forest <b>classifier</b>.</font>
 	</div>
 </div>
@@ -208,11 +209,11 @@ We force the <tt>random_state</tt> of each model to be the same. For the purpose
 
 <div class="fig-container">
 	<div>
-<img src="images/regr_dropcol_random.svg" width="65%"><br>
+<img src="images/regr_dropcol_random.svg" width="75%"><br>
 <font size=-1><b>Figure 3(a)</b>. Importances derived by dropping each column, retraining <tt>scikit-learn</tt> Random Forest <b>regressor</b>, and computing change in out-of-bag R<sup>2</sup>. Predicting apartment rental price from 4 features + a column of random numbers. The importance of the random column is at the bottom as it should be.</font>
 	</div>
 	<div>
-		<img src="images/cls_dropcol_random.svg" width="65%"><br>
+		<img src="images/cls_dropcol_random.svg" width="75%"><br>
 <font size=-1><b>Figure 3(b)</b>. Importances derived by dropping each column, retraining <tt>scikit-learn</tt> Random Forest <b>classifier</b>, and computing change in out-of-bag accuracy. Predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. The importance of the random column is at the bottom as it should be.</font>
 	</div>
 </div>
@@ -240,11 +241,11 @@ R's mean-decrease-in-impurity importance gives the same implausible results as w
 
 <div class="fig-container">
 <div>
-<img src="images/regr_dflt_random_R_annotated.png" width="65%"><br>
+<img src="images/regr_dflt_random_R_annotated.png" width="75%"><br>
 <font size=-1><b>Figure 4(a)</b>. foo</font>
 </div>
 <div>
-<img src="images/regr_dflt_random_annotated.png" width="65%"><br>
+<img src="images/regr_dflt_random_annotated.png" width="75%"><br>
 <font size=-1><b>Figure 4(b)</b>. foo</font>
 </div>
 </div>
@@ -253,11 +254,11 @@ R's mean-decrease-in-impurity importance gives the same implausible results as w
 
 <div class="fig-container">
 <div>
-<img src="images/cls_dflt_random_R_annotated.png" width="65%"><br>
+<img src="images/cls_dflt_random_R_annotated.png" width="75%"><br>
 <font size=-1><b>Figure 5(a)</b>. foo</font>
 </div>
 <div>
-<img src="images/cls_dflt_random_annotated.png" width="65%"><br>
+<img src="images/cls_dflt_random_annotated.png" width="75%"><br>
 <font size=-1><b>Figure 5(b)</b>. foo</font>
 </div>
 </div>
@@ -265,15 +266,15 @@ R's mean-decrease-in-impurity importance gives the same implausible results as w
 <h4>R permutation importance comparison</h4>
 
 <p>
-As a means of checking our permutation implementation in Python, we plotted and compared our feature importances side-by-side with those of R, as shown in <b>Figure 6(a)</b> and <b>Figure 6(b)</b>.
+As a means of checking our permutation implementation in Python, we plotted and compared our feature importances side-by-side with those of R, as shown in <b>Figure 6</b> for regression and <b>Figure 7</b> for classification.
 
 <div class="fig-container">
 <div>
-<img src="images/regr_perm_random_R.svg" width="65%"><br>
+<img src="images/regr_permute_random_R.svg" width="75%"><br>
 <font size=-1><b>Figure 6(a)</b>. foo</font>
 </div>
 <div>
-<img src="images/regr_permute_random.svg" width="65%"><br>
+<img src="images/regr_permute_random.svg" width="75%"><br>
 <font size=-1><b>Figure 6(a)</b>. foo</font>
 </div>
 </div>
@@ -282,12 +283,12 @@ As a means of checking our permutation implementation in Python, we plotted and 
 	
 <div class="fig-container">
 <div>
-<img src="images/cls_permute_random_R.svg" width="65%"><br>
-<font size=-1><b>Figure 6(a)</b>. foo</font>
+<img src="images/cls_permute_random_R.svg" width="75%"><br>
+<font size=-1><b>Figure 7(a)</b>. foo</font>
 </div>
 <div>
-<img src="images/cls_permute_random.svg" width="65%"><br>
-<font size=-1><b>Figure 6(b)</b>. foo</font>
+<img src="images/cls_permute_random.svg" width="75%"><br>
+<font size=-1><b>Figure 7(b)</b>. foo</font>
 </div>
 </div>
 
@@ -295,16 +296,16 @@ As a means of checking our permutation implementation in Python, we plotted and 
 <h4>R drop-column importance comparison</h4>
 
 <p>
- For completeness, we implemented drop-column importance in R and compared to our Python implementation, as shown in <b>Figure 7(a)</b> and <b>Figure 7(b)</b>
- 
+For completeness, we implemented drop-column importance in R and compared to our Python implementation, as shown in <b>Figure 8</b> for regression and <b>Figure 9</b> for classification.
+
 <div class="fig-container">
 <div>
-<img src="images/regr_drop_random_R.svg" width="65%"><br>
-<font size=-1><b>Figure 7(a)</b>. foo</font>
+<img src="images/regr_drop_random_R.svg" width="75%"><br>
+<font size=-1><b>Figure 8(a)</b>. foo</font>
 </div>
 <div>
-<img src="images/regr_dropcol_random.svg" width="65%"><br>
-<font size=-1><b>Figure 7(a)</b>. foo</font>
+<img src="images/regr_dropcol_random.svg" width="75%"><br>
+<font size=-1><b>Figure 8(b)</b>. foo</font>
 </div>
 </div>
 
@@ -312,12 +313,12 @@ As a means of checking our permutation implementation in Python, we plotted and 
 	
 <div class="fig-container">
 <div>
-<img src="images/cls_drop_random_R.svg" width="65%"><br>
-<font size=-1><b>Figure 7(a)</b>. foo</font>
+<img src="images/cls_drop_random_R.svg" width="75%"><br>
+<font size=-1><b>Figure 9(a)</b>. foo</font>
 </div>
 <div>
-<img src="images/cls_dropcol_random.svg" width="65%"><br>
-<font size=-1><b>Figure 7(a)</b>. foo</font>
+<img src="images/cls_dropcol_random.svg" width="75%"><br>
+<font size=-1><b>Figure 9(b)</b>. foo</font>
 </div>
 </div>
 	
