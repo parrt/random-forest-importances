@@ -237,7 +237,7 @@ It's worth comparing R and scikit in detail.  It not only gives us an opportunit
 <h4>R mean-decrease-in-impurity importance comparison</h4>
 
 <p>
-R's mean-decrease-in-impurity importance gives the same implausible results as we saw with scikit.  To demonstrate this, we trained RF regressors in R using the same data set and and generated the graphs in <b>Figure 4(a)</b> and <b>Figure 4(b)</b>. The graphs mirror each other and both implausibly identify the number of bathrooms as the most predictive feature for rental price.
+R's mean-decrease-in-impurity importance (type=2) gives the same implausible results as we saw with scikit.  To demonstrate this, we trained am RF regressor and classifier in R using the same data set and generated the importance graphs in <b>Figure 4(a)</b> and <b>Figure 4(b)</b>. The graphs mirror the implausible scikit graphs.
 
 <div class="fig-container">
 <div>
@@ -245,37 +245,24 @@ R's mean-decrease-in-impurity importance gives the same implausible results as w
 <font size=-1><b>Figure 4(a)</b>. foo</font>
 </div>
 <div>
-<img src="images/regr_dflt_random_annotated.png" width="75%"><br>
-<font size=-1><b>Figure 4(b)</b>. foo</font>
-</div>
-</div>
-
-<p>Repeating the experiment with an R classifier predicting interest level, we again see the scikit issue of putting the random column in the middle of the pack, as shown in <b>Figure 5(a)</b> and <b>Figure 5(b)</b>.
-
-<div class="fig-container">
-<div>
 <img src="images/cls_dflt_random_R_annotated.png" width="75%"><br>
-<font size=-1><b>Figure 5(a)</b>. foo</font>
-</div>
-<div>
-<img src="images/cls_dflt_random_annotated.png" width="75%"><br>
-<font size=-1><b>Figure 5(b)</b>. foo</font>
+<font size=-1><b>Figure 4(b)</b>. foo</font>
 </div>
 </div>
 
 <h4>R permutation importance comparison</h4>
 
 <p>
-As a means of checking our permutation implementation in Python, we plotted and compared our feature importances side-by-side with those of R, as shown in <b>Figure 6</b> for regression and <b>Figure 7</b> for classification.
+As a means of checking our permutation implementation in Python, we plotted and compared our feature importances side-by-side with those of R, as shown in <b>Figure 5</b> for regression and <b>Figure 6</b> for classification.
 
 <div class="fig-container">
 <div>
 <img src="images/regr_permute_random_R.svg" width="75%"><br>
-<font size=-1><b>Figure 6(a)</b>. foo</font>
+<font size=-1><b>Figure 5(a)</b>. foo</font>
 </div>
 <div>
 <img src="images/regr_permute_random.svg" width="75%"><br>
-<font size=-1><b>Figure 6(a)</b>. foo</font>
+<font size=-1><b>Figure 5(a)</b>. foo</font>
 </div>
 </div>
 
@@ -284,11 +271,11 @@ As a means of checking our permutation implementation in Python, we plotted and 
 <div class="fig-container">
 <div>
 <img src="images/cls_permute_random_R.svg" width="75%"><br>
-<font size=-1><b>Figure 7(a)</b>. foo</font>
+<font size=-1><b>Figure 6(a)</b>. foo</font>
 </div>
 <div>
 <img src="images/cls_permute_random.svg" width="75%"><br>
-<font size=-1><b>Figure 7(b)</b>. foo</font>
+<font size=-1><b>Figure 6(b)</b>. foo</font>
 </div>
 </div>
 
@@ -325,7 +312,7 @@ For completeness, we implemented drop-column importance in R and compared to our
 <h3>Summary</h3>
 
 <p>
-The upshot of all this is that the most popular RF implementation in Python (scikit) and one of R's RF default importance strategies do not give reliable feature importances when &ldquo;<i>... potential predictor variables vary in their scale of measurement or their number of categories</i>.&rdquo; (Strobl <i>et al</i>). Rather than figuring out whether your data set conforms to one that gets accurate results, simply use permutation importance. You can either use our Python implementation make sure to use argument <tt>type=1</tt> on R's <tt>importance()</tt> function.
+The upshot of all this is that the most popular RF implementation in Python (scikit) and one of R's RF default importance strategies do not give reliable feature importances when &ldquo;<i>... potential predictor variables vary in their scale of measurement or their number of categories</i>.&rdquo; (Strobl <i>et al</i>). Rather than figuring out whether your data set conforms to one that gets accurate results, simply use permutation importance. You can either use our Python implementation or, if using R, make sure to use argument <tt>type=1</tt> for the <tt>importance()</tt> function.
 
 </body>
 </html>
