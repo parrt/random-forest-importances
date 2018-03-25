@@ -157,7 +157,7 @@ def oob_regression_r2_score(rf, X_train, y_train):
     return oob_score
 
 
-def plot_importances(df_importances, save=None, xrot=None, tickstep=2):
+def plot_importances(df_importances, save=None, xrot=0, tickstep=3):
     """
     Given an array or data frame of importances, plot a horizontal bar chart
     showing the importance values.
@@ -165,7 +165,7 @@ def plot_importances(df_importances, save=None, xrot=None, tickstep=2):
     I = df_importances
 
     fig = plt.figure()
-    fig.bbox_inches.y1 *= 0.3
+    fig.bbox_inches.y1 *= 0.42
     ax = plt.gca()
     ax.barh(np.arange(len(I.index)), I.Importance, height=.7, tick_label=I.index)
 
