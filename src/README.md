@@ -28,23 +28,53 @@ import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 
 df = pd.read_csv("/Users/parrt/github/random-forest-importances/notebooks/data/rent.csv")
-features = ['bathrooms','bedrooms','longitude','latitude',
-            'price']
-df = df[features].copy()
-df['price'] = np.log(df['price'])
+
+df = df.iloc[0:5000]
+
 print(df.head(5))
 
-rf = RandomForestRegressor(n_estimators=100,
-                                min_samples_leaf=1,
-                                n_jobs=-1,
-                                oob_score=True)
+# Regressor
 
-X_train, y_train = df.drop('price',axis=1), df['price']
+features = ['bathrooms','bedrooms','longitude','latitude',
+            'price']
+dfr = df[features].copy()
+
+dfr['price'] = np.log(dfr['price'])
+
+rf = RandomForestRegressor(n_estimators=100,
+                           min_samples_leaf=1,
+                           n_jobs=-1,
+                           oob_score=True)
+
+X_train, y_train = dfr.drop('price',axis=1), dfr['price']
+# Add column of random numbers
+X_train['random'] = np.random.random(size=len(X_train))
 rf.fit(X_train, y_train)
 
 imp = importances(rf, X_train, y_train)
-plot_importances(X_train.columns, imp)
+plot_importances(imp)
 
 imp = dropcol_importances(rf, X_train, y_train)
-plot_importances(X_train.columns, imp)
+plot_importances(imp)
+
+# Classifier
+
+features = ['bathrooms','bedrooms','price','longitude','latitude',
+            'interest_level']
+dfc = df[features].copy()
+rf = RandomForestClassifier(n_estimators=100,
+                            min_samples_leaf=5,
+                            n_jobs=-1,
+                            oob_score=True)
+
+X_train, y_train = dfc.drop('interest_level',axis=1), dfc['interest_level']
+# Add column of random numbers
+X_train['random'] = np.random.random(size=len(X_train))
+rf.fit(X_train, y_train)
+
+imp = importances(rf, X_train, y_train)
+plot_importances(imp)
+
+imp = dropcol_importances(rf, X_train, y_train)
+plot_importances(imp)
 ```
