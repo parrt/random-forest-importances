@@ -1,3 +1,12 @@
+"""
+A simple library of functions that provide feature importances
+for scikit-learn random forest regressors and classifiers.
+
+MIT License
+Terence Parr, http://parrt.cs.usfca.edu
+Kerem Turgutlu, https://www.linkedin.com/in/kerem-turgutlu-12906b65
+"""
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,37 +19,22 @@ import warnings
 from sklearn.ensemble.forest import _generate_unsampled_indices
 
 
-def importances_raw(rf, X_train, y_train):
-    if isinstance(rf, RandomForestClassifier):
-        return permutation_importances_raw(rf, X_train, y_train, oob_classifier_accuracy)
-    elif isinstance(rf, RandomForestRegressor):
-        return permutation_importances_raw(rf, X_train, y_train, oob_regression_r2_score)
-    return None
-
-
 def importances(rf, X_train, y_train):
+    """
+    Compute permutation feature importances for scikit-learn.
+
+    Given a RandomForestClassifier or RandomForestRegressor in rf
+    and training X and y data, return a data frame with columns
+    Feature and Importance sorted in reverse order by importance.
+    The training data is needed to compute out of bag (OOB)
+    model performance measures (accuracy or R^2). The model
+    is not retrained.
+    """
     if isinstance(rf, RandomForestClassifier):
         return permutation_importances(rf, X_train, y_train, oob_classifier_accuracy)
     elif isinstance(rf, RandomForestRegressor):
         return permutation_importances(rf, X_train, y_train, oob_regression_r2_score)
     return None
-
-
-def permutation_importances_raw(rf, X_train, y_train, metric):
-    """
-    Return importances from pre-fit rf; metric is function
-    that measures accuracy or R^2 or similar. This function
-    works for regressors and classifiers.
-    """
-    baseline = metric(rf, X_train, y_train)
-    imp = []
-    for col in X_train.columns:
-        save = X_train[col].copy()
-        X_train[col] = np.random.permutation(X_train[col])
-        m = metric(rf, X_train, y_train)
-        X_train[col] = save
-        imp.append(baseline - m)
-    return np.array(imp)
 
 
 def permutation_importances(rf, X_train, y_train, metric):
@@ -52,6 +46,17 @@ def permutation_importances(rf, X_train, y_train, metric):
 
 
 def dropcol_importances(rf, X_train, y_train):
+    """
+    Compute drop-column feature importances for scikit-learn.
+
+    Given a RandomForestClassifier or RandomForestRegressor in rf
+    and training X and y data, return a data frame with columns
+    Feature and Importance sorted in reverse order by importance.
+
+    A clone of rf is trained once to get the baseline score and then
+    again, once per feature to compute the drop in out of bag (OOB)
+    score.
+    """
     rf_ = clone(rf)
     rf_.random_state = 999
     rf_.fit(X_train, y_train)
@@ -71,7 +76,39 @@ def dropcol_importances(rf, X_train, y_train):
     return I
 
 
+def importances_raw(rf, X_train, y_train):
+    if isinstance(rf, RandomForestClassifier):
+        return permutation_importances_raw(rf, X_train, y_train, oob_classifier_accuracy)
+    elif isinstance(rf, RandomForestRegressor):
+        return permutation_importances_raw(rf, X_train, y_train, oob_regression_r2_score)
+    return None
+
+
+def permutation_importances_raw(rf, X_train, y_train, metric):
+    """
+    Return array of importances from pre-fit rf; metric is function
+    that measures accuracy or R^2 or similar. This function
+    works for regressors and classifiers.
+    """
+    baseline = metric(rf, X_train, y_train)
+    imp = []
+    for col in X_train.columns:
+        save = X_train[col].copy()
+        X_train[col] = np.random.permutation(X_train[col])
+        m = metric(rf, X_train, y_train)
+        X_train[col] = save
+        imp.append(baseline - m)
+    return np.array(imp)
+
+
 def oob_classifier_accuracy(rf, X_train, y_train):
+    """
+    Compute out-of-bag (OOB) accuracy for a scikit-learn random forest
+    classifier. We learned the guts of scikit's RF from the BSD licensed
+    code:
+
+    https://github.com/scikit-learn/scikit-learn/blob/a24c8b46/sklearn/ensemble/forest.py#L425
+    """
     X = X_train.values
     y = y_train.values
 
@@ -91,11 +128,17 @@ def oob_classifier_accuracy(rf, X_train, y_train):
 
 
 def oob_regression_r2_score(rf, X_train, y_train):
+    """
+    Compute out-of-bag (OOB) R^2 for a scikit-learn random forest
+    regressor. We learned the guts of scikit's RF from the BSD licensed
+    code:
+
+    https://github.com/scikit-learn/scikit-learn/blob/a24c8b46/sklearn/ensemble/forest.py#L702
+    """
     X = X_train.values
     y = y_train.values
 
     n_samples = len(X)
-    n_classes = len(np.unique(y))
     predictions = np.zeros(n_samples)
     n_predictions = np.zeros(n_samples)
     for tree in rf.estimators_:
@@ -114,34 +157,31 @@ def oob_regression_r2_score(rf, X_train, y_train):
     return oob_score
 
 
-def plot_importances(columns, importances,figsize=None, save=None, xrot=None, tickstep=2):
-    I = importances
-    if not isinstance(I,pd.DataFrame):
-        I = pd.DataFrame(data={'Feature':columns, 'Importance':importances})
-        I = I.set_index('Feature')
-        I = I.sort_values('Importance', ascending=True)
-    
-    I.plot(kind='barh', figsize=figsize, legend=False, fontsize=14)
+def plot_importances(df_importances, save=None, xrot=None, tickstep=2):
+    """
+    Given an array or data frame of importances, plot a horizontal bar chart
+    showing the importance values.
+    """
+    I = df_importances
 
+    figsize=(len(I.Importance)/2, len(I.index)/3)
+    fig = plt.figure(figsize=figsize)
     ax = plt.gca()
+    ax.barh(np.arange(len(I.index)), I.Importance, height=.7, tick_label=I.index)
 
-    # remove y label
-    y_axis = ax.axes.get_yaxis()
-    y_label = y_axis.get_label()
-    y_label.set_visible(False)
-    
     # rotate x-ticks
     if xrot is not None:
         plt.xticks(rotation=xrot)
-    
+
     # xticks freq
     xticks = ax.get_xticks()
     nticks = len(xticks)
     new_ticks = xticks[np.arange(0, nticks, step=tickstep)]
-    ax.set_xticks(new_ticks)    
-    
+    ax.set_xticks(new_ticks)
 
     plt.tight_layout()
+    plt.savefig("/tmp/t.png", bbox_inches="tight", pad_inches=0.03)
+
     if save:
-        plt.savefig(save)
+        plt.savefig(save, bbox_inches="tight", pad_inches=0.03)
     plt.show()
