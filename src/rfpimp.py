@@ -29,6 +29,13 @@ def importances(rf, X_train, y_train):
     The training data is needed to compute out of bag (OOB)
     model performance measures (accuracy or R^2). The model
     is not retrained.
+
+    SAMPLE CODE
+
+    rf = RandomForestRegressor(n_estimators=100, n_jobs=-1, oob_score=True)
+    X_train, y_train = ..., ...
+    rf.fit(X_train, y_train)
+    imp = importances(rf, X_train, y_train)
     """
     if isinstance(rf, RandomForestClassifier):
         return permutation_importances(rf, X_train, y_train, oob_classifier_accuracy)
@@ -56,6 +63,13 @@ def dropcol_importances(rf, X_train, y_train):
     A clone of rf is trained once to get the baseline score and then
     again, once per feature to compute the drop in out of bag (OOB)
     score.
+
+    SAMPLE CODE
+
+    rf = RandomForestRegressor(n_estimators=100, n_jobs=-1, oob_score=True)
+    X_train, y_train = ..., ...
+    rf.fit(X_train, y_train)
+    imp = dropcol_importances(rf, X_train, y_train)
     """
     rf_ = clone(rf)
     rf_.random_state = 999
@@ -161,6 +175,14 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3):
     """
     Given an array or data frame of importances, plot a horizontal bar chart
     showing the importance values.
+
+    SAMPLE CODE
+
+    rf = RandomForestRegressor(n_estimators=100, n_jobs=-1, oob_score=True)
+    X_train, y_train = ..., ...
+    rf.fit(X_train, y_train)
+    imp = importances(rf, X_train, y_train)
+    plot_importances(imp)
     """
     I = df_importances
 
