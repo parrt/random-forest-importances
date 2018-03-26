@@ -30,6 +30,8 @@ def importances(rf, X_train, y_train):
     model performance measures (accuracy or R^2). The model
     is not retrained.
 
+    return: A data frame with Feature, Importance columns
+
     SAMPLE CODE
 
     rf = RandomForestRegressor(n_estimators=100, n_jobs=-1, oob_score=True)
@@ -63,6 +65,8 @@ def dropcol_importances(rf, X_train, y_train):
     A clone of rf is trained once to get the baseline score and then
     again, once per feature to compute the drop in out of bag (OOB)
     score.
+
+    return: A data frame with Feature, Importance columns
 
     SAMPLE CODE
 
@@ -171,10 +175,21 @@ def oob_regression_r2_score(rf, X_train, y_train):
     return oob_score
 
 
-def plot_importances(df_importances, save=None, xrot=0, tickstep=3):
+def plot_importances(df_importances, save=None, xrot=0, tickstep=3, scalefig=(1.0,1.0)):
     """
     Given an array or data frame of importances, plot a horizontal bar chart
     showing the importance values.
+
+    :param df_importances: A data frame with Feature, Importance columns
+    :type df_importances: pd.DataFrame
+    :param save: A filename identifying where to save the image.
+    :param xrot: Degrees to rotate importance (X axis) labels
+    :type xrot: int
+    :param tickstep: How many ticks to skip in X axis
+    :type tickstep: int
+    :param scalefig: Scale width and height of image (widthscale,heightscale)
+    :type scalefig: 2-tuple of floats
+    :return: None
 
     SAMPLE CODE
 
@@ -188,7 +203,7 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3):
 
     fig = plt.figure()
     w, h = fig.get_size_inches()
-    fig.set_size_inches(w, h*.5, forward=True)
+    fig.set_size_inches(w*scalefig[0], h*scalefig[1], forward=True)
     ax = plt.gca()
     ax.barh(np.arange(len(I.index)), I.Importance, height=.7, tick_label=I.index)
 
