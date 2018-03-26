@@ -7,18 +7,11 @@ To get reliable results, use permutation importance, provided in this `rfpimp` p
 
 ## Description
 
+See <a href="http://parrt.cs.usfca.edu/doc/rf-importance/index.html">Beware Default Random Forest Importances</a> for a deeper discussion of the issues surrounding feature importances in random forests (authored by <a href="http://parrt.cs.usfca.edu">Terence Parr</a>, <a href="https://www.linkedin.com/in/kerem-turgutlu-12906b65/">Kerem Turgutlu</a>, <a href="https://www.linkedin.com/in/cpcsiszar/">Christopher Csiszar</a>, and <a href="http://www.fast.ai/about/#jeremy">Jeremy Howard</a>).
+
 The mean-decrease-in-impurity importance of a feature is computed by measuring how effective the feature is at reducing uncertainty (classifiers) or variance (regressors) when creating decision trees within random forests.  The problem is that this mechanism, while fast, does not always give an accurate picture of importance. Strobl <i>et al</i> pointed out in <a href="https://link.springer.com/article/10.1186%2F1471-2105-8-25">Bias in random forest variable importance measures: Illustrations, sources and a solution</a> that &ldquo;<i>the variable importance measures of Breiman's original random forest method ... are not reliable in situations where potential predictor variables vary in their scale of measurement or their number of categories</i>.&rdquo; 
 
 A more reliable method is <i>permutation importance</i>, which measures the importance of a feature as follows. Record a baseline accuracy (classifier) or R<sup>2</sup> score (regressor) by passing a  validation set or the out-of-bag (OOB) samples through the random forest.  Permute the column values of a single predictor feature and then pass all test samples back through the random forest and recompute the accuracy or R<sup>2</sup>. The importance of that feature is the difference between the baseline and the drop in overall accuracy or R<sup>2</sup> caused by permuting the column. The permutation mechanism is much more computationally expensive than the mean decrease in impurity mechanism, but the results are more reliable.
-
-importances_raw
-importances
-permutation_importances_raw
-permutation_importances
-dropcol_importances
-oob_classifier_accuracy
-oob_regression_r2_score
-plot_importances
 
 ## Sample code
 
@@ -27,7 +20,7 @@ from rfpimp import *
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 
-df = pd.read_csv("/Users/parrt/github/random-forest-importances/notebooks/data/rent.csv")
+df = pd.read_csv("rent.csv")
 
 #df = df.iloc[0:5000]
 

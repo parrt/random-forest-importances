@@ -92,7 +92,7 @@ After training, we plotted the <font size=-1><tt>rf.feature_importances_</tt></f
 As expected, <b>Figure 1(a)</b> shows the random column as the least important.
 
 <p>
-Next, we built an RF classifier that predicts <font size=-1><tt>interest_level</tt></font> (number of inquiries on the website) using the other five features and plotted the importances, again with a random column:
+Next, we built an RF classifier that predicts <font size=-1><tt>interest_level</tt></font> using the other five features and plotted the importances, again with a random column:
 
 <div class="codeblk">features = ['bathrooms','bedrooms','price','longitude','latitude',
             'interest_level']
@@ -111,7 +111,7 @@ rf.fit(X_train, y_train)
 <h3>Default feature importance mechanism</h3>
 
 <p>
-The most common mechanism to compute feature importances, and the one used in scikit-learn's <a href="http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html">RandomForestClassifier</a> and <a href="http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html">RandomForestRegressor</a>, is <i>mean decrease in impurity</i> (or <i>gini importance</i>) mechanism (check out the <a href="https://stackoverflow.com/questions/15810339/how-are-feature-importances-in-randomforestclassifier-determined">stackoverflow conversation</a>). The mean decrease in impurity importance of a feature is computed by measuring how effective the feature is at reducing uncertainty (classifiers) or variance (regressors) when creating decision trees within random forests.  The problem is that this mechanism, while fast, does not always give an accurate picture of importance. Breiman and Cutler, the inventors of RFs, <a href="https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm#varimp">indicate</a> that this method of &ldquo;<i>adding up the gini decreases for each individual variable over all trees in the forest gives a <b>fast</b> variable importance that is <b>often very consistent</b> with the permutation importance measure.</i>&rdquo; (Emphasis ours and we'll get to permutation importance shortly.)
+The most common mechanism to compute feature importances, and the one used in scikit-learn's <a href="http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html">RandomForestClassifier</a> and <a href="http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html">RandomForestRegressor</a>, is the <i>mean decrease in impurity</i> (or <i>gini importance</i>) mechanism (check out the <a href="https://stackoverflow.com/questions/15810339/how-are-feature-importances-in-randomforestclassifier-determined">stackoverflow conversation</a>). The mean decrease in impurity importance of a feature is computed by measuring how effective the feature is at reducing uncertainty (classifiers) or variance (regressors) when creating decision trees within random forests.  The problem is that this mechanism, while fast, does not always give an accurate picture of importance. Breiman and Cutler, the inventors of RFs, <a href="https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm#varimp">indicate</a> that this method of &ldquo;<i>adding up the gini decreases for each individual variable over all trees in the forest gives a <b>fast</b> variable importance that is <b>often very consistent</b> with the permutation importance measure.</i>&rdquo; (Emphasis ours and we'll get to permutation importance shortly.)
 
 <p>
 We've known for years that this common mechanism for computing feature importance is biased; i.e., not always accurate.  For example, in 2007 Strobl <i>et al</i> pointed out in <a href="https://link.springer.com/article/10.1186%2F1471-2105-8-25">Bias in random forest variable importance measures: Illustrations, sources and a solution</a> that &ldquo;<i>the variable importance measures of Breiman's original random forest method ... are not reliable in situations where potential predictor variables vary in their scale of measurement or their number of categories</i>.&rdquo; That's unfortunate because not having to normalize or otherwise futz with predictor variables for random forests is very convenient.
@@ -122,7 +122,7 @@ We've known for years that this common mechanism for computing feature importanc
 Breiman and Cutler also described <i>permutation importance</i>, which measures the importance of a feature as follows. Record a baseline accuracy (classifier) or R<sup>2</sup> score (regressor) by passing a  validation set or the out-of-bag (OOB) samples through the random forest.  Permute the column values of a single predictor feature and then pass all test samples back through the random forest and recompute the accuracy or R<sup>2</sup>. The importance of that feature is the difference between the baseline and the drop in overall accuracy or R<sup>2</sup> caused by permuting the column. The permutation mechanism is much more computationally expensive than the mean decrease in impurity mechanism, but the results are more reliable. The permutation importance strategy does not require retraining the model after permuting each column; we just have to re-run the perturbed test samples through the already-trained model.
 
 <p>
-The strategy of permuting columns to compute feature importances is underappreciated in academia and industry. Just about any machine learning model can use this strategy, but libraries seem to prefer to estimate feature importance using model parameters if possible (e.g., the beta coefficients in linear regression).  A single importances function could cover all models. The advantage of random forests, of course, is that they provide OOB samples by construction so users don't have to extract their own validation set and pass it to an importances function.
+The strategy of permuting columns to compute feature importances is underappreciated in academia and industry. Just about any machine learning model can use this strategy, but libraries seem to prefer to estimate feature importance using model parameters if possible (e.g., the beta coefficients in linear regression).  A single importance function could cover all models. The advantage of random forests, of course, is that they provide OOB samples by construction so users don't have to extract their own validation set and pass it to an importance function.
 
 <p>
 As well as being broadly applicable, the implementation of permutation importance  is  simple:
@@ -140,10 +140,10 @@ As well as being broadly applicable, the implementation of permutation importanc
 </div>
 
 <p>
-	Notice that the function does not normalize the importance values, such as dividing by the standard deviation. According to <a href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-307">Conditional variable importance for random forests</a>, &ldquo;<i>the raw [permutation] importance ... has better statistical properties</i>.&rdquo; Those importance values will not sum up to one and it's important to remember that we don't care what the values are per se. What we care about is the relative predictive strengths of the features.
+	Notice that the function does not normalize the importance values, such as dividing by the standard deviation. According to <a href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-307">Conditional variable importance for random forests</a>, &ldquo;<i>the raw [permutation] importance ... has better statistical properties</i>.&rdquo; Those importance values will not sum up to one and it's important to remember that we don't care what the values are <i>per se</i>. What we care about is the relative predictive strengths of the features.
 
 <p>
-The key to this &ldquo;baseline minus drop in performance metric&rdquo; computation is to use a validation set or the OOB samples, not the training set (for the same reason we measure model generality with a validation set or OOB samples). Our <font size=-1><tt>permutation_importances()</tt></font> function expects the <font size=-1><tt>metric</tt></font> argument (a function) to use out-of-bag samples when computing accuracy or R<sup>2</sup> because there is no validation set argument. (We figured out how to grab the OOB samples from the scikit RF source code.) You can check out our functions to compute the <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/rfperm.py#L12">OOB classifier accuracy</a> and <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/rfperm.py#L31">OOB regression R<sup>2</sup> score</a> (without altering the RF model state) at github. Here are two code snippets that call the permutation importance function for regressors and classifiers:
+The key to this &ldquo;baseline minus drop in performance metric&rdquo; computation is to use a validation set or the OOB samples, not the training set (for the same reason we measure model generality with a validation set or OOB samples). Our <font size=-1><tt>permutation_importances()</tt></font> function expects the <font size=-1><tt>metric</tt></font> argument (a function) to use out-of-bag samples when computing accuracy or R<sup>2</sup> because there is no validation set argument. (We figured out how to grab the OOB samples from the scikit RF source code.) You can check out our functions that compute the <a href="https://github.com/parrt/random-forest-importances/blob/master/src/rfpimp.py#L122">OOB classifier accuracy</a> and <a href="https://github.com/parrt/random-forest-importances/blob/master/src/rfpimp.py#L148">OOB regression R<sup>2</sup> score</a> (without altering the RF model state). Here are two code snippets that call the permutation importance function for regressors and classifiers:
 
 <div class="codeblk">rf = RandomForestRegressor(...)
 rf.fit(X_train, y_train) # rf must be pre-trained
@@ -184,7 +184,7 @@ In order to verify the results of our permutation importance implementation, we 
 If we had infinite computing power, the drop-column mechanism would be the default for all RF implementations. We can mitigate the cost by using a subset of the training data, but drop-column importance is still extremely expensive to compute because of repeated model training. Nonetheless, it's an excellent way to test our permutation implementation. The importance values could be different between the two strategies, but the order of feature importances should be roughly the same.
 
 <p>
-The implementation of drop-column is a straightforward loop like the permutation implementation, but we don't need a validation set, nor do we need to directly capture OOB samples for performance measurement.  In this case, we are retraining the model and so we can directly use the OOB score computed by the model itself. Here is the complete <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/rfperm.py#L72">implementation</a>:
+The implementation of drop-column is a straightforward loop like the permutation implementation and works with any model. For random forests, we don't need a validation set, nor do we need to directly capture OOB samples for performance measurement.  In this case, we are retraining the model and so we can directly use the OOB score computed by the model itself. Here is the complete <a href="https://github.com/parrt/random-forest-importances/blob/master/src/rfpimp.py#L57">implementation</a>:
 
 <div class="codeblk">def dropcol_importances(rf, X_train, y_train):
     rf_ = clone(rf)
@@ -199,7 +199,11 @@ The implementation of drop-column is a straightforward loop like the permutation
         rf_.fit(X, y_train)
         o = rf_.oob_score_
         imp.append(baseline - o)
-    return np.array(imp)
+    imp = np.array(imp)
+    I = pd.DataFrame(data={'Feature':X_train.columns, 'Importance':imp})
+    I = I.set_index('Feature')
+    I = I.sort_values('Importance', ascending=True)
+    return I
 </div>
 
 <p>
@@ -232,14 +236,17 @@ imp <- importance(rf) # default is mean-decrease-in-impurity
 </div>
 
 <p>
-To get reliable results, we have to turn on <font size=-1><tt>importance=T</tt></font> in the random forest constructor function, which computes both mean-decrease-in-impurity and permutation importances. Then, we have to use <font size=-1><tt>type=1</tt></font> (not <font size=-1><tt>type=2</tt></font>) in the <font size=-1><tt>importances()</tt></font> function call:
+To get reliable results, we have to turn on <font size=-1><tt>importance=T</tt></font> in the random forest constructor function, which then computes both mean-decrease-in-impurity and permutation importances. After that, we have to use <font size=-1><tt>type=1</tt></font> (not <font size=-1><tt>type=2</tt></font>) in the <font size=-1><tt>importances()</tt></font> function call:
 
 <div class="codeblk">rf <- randomForest(price~., data = df, mtry = 4, ntree = 40, importance=T)
 imp <- importance(rf, type=1, scale = F) # permutation importances
 </div>
 
 <p>
-It's worth comparing R and scikit in detail.  It not only gives us an opportunity to verify the results of our homebrewed permutation implementation, but we can also to demonstrate that R's type=2 importances have the same issues as scikit's only importance implementation.
+Make sure that you don't use the <font size=-1><tt>MeanDecreaseGini</tt></font> column in the importance data frame; you want <font size=-1><tt>MeanDecreaseAccuracy</tt></font>.
+
+<p>
+It's worth comparing R and scikit in detail.  It not only gives us an opportunity to verify the results of our homebrewed permutation implementation, but we can also demonstrate that R's type=2 importances have the same issues as scikit's only importance implementation.
 
 <h4>R mean-decrease-in-impurity importance comparison</h4>
 
@@ -261,7 +268,7 @@ R's mean-decrease-in-impurity importance (type=2) gives the same implausible res
 <h4>R permutation importance comparison</h4>
 
 <p>
-As a means of checking our permutation implementation in Python, we plotted and compared our feature importances side-by-side with those of R, as shown in <b>Figure 5</b> for regression and <b>Figure 6</b> for classification. The importance of values themselves are different, but the feature order and relative levels are nearly identical, which is what we care about.
+As a means of checking our permutation implementation in Python, we plotted and compared our feature importances side-by-side with those of R, as shown in <b>Figure 5</b> for regression and <b>Figure 6</b> for classification. The importance of values themselves are different, but the feature order and relative levels are very similar, which is what we care about.
 
 <div class="fig-container">
 <div>
@@ -270,7 +277,7 @@ As a means of checking our permutation implementation in Python, we plotted and 
 </div>
 <div>
 <img src="images/regr_permute_random.svg" width="55%"><br>
-<font size=-1><b>Figure 5(a)</b>. Python permutation importance for RF <b>regressor</b></font>
+<font size=-1><b>Figure 5(b)</b>. Python permutation importance for RF <b>regressor</b></font>
 </div>
 </div>
 
@@ -337,7 +344,7 @@ If your data set is not too big or you have a really beefy computer, you can alw
 
 <h4>Python</h4>
 
-We produced a number of Jupyter notebooks to explore the issues described in this article, one for <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/permutation-importances-regressor.ipynb">regressors</a> and one for <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/permutation-importances-classifier.ipynb">classifiers</a>.
+We produced a number of Jupyter notebooks to explore the issues described in this article, one for <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/permutation-importances-regressor.ipynb">Python regressors</a> and one for <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/permutation-importances-classifier.ipynb">Python classifiers</a>.
 
 <p>
 The overall <a href="https://github.com/parrt/random-forest-importances">github repo</a> associated with this article has the notebooks and the source of a package you can install. You can explore the key (documented) functions directly in <a href="https://github.com/parrt/random-forest-importances/blob/master/src/rfpimp.py">rfpimp.py</a> or just install via pip:
@@ -346,10 +353,35 @@ The overall <a href="https://github.com/parrt/random-forest-importances">github 
 <div class="codeblk">$ pip install rfpimp
 </div>
 
+Here's an example using the <a href="https://pypi.org/project/rfpimp/">rfpimp package</a> to train a regressor, compute the permutation importances, and plot them in a horizontal bar chart:
+
+<p><div class="codeblk">from rfpimp import *
+import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
+
+df = pd.read_csv("rent.csv")
+features = ['bathrooms','bedrooms','longitude','latitude', 'price']
+dfr = df[features].copy()
+dfr['price'] = np.log(dfr['price'])
+
+rf = RandomForestRegressor(n_estimators=100,
+                           min_samples_leaf=1,
+                           n_jobs=-1,
+                           oob_score=True)
+
+X_train, y_train = dfr.drop('price',axis=1), dfr['price']
+# Add column of random numbers
+X_train['random'] = np.random.random(size=len(X_train))
+rf.fit(X_train, y_train)
+
+imp = importances(rf, X_train, y_train) # permutation
+plot_importances(imp)
+</div>
+
 <h4>R</h4>
 
 <p>
-We also created R Jupyter notebooks to explore these issues: <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/permutation-importances-regressor.Rmd">regressors</a> and one for <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/permutation-importances-classifier.Rmd">classifiers</a>.
+We also created R Jupyter notebooks to explore these issues: <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/permutation-importances-regressor.Rmd">R regressors</a> and <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/permutation-importances-classifier.Rmd">R classifiers</a>.
 
 <p>
 Unlike scikit, R's permutation importances but it's not the default behavior. Make sure that you don't use the <tt>MeanDecreaseGini</tt> column in the importance data frame. You want <tt>MeanDecreaseAccuracy</tt>, which only appears in the importance data frame if you turn on <tt>importance=T</tt> when constructing the random forest. The default when creating a random forest is to compute only the mean-decrease-in-impurity. Here's the proper invocation sequence:
