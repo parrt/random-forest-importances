@@ -5,19 +5,6 @@
 <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
 <link rel="stylesheet" type="text/css" href="css/book.css"/>
 <title>Beware Default Random Forest Importances</title>
-<style>
-	.fig-container {
-  	  display: flex;
-	  overflow-x: scroll;	
-	  flex: auto;  
-	  width: 100%;
-	  flex-wrap: wrap;
-/*	  flex-flow: row wrap;*/
-	}
-	.fig-container > div {
-	  flex: 1;
-	}
-</style>
 </head>
 <body>
 <h1>Beware Default Random Forest Importances</h1>
@@ -29,8 +16,44 @@
 
 <h3>TL;DR</h3>
 
+<p>
 The scikit-learn Random Forest feature importance and R's default Random Forest feature importance strategies are unreliable. To get reliable results in Python, use permutation importance, provided here and in our <a href="https://github.com/parrt/random-forest-importances/tree/master/src">rfpimp</a> package (via <font size=-1><tt>pip</tt></font>). For R, use <font size=-1><tt>importance=T</tt></font> in the random forest constructor then <font size=-1><tt>type=1</tt></font> in R's <font size=-1><tt>importance()</tt></font> function.
 
+<p>
+<div id="toc">
+<p class="toc_title">Contents</p>
+<ul>
+	<li><a href="#intro">Model Feature Importances</a></li>
+	<li><a href="#">Trouble in paradise</a></li>
+	<li><a href="#">Default feature importance mechanism</a></li>
+	<li><a href="#">Permutation importance</a></li>
+	<li><a href="#">Drop-column importance</a></li>
+	<li><a href="#">Comparing R to scikit-learn importances</a></li>
+	<ul>
+		<li><a href="#">R mean-decrease-in-impurity importance</a></li>
+		<li><a href="#">R permutation importance</a></li>
+		<li><a href="#">R drop-column importance</a></li>
+	</ul>
+	<li><a href="#">Summary</a></li>
+	<li><a href="#">Resources and sample code</a></li>
+	<ul>
+		<li><a href="#">Python</a></li>
+		<li><a href="#">R</a></li>
+		<li><a href="#">Sample Kaggle apartment data</a></li>	
+	</ul>
+</ul>
+</div>
+
+<a name=intro></a><h3>Introduction to Feature Importance</h3>
+
+<p>
+Training a model that accurately predicts outcomes is great, but we can also interpret the model to understand more about our data set. For example, in the New York City apartment  data described in this article, knowing which features are most predictive of rent price tells us which apartment features people are willing to pay for. Feature importance is the most useful interpretation tool and data scientists regularly examine model parameters, such as beta coefficients of linear models, to identify important features. 
+
+<p>
+But, feature importance is available for more than just linear models. Random Forest (RF) implementations also commonly provide measures of feature importance. In fact, the RF importance techniques are actually applicable to any model, though few machine learning practitioners seem to realize this. A common, reasonably efficient, and very reliable technique is called permutation importance.  Permutation importance directly measures variable importance by observing the effect on model accuracy of randomizing each predictor variable. This technique is broadly-applicable because it doesn't rely on internal model parameters, such as linear regression coefficients (which are really just proxies for feature importance).
+
+<p>
+We recommend using permutation importance for all models, including linear models, because we avoid any issues with model parameter interpretation.  To learn more about the  difficulties of interpreting regression coefficients, see <a href="https://projecteuclid.org/euclid.ss/1009213726">Statistical Modeling: The Two Cultures</a> (2001) by Leo Breiman (cocreator of random forests).  One of the issues Breiman discusses involves the accuracy of models. The more accurate our model, the more we can trust the importance measures and other interpretations. Measuring linear model accuracy is typically computed as a function of residuals (the difference between predicted and true outcomes).  The problem is that residual analysis does not always tell us when the model is bad. Breiman quotes William Cleveland, &ldquo;<i>one of the fathers of residual analysis</i>&rdquo; as saying residual analysis is an unreliable goodness-of-fit measure beyond four or five variables.
 
 <h3>Trouble in paradise</h3>
 
@@ -42,17 +65,21 @@ To prepare educational material on regression and classification with random for
 <div class="scrollbar_wrapper">
 <table class="dataframe">
 <thead>
-	<tr><th>bathrooms</th><th>bedrooms</th><th>price</th><th>longitude</th><th>latitude</th><th>interest_level</th></tr>
+	<tr><th>bath</th><th>bed</th><th></th><th>longi</th><th>lati</th><th>interest_</th></tr>
+		<tr><th style="border-bottom: 1px solid;">rooms</th><th style="border-bottom: 1px solid;">rooms</th><th style="border-bottom: 1px solid;">price</th><th style="border-bottom: 1px solid;">tude</th><th style="border-bottom: 1px solid;">tude</th><th style="border-bottom: 1px solid;">level</th></tr>
+<!--
+		<tr><th>bath<br>rooms</th><th>bed<br>rooms</th><th>price</th><th>longi-<br>tude</th><th>lati-<br>tude</th><th>interest_<br>level</th></tr>
+	-->
 </thead>
 <tbody>
 	<tr>
-	<td>1.5000</td><td>3</td><td>3000</td><td>-73.9425</td><td>40.7145</td><td>2</td>
+	<td>1.5</td><td>3</td><td>3000</td><td>-73.942</td><td>40.714</td><td>2</td>
 	</tr>
 	<tr>
-	<td>1.0000</td><td>2</td><td>5465</td><td>-73.9667</td><td>40.7947</td><td>1</td>
+	<td>1.0</td><td>2</td><td>5465</td><td>-73.966</td><td>40.794</td><td>1</td>
 	</tr>
 	<tr>
-	<td>1.0000</td><td>1</td><td>2850</td><td>-74.0018</td><td>40.7388</td><td>3</td>
+	<td>1.0</td><td>1</td><td>2850</td><td>-74.001</td><td>40.738</td><td>3</td>
 	</tr>
 </tbody>
 </table>
@@ -61,14 +88,15 @@ To prepare educational material on regression and classification with random for
 <p>
 We trained a regressor to predict New York City apartment rent prices using four apartment features in the usual scikit way:
 
-<div class="codeblk">features = ['bathrooms','bedrooms','longitude','latitude']
+<div class="codeblk">features = ['bathrooms', 'bedrooms', 'longitude', 'latitude', 'price']
 dfr = df[features]
 X_train, y_train = dfr.drop('price',axis=1), dfr['price']
 X_train['random'] = np.random.random(size=len(X_train))
-rf = RandomForestRegressor(n_estimators=100,
-                           min_samples_leaf=1,
-                           n_jobs=-1,
-                           oob_score=True)
+rf = RandomForestRegressor(
+         n_estimators=100,
+         min_samples_leaf=1,
+         n_jobs=-1,
+         oob_score=True)
 rf.fit(X_train, y_train)
 </div>
 
@@ -78,31 +106,35 @@ In order to explain feature selection, we added a column of random numbers and r
 <p>
 After training, we plotted the <font size=-1><tt>rf.feature_importances_</tt></font> as shown in <b>Figure 1(a)</b>. Wow! New Yorkers really care about bathrooms. The number of bathrooms is the strongest predictor of rent price.  That's weird but interesting.
 
-<div class="fig-container">
-	<div>
-		<img src="images/regr_dflt_random_annotated.png" width="55%"><br>
-		<font size=-1><b>Figure 1(a)</b>. <font size=-1><tt>scikit-learn</tt></font> default importances for Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.</font>
-	</div>
-	<div>
-		<img src="images/cls_dflt_random_annotated.png" width="55%"><br>
-		<font size=-1><b>Figure 1(b)</b>. <font size=-1><tt>scikit-learn</tt></font> default importances for Random Forest <b>classifier</b> predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. Highly suspicious that random column is much more important than the number of bedrooms.</font>
-	</div>
-</div>
+<table class=figure>
+<tr>
+<td>
+	<img src="images/regr_dflt_random_annotated.png" width="75%">
+<td>
+	<img src="images/cls_dflt_random_annotated.png" width="70%">
+<tr>
+<td>
+<b>Figure 1(a)</b>. <font size=-1><tt>scikit-learn</tt></font> default importances for Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.
+<td>
+<b>Figure 1(b)</b>. <font size=-1><tt>scikit-learn</tt></font> default importances for Random Forest <b>classifier</b> predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. Highly suspicious that random column is much more important than the number of bedrooms.
+</table>
 
+<p>
 As expected, <b>Figure 1(a)</b> shows the random column as the least important.
 
 <p>
 Next, we built an RF classifier that predicts <font size=-1><tt>interest_level</tt></font> using the other five features and plotted the importances, again with a random column:
 
-<div class="codeblk">features = ['bathrooms','bedrooms','price','longitude','latitude',
-            'interest_level']
+<div class="codeblk">features = ['bathrooms', 'bedrooms', 'price', 'longitude', 'latitude', 'interest_level']
 dfc = df[features]
 X_train, y_train = dfc.drop('interest_level',axis=1), dfc['interest_level']
 X_train['random'] = np.random.random(size=len(X_train))
-rf = RandomForestClassifier(n_estimators=100,
-                            min_samples_leaf=5, # better generality with 5
-                            n_jobs=-1,
-                            oob_score=True)
+rf = RandomForestClassifier(
+         n_estimators=100,
+         # better generality with 5
+         min_samples_leaf=5, 
+         n_jobs=-1,
+         oob_score=True)
 rf.fit(X_train, y_train)
 </div>
 
@@ -160,17 +192,18 @@ imp = permutation_importances(rf, X_train, y_train,
 <p>
 To test permutation importances, we plotted the regressor and classifier importances, as shown in <b>Figure 2(a)</b> and <b>Figure 2(b)</b>, using the same models from above. Both models included a random column, which correctly show up as the least important feature. The regressor in <b>Figure 1(a)</b> also had the random column last, but it showed the number of bathrooms as the strongest predictor of apartment rent price. The permutation importance in <b>Figure 2(a)</b> places bathrooms more reasonably as the least important feature, other than the random column.
 
-<div class="fig-container">
-	<div>
-<img src="images/regr_permute_random.svg" width="55%"><br>
-<font size=-1><b>Figure 2(a)</b>. Importances derived by permuting each column and computing change in out-of-bag R<sup>2</sup> using <font size=-1><tt>scikit-learn</tt></font> <b>regressor</b>. Predicting apartment rental price from 4 features + a column of random numbers.</font>
-	</div>
-	<div>
-		<img src="images/cls_permute_random.svg" width="55%"><br>
-<font size=-1><b>Figure 2(b)</b>. Importances derived by permuting each column and computing change in out-of-bag accuracy using <font size=-1><tt>scikit-learn</tt></font> Random Forest <b>classifier</b>.</font>
-	</div>
-</div>
-
+<table class=figure>
+<tr>
+<td>
+	<img src="images/regr_permute_random.svg" width="75%">
+<td>
+	<img src="images/cls_permute_random.svg" width="70%">
+<tr>
+<td>
+<b>Figure 2(a)</b>. Importances derived by permuting each column and computing change in out-of-bag R<sup>2</sup> using <font size=-1><tt>scikit-learn</tt></font> <b>regressor</b>. Predicting apartment rental price from 4 features + a column of random numbers.
+<td>
+<b>Figure 2(b)</b>. Importances derived by permuting each column and computing change in out-of-bag accuracy using <font size=-1><tt>scikit-learn</tt></font> Random Forest <b>classifier</b>.
+</table>
 
 <p>
 The classifier default importances in <b>Figure 1(b)</b> are plausible, because price and location matter in real estate market. Unfortunately, the importance of the random column is in the middle of the pack, which makes no sense. <b>Figure 2(b)</b> places the permutation importance of the random column last, as it should be. One could also argue that the number of bedrooms is a key indicator of interest in an apartment, but the default mean-decrease-in-impurity gives the bedrooms feature little weight. The permutation importance in <b>Figure 2(b)</b>, however, gives a better picture of relative importance.
@@ -200,7 +233,9 @@ The implementation of drop-column is a straightforward loop like the permutation
         o = rf_.oob_score_
         imp.append(baseline - o)
     imp = np.array(imp)
-    I = pd.DataFrame(data={'Feature':X_train.columns, 'Importance':imp})
+    I = pd.DataFrame(
+            data={'Feature':X_train.columns,
+                  'Importance':imp})
     I = I.set_index('Feature')
     I = I.sort_values('Importance', ascending=True)
     return I
@@ -212,16 +247,18 @@ We force the <font size=-1><tt>random_state</tt></font> of each model to be the 
 <p>
 <b>Figure 3(a)</b> and <b>Figure 3(b)</b> plot the feature importances for the same RF regressor and classifier from above, again with a column of random numbers. These results fit nicely with our understanding of real estate markets. Also notice that the random feature has negative importance in both cases, meaning that removing it improves model performance.
 
-<div class="fig-container">
-	<div>
-<img src="images/regr_dropcol_random.svg" width="55%"><br>
-<font size=-1><b>Figure 3(a)</b>. Importances derived by dropping each column, retraining <font size=-1><tt>scikit-learn</tt></font> Random Forest <b>regressor</b>, and computing change in out-of-bag R<sup>2</sup>. Predicting apartment rental price from 4 features + a column of random numbers. The importance of the random column is at the bottom as it should be.</font>
-	</div>
-	<div>
-		<img src="images/cls_dropcol_random.svg" width="55%"><br>
-<font size=-1><b>Figure 3(b)</b>. Importances derived by dropping each column, retraining <font size=-1><tt>scikit-learn</tt></font> Random Forest <b>classifier</b>, and computing change in out-of-bag accuracy. Predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. The importance of the random column is at the bottom as it should be.</font>
-	</div>
-</div>
+<table class=figure>
+<tr>
+<td>
+	<img src="images/regr_dropcol_random.svg" width="75%">
+<td>
+	<img src="images/cls_dropcol_random.svg" width="75%">
+<tr>
+<td>
+<b>Figure 3(a)</b>. Importances derived by dropping each column, retraining <font size=-1><tt>scikit-learn</tt></font> Random Forest <b>regressor</b>, and computing change in out-of-bag R<sup>2</sup>. Predicting apartment rental price from 4 features + a column of random numbers. The importance of the random column is at the bottom as it should be.
+<td>
+<b>Figure 3(b)</b>. Importances derived by dropping each column, retraining <font size=-1><tt>scikit-learn</tt></font> Random Forest <b>classifier</b>, and computing change in out-of-bag accuracy. Predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. The importance of the random column is at the bottom as it should be.
+</table>
 
 <p>
 That settles it for Python, so let's take a look at R, another popular language used for machine learning.
@@ -231,8 +268,8 @@ That settles it for Python, so let's take a look at R, another popular language 
 <p>
 Unfortunately, R's default importance strategy is mean-decrease-in-impurity, just like scikit, and so results are again unreliable. For example, here's a typical code snippet to create a random forest and get the feature importances that traps the unwary:
 
-<div class="codeblk">rf <- randomForest(price~., data = df[, 1:5], mtry=4, ntree = 40)
-imp <- importance(rf) # default is mean-decrease-in-impurity
+<div class="codeblk"><span style="color: #a50026">rf <- randomForest(price~., data = df[, 1:5], mtry=4, ntree = 40)
+imp <- importance(rf) # default is mean-decrease-in-impurity</span>
 </div>
 
 <p>
@@ -248,88 +285,96 @@ Make sure that you don't use the <font size=-1><tt>MeanDecreaseGini</tt></font> 
 <p>
 It's worth comparing R and scikit in detail.  It not only gives us an opportunity to verify the results of our homebrewed permutation implementation, but we can also demonstrate that R's type=2 importances have the same issues as scikit's only importance implementation.
 
-<h4>R mean-decrease-in-impurity importance comparison</h4>
+<h4>R mean-decrease-in-impurity importance</h4>
 
 <p>
 R's mean-decrease-in-impurity importance (type=2) gives the same implausible results as we saw with scikit.  To demonstrate this, we trained an RF regressor and classifier in R using the same data set and generated the importance graphs in <b>Figure 4(a)</b> and <b>Figure 4(b)</b>. The graphs mirror the implausible scikit graphs.
 
-<div class="fig-container">
-<div>
-<img src="images/regr_dflt_random_R_annotated.png" width="80%"><br>
-<font size=-1><b>Figure 4(a)</b>. R's type=2 importances for Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.</font>
-</div>
-<div>
-<img src="images/cls_dflt_random_R_annotated.png" width="80%"><br>
-<font size=-1><b>Figure 4(b)</b>. R's type=2 importances for Random Forest <b>classifier</b> predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. Highly suspicious that random column is much more important than the number of bedrooms.</font>
-</div>
-</div>
-
+<table class=figure>
+<tr>
+<td>
+	<img src="images/regr_dflt_random_R_annotated.png" width="80%">
+<td>
+	<img src="images/cls_dflt_random_R_annotated.png" width="80%">
+<tr>
+<td>
+<b>Figure 4(a)</b>. R's type=2 importances for Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.
+<td>
+<b>Figure 4(b)</b>. R's type=2 importances for Random Forest <b>classifier</b> predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. Highly suspicious that random column is much more important than the number of bedrooms.
+</table>
 		
-<h4>R permutation importance comparison</h4>
+<h4>R permutation importance</h4>
 
 <p>
 As a means of checking our permutation implementation in Python, we plotted and compared our feature importances side-by-side with those of R, as shown in <b>Figure 5</b> for regression and <b>Figure 6</b> for classification. The importance of values themselves are different, but the feature order and relative levels are very similar, which is what we care about.
 
-<div class="fig-container">
-<div>
-<img src="images/regr_permute_random_R.svg" width="55%"><br>
-<font size=-1><b>Figure 5(a)</b>. R's type=1 permutation importance for RF <b>regressor</b>.</font>
-</div>
-<div>
-<img src="images/regr_permute_random.svg" width="55%"><br>
-<font size=-1><b>Figure 5(b)</b>. Python permutation importance for RF <b>regressor</b></font>
-</div>
-</div>
+<table class=figure>
+<tr>
+<td>
+	<img src="images/regr_permute_random_R.svg" width="75%">
+<td>
+	<img src="images/regr_permute_random.svg" width="75%">
+<tr>
+<td>
+<b>Figure 5(a)</b>. R's type=1 permutation importance for RF <b>regressor</b>.
+<td>
+<b>Figure 5(b)</b>. Python permutation importance for RF <b>regressor</b>
+</table>
 
 <p>
-	
-<div class="fig-container">
-<div>
-<img src="images/cls_permute_random_R.svg" width="55%"><br>
-<font size=-1><b>Figure 6(a)</b>. R's type=1 permutation importance for RF <b>classifier</b>.</font>
-</div>
-<div>
-<img src="images/cls_permute_random.svg" width="55%"><br>
-<font size=-1><b>Figure 6(b)</b>. Python permutation importance for RF <b>classifier</b></font>
-</div>
-</div>
 
+<table class=figure>
+<tr>
+<td>
+	<img src="images/cls_permute_random_R.svg" width="75%">
+<td>
+	<img src="images/cls_permute_random.svg" width="75%">
+<tr>
+<td>
+<b>Figure 6(a)</b>. R's type=1 permutation importance for RF <b>classifier</b>.
+<td>
+<b>Figure 6(b)</b>. Python permutation importance for RF <b>classifier</b>
+</table>
 
-<h4>R drop-column importance comparison</h4>
+<h4>R drop-column importance</h4>
 
 <p>
 For completeness, we implemented drop-column importance in R and compared to our Python implementation, as shown in <b>Figure 8</b> for regression and <b>Figure 9</b> for classification.
 
-<div class="fig-container">
-<div>
-<img src="images/regr_drop_random_R.svg" width="55%"><br>
-<font size=-1><b>Figure 8(a)</b>. Importances derived by dropping each column, retraining an RF <b>regressor</b> in R, and computing the change in out-of-bag R<sup>2</sup>.</font>
-</div>
-<div>
-<img src="images/regr_dropcol_random.svg" width="55%"><br>
-<font size=-1><b>Figure 8(b)</b>. Importances derived by dropping each column, retraining a <font size=-1><tt>scikit</tt></font> RF <b>regressor</b>, and computing the change in out-of-bag R<sup>2</sup>.</font>
-</div>
-</div>
+<table class=figure>
+<tr>
+<td>
+	<img src="images/regr_drop_random_R.svg" width="75%">
+<td>
+	<img src="images/regr_dropcol_random.svg" width="75%">
+<tr>
+<td>
+<b>Figure 8(a)</b>. Importances derived by dropping each column, retraining an RF <b>regressor</b> in R, and computing the change in out-of-bag R<sup>2</sup>.
+<td>
+<b>Figure 8(b)</b>. Importances derived by dropping each column, retraining a <font size=-1><tt>scikit</tt></font> RF <b>regressor</b>, and computing the change in out-of-bag R<sup>2</sup>.
+</table>
 
 <p>
 	
-<div class="fig-container">
-<div>
-<img src="images/cls_drop_random_R.svg" width="55%"><br>
-<font size=-1><b>Figure 9(a)</b>. Importances derived by dropping each column, retraining an RF <b>classifier</b> in R, and computing the change in out-of-bag accuracy.</font>
-</div>
-<div>
-<img src="images/cls_dropcol_random.svg" width="55%"><br>
-<font size=-1><b>Figure 9(b)</b>. Importances derived by dropping each column, retraining a <font size=-1><tt>scikit</tt></font> RF <b>classifier</b>, and computing the change in out-of-bag accuracy.</font>
-</div>
-</div>
+<table class=figure>
+<tr>
+<td>
+	<img src="images/cls_drop_random_R.svg" width="75%">
+<td>
+	<img src="images/cls_dropcol_random.svg" width="75%">
+<tr>
+<td>
+<b>Figure 9(a)</b>. Importances derived by dropping each column, retraining an RF <b>classifier</b> in R, and computing the change in out-of-bag accuracy.
+<td>
+<b>Figure 9(b)</b>. Importances derived by dropping each column, retraining a <font size=-1><tt>scikit</tt></font> RF <b>classifier</b>, and computing the change in out-of-bag accuracy.
+</table>
 	
 <h3>Summary</h3>
 
 <p>
 The takeaway from all of this is that the most popular RF implementation in Python (scikit) and R's RF default importance strategy do not give reliable feature importances when &ldquo;<i>... potential predictor variables vary in their scale of measurement or their number of categories</i>.&rdquo; (Strobl <i>et al</i>). Rather than figuring out whether your data set conforms to one that gets accurate results, simply use permutation importance. You can either use our Python implementation (<a href="https://github.com/parrt/random-forest-importances/tree/master/src">rfpimp</a> via <font size=-1><tt>pip</tt></font>)  or, if using R, make sure to use <font size=-1><tt>importance=T</tt></font> in the random forest constructor then <font size=-1><tt>type=1</tt></font> in R's <font size=-1><tt>importance()</tt></font> function.
 
-<h3>Appendix A: Resources and sample code</h3>
+<h3>Resources and sample code</h3>
 
 <p>Breiman and Cutler are the inventors of RFs, so it's worth checking out their discussion of <a href="https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm#varimp">variable importance</a>. They describe the main decrease in impurity importance and also the permutation importance.
 

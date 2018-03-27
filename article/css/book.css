@@ -1,3 +1,16 @@
+/*
+.fig-container {
+  display: flex;
+  overflow-x: scroll;	
+  flex: auto;  
+  width: 100%;
+  flex-wrap: wrap;
+  flex-flow: row wrap;
+}
+.fig-container > div {
+  flex: 1;
+}
+*/
 #toc {
     background: #f9f9f9 none repeat scroll 0 0;
     border: 1px solid #aaa;
@@ -21,32 +34,71 @@
 	text-decoration: underline;
 }
 #author {
-	font-size: 100%;
+        font-size: 16px;
 }
-.sup { position: relative; top: -0.5em; font-size: 80%; }
 .eqnvec {
-	font-family: Merriweather, serif;
-	font-weight: bold;
-	font-size: 100%;
+        font-family: Merriweather, serif;
+        font-weight: bold;
+        font-size: 14px;
 }
 .eqn {
-	font-family:  Merriweather, serif;
-	font-weight: normal;
-	font-style: italic;
-	font-size: 100%;
+        font-family:  Merriweather, serif;
+        font-weight: normal;
+        font-style: italic;
+        font-size: 14px;
 }
 .blkeqn {
-	padding: 10px;
-	margin-left: 100px;
+		padding: 10px;
+		margin-left: 100px;
+}
+body {
+        font-family: "Merriweather", serif;
+        font-size: 100%;
+        letter-spacing: 0.01rem;
+        line-height: 1.5em;
+        color: #3A4145;
+        background: #FFFFFF;
+        max-width: 800px;
+		margin-left: 2%;
+        -webkit-text-size-adjust: 100%;
+}
+p {
+        margin: 15px 5px 15px 0px;
+}
+.caption {
+	font-size: 80%;
+}
+@media (max-width: 415px) {
+        /* iphone 6+ 414x628 browser window, iphone 6 is 375 x 559 in browser */
+        .blkeqn {
+                padding: 0px;
+                margin-left: 2%;
+        }
+        body {
+                font-size: 100%;
+        }
+}
+@media (max-width: 736px) {
+        /* iphone7+ 736 wide */
+        .blkeqn {
+                padding: 0px;
+                margin-left: 2%;
+        }
+        body {
+                font-size: 100%;
+        }
+}
+h1 {
+        line-height: 1.2em;
 }
 .inlinecode {
     font-family: Monaco;
     font-size: 80%;	
 }
 .codeblk {
-        font-family: Monaco;
-        font-size: 80%;
-        box-sizing: border-box;
+    font-family: Monaco;
+    font-size: 80%;
+    box-sizing: border-box;
     margin: 0 0 1em 0;
     border: #E3EDF3 1px solid;
     width: 100%;
@@ -56,93 +108,23 @@
 	line-height: 1.3em;
 	white-space: pre-wrap;
 }
-.stdout {
-        font-family: Monaco;
-        font-size: 80%;
-        margin: 0 0 1em 0;
-        width: 100%;
-        padding: 2px;
-        white-space: pre-wrap;
-		line-height: 1.3em;
-}
-.stdout:before {
-        content: "\00bb";
-        position:absolute;
-        left:2%;
-}
-.stderr {
-        font-family: Monaco;
-        font-size: 80%;
-		color: red;
-		margin: 0 0 1em 0;
-		width: 100%;
-		padding: 2px;
-		white-space: pre-wrap;
-        padding-left:10px;
-		line-height: 1.3em;
-}
-.aside { /* Box around content */
-	border: 1px;
-	border-style: solid;
-	padding-left: 8px;
-	padding-right: 8px;
-	padding-top: 5px;
-	padding-bottom: 0px;
-}
-.callout {
-	float: right; 
-	clear: right;
-	margin-right: -36%;
-	width: 32%;
-	font-size: 85%;
-	line-height: 1.4em;
-	vertical-align: baseline;
-	position: relative;
-	padding-left: 8px;
-	padding-right: 8px;
-}
-.callout:before {
-        /* Make top, left, bottom border around "nothing" */
-        content: "";
-        position: absolute; /* Make sure bracket is always on the right */
-        border-left:1px solid;
-        border-top:1px solid;
-        border-bottom:1px solid;
-        padding:4px;
-        top:-4px;
-        bottom:-8px;
-        left: -5px;
-        }
-.callout:after {
-        content: "";
-        position: absolute;
-        border-right:1px solid;
-        border-top:1px solid;
-        border-bottom:1px solid;
-        padding:4px;
-        top:-4px;
-        bottom:-8px;
-        right: -5px;
-}
-
 table {
 	border-spacing: 15px 0px
 }
-body {
-	margin-left: 3%;
-	margin-right: auto;
-/*	width: 100%;*/
-	font-family: "Merriweather", serif;
-	font-size: 100%;
-	letter-spacing: 0.01rem;
-	line-height: 1.5em;
-	color: #3A4145;
-	background: #FFFFFF;
-	max-width: 800px;
-	-webkit-text-size-adjust: 100%;
+table th {
+	line-height: 1em;
 }
 .scrollbar_wrapper {
 	overflow: auto;
+}
+table.figure {
+	border=0
+}
+table.figure td {
+	width: 50%;
+	vertical-align: top;
+	line-height: 1.1em;
+	font-size: 80%;
 }
 table.dataframe {
         max-width: none;
@@ -154,46 +136,20 @@ table.dataframe {
 }       
 table.dataframe td {
 		font-family: "Helvetica", sans-serif;
-        font-size: 85%;
+        font-size: 80%;
         text-align: right;
         text-size-adjust: 100%;
         vertical-align: top;
-        padding: 2px 10px;
+        padding: 2px 5px;
+		border-bottom: 0px;
         line-height: 1.1em;
 }
 table.dataframe th {
 		font-family: "Helvetica", sans-serif;
-        font-size: 85%;
+        font-size: 80%;
         text-align: right;
+		line-height: 1em;
         text-size-adjust: 100%;
         vertical-align: bottom;
-        border-bottom: 1px solid;
-        padding: 0px 10px;
-}
-p {
-        margin: 15px 5px 15px 0px;
-}
-h1 {
-        line-height: 1.2em;
-}
-
-@media (max-width: 415px) {
-        /* iphone 6+ 414x628 browser window, iphone 6 is 375 x 559 in browser */
-        .blkeqn {
-                padding: 0px;
-                margin-left: 0px;
-        }
-        body {
-                font-size: 100%;
-        }
-}
-@media (max-width: 736px) {
-        /* iphone7+ 736 wide */
-        .blkeqn {
-                padding: 0px;
-                margin-left: 0px;
-        }
-        body {
-                font-size: 100%;
-        }
+        padding: 0px 5px;
 }
