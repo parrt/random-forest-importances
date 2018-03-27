@@ -95,7 +95,8 @@ table th {
 	overflow: auto;
 }
 table.figure {
-	border=0
+	border: 0;
+	width: 100%;
 }
 table.figure td {
 	width: 50%;
