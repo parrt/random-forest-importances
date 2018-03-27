@@ -47,13 +47,16 @@ The scikit-learn Random Forest feature importance and R's default Random Forest 
 <a name=intro></a><h3>Introduction to Feature Importance</h3>
 
 <p>
-Training a model that accurately predicts outcomes is great, but we can also interpret the model to understand more about our data set. For example, in the New York City apartment  data described in this article, knowing which features are most predictive of rent price tells us which apartment features people are willing to pay for. Feature importance is the most useful interpretation tool and data scientists regularly examine model parameters, such as beta coefficients of linear models, to identify important features.   From an importance point of view, we don't even care what the importance values are or even the range of values; all we need are numbers that show the relative importance of the variables to overall model accuracy.
+Training a model that accurately predicts outcomes is great, but we can also interpret the model to understand more about our data set. For example, in the New York City apartment  data described in this article, knowing which features are most predictive of rent price tells us which apartment features people are willing to pay for. Feature importance is the most useful interpretation tool and data scientists regularly examine model parameters, such as beta coefficients of linear models, to identify important features.   For interpretation purposes, we don't even care what the importance values are or even the range of values; all we need are numbers that show the relative importance of the variables to overall model accuracy.
 
 <p>
 Feature importances are available for more than just linear models. Random Forest (RF) implementations also commonly provide measures of feature importance. In fact, the RF importance techniques are actually applicable to any model, though few machine learning practitioners seem to realize this. A common, reasonably efficient, and very reliable technique used by RFs is called <i>permutation importance</i>.  Permutation importance directly measures variable importance by observing the effect on model accuracy of shuffling each predictor variable. This technique is broadly-applicable because it doesn't rely on internal model parameters, such as linear regression coefficients (which are really just proxies for feature importance).
 
 <p>
-We recommend using permutation importance for all models, including linear models, because we avoid any issues with model parameter interpretation. Interpreting regression coefficients requires great care and expertise; landmines include not normalizing input data, properly interpreting coefficients when using Lasso or Ridge regularization, and avoiding highly-correlated variables (such as country and country_name). To learn more about the  difficulties of interpreting regression coefficients, see <a href="https://projecteuclid.org/euclid.ss/1009213726">Statistical Modeling: The Two Cultures</a> (2001) by Leo Breiman (co-creator of random forests).  One of Breiman's issues involves the accuracy of models. The more accurate our model, the more we can trust the importance measures and other interpretations. Measuring linear model accuracy is typically a function of residuals (the difference between predicted and true outcomes).  The problem is that residual analysis does not always tell us when the model is bad. Breiman quotes William Cleveland, &ldquo;<i>one of the fathers of residual analysis,</i>&rdquo; as saying residual analysis is an unreliable goodness-of-fit measure beyond four or five variables.
+We recommend using permutation importance for all models, including linear models, because we can avoid any issues with model parameter interpretation. Interpreting regression coefficients requires great care and expertise; landmines include not normalizing input data, properly interpreting coefficients when using Lasso or Ridge regularization, and avoiding highly-correlated variables (such as country and country_name). To learn more about the  difficulties of interpreting regression coefficients, see <a href="https://projecteuclid.org/euclid.ss/1009213726">Statistical Modeling: The Two Cultures</a> (2001) by Leo Breiman (co-creator of random forests).
+
+<p>
+One of Breiman's issues involves the accuracy of models. The more accurate our model, the more we can trust the importance measures and other interpretations. Measuring linear model goodness-of-fit is typically a matter of residual analysis. (A residual is the difference between predicted and expected outcomes and we need to check that residual plots between each predictor variable and residuals look random; if not, a linear model is inappropriate).  The problem is that residual analysis does not always tell us when the model is bad. Breiman quotes William Cleveland, &ldquo;<i>one of the fathers of residual analysis,</i>&rdquo; as saying residual analysis is an unreliable goodness-of-fit measure beyond four or five variables.
 
 <p>
 If a feature importance technique well-known to random forest implementators gives direct and reliable results, why have we written an article entitled &ldquo;Beware Default Random Forest Importances?&rdquo;
@@ -111,10 +114,10 @@ After training, we plotted the <font size=-1><tt>rf.feature_importances_</tt></f
 
 <table class=figure>
 <tr>
-<td>
+<td style="vertical-align: bottom;">
 	<img src="images/regr_dflt_random_annotated.png" width="70%">
-<td>
-	<img src="images/cls_dflt_random_annotated.png" width="65%">
+<td style="vertical-align: bottom;">
+	<img src="images/cls_dflt_random_annotated.png" width="70%">
 <tr>
 <td>
 <b>Figure 1(a)</b>. <font size=-1><tt>scikit-learn</tt></font> default importances for Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.
@@ -197,10 +200,10 @@ To test permutation importances, we plotted the regressor and classifier importa
 
 <table class=figure>
 <tr>
-<td>
-	<img src="images/regr_permute_random.svg" width="75%">
-<td>
-	<img src="images/cls_permute_random.svg" width="70%">
+<td style="vertical-align: bottom;">
+	<img src="images/regr_permute_random.svg" width="70%">
+<td style="vertical-align: bottom;">
+	<img src="images/cls_permute_random.svg" width="65%">
 <tr>
 <td>
 <b>Figure 2(a)</b>. Importances derived by permuting each column and computing change in out-of-bag R<sup>2</sup> using <font size=-1><tt>scikit-learn</tt></font> <b>regressor</b>. Predicting apartment rental price from 4 features + a column of random numbers.
@@ -258,9 +261,9 @@ Notice that we force the <font size=-1><tt>random_state</tt></font> of each mode
 
 <table class=figure>
 <tr>
-<td>
-	<img src="images/regr_dropcol_random.svg" width="75%">
-<td>
+<td style="vertical-align: bottom;">
+	<img src="images/regr_dropcol_random.svg" width="70%">
+<td style="vertical-align: bottom;">
 	<img src="images/cls_dropcol_random.svg" width="75%">
 <tr>
 <td>
@@ -323,7 +326,7 @@ As a means of checking our permutation implementation in Python, we plotted and 
 <td>
 	<img src="images/regr_permute_random_R.svg" width="75%">
 <td>
-	<img src="images/regr_permute_random.svg" width="70%">
+	<img src="images/regr_permute_random.svg" width="65%">
 <tr>
 <td>
 <b>Figure 5(a)</b>. R's type=1 permutation importance for RF <b>regressor</b>.
@@ -338,7 +341,7 @@ As a means of checking our permutation implementation in Python, we plotted and 
 <td>
 	<img src="images/cls_permute_random_R.svg" width="75%">
 <td>
-	<img src="images/cls_permute_random.svg" width="65%">
+	<img src="images/cls_permute_random.svg" width="60%">
 <tr>
 <td>
 <b>Figure 6(a)</b>. R's type=1 permutation importance for RF <b>classifier</b>.
@@ -356,7 +359,7 @@ For completeness, we implemented drop-column importance in R and compared it to 
 <td>
 	<img src="images/regr_drop_random_R.svg" width="75%">
 <td>
-	<img src="images/regr_dropcol_random.svg" width="70%">
+	<img src="images/regr_dropcol_random.svg" width="65%">
 <tr>
 <td>
 <b>Figure 8(a)</b>. Importances derived by dropping each column, retraining an RF <b>regressor</b> in R, and computing the change in out-of-bag R<sup>2</sup>.
@@ -371,7 +374,7 @@ For completeness, we implemented drop-column importance in R and compared it to 
 <td>
 	<img src="images/cls_drop_random_R.svg" width="75%">
 <td>
-	<img src="images/cls_dropcol_random.svg" width="70%">
+	<img src="images/cls_dropcol_random.svg" width="65%">
 <tr>
 <td>
 <b>Figure 9(a)</b>. Importances derived by dropping each column, retraining an RF <b>classifier</b> in R, and computing the change in out-of-bag accuracy.
@@ -442,7 +445,7 @@ plot_importances(imp)
 We also created R Jupyter notebooks to explore these issues: <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/permutation-importances-regressor.Rmd">R regressors</a> and <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/permutation-importances-classifier.Rmd">R classifiers</a>.
 
 <p>
-Unlike scikit, R's permutation importances but it's not the default behavior. Make sure that you don't use the <tt>MeanDecreaseGini</tt> column in the importance data frame. You want <tt>MeanDecreaseAccuracy</tt>, which only appears in the importance data frame if you turn on <tt>importance=T</tt> when constructing the random forest. The default when creating a random forest is to compute only the mean-decrease-in-impurity. Here's the proper invocation sequence:
+Unlike scikit, R has a permutation importance implementation, but it's not the default behavior. Make sure that you don't use the <tt>MeanDecreaseGini</tt> column in the importance data frame. You want <tt>MeanDecreaseAccuracy</tt>, which only appears in the importance data frame if you turn on <tt>importance=T</tt> when constructing the random forest. The default when creating a random forest is to compute only the mean-decrease-in-impurity. Here's the proper invocation sequence:
 
 <div class="codeblk">rf <- randomForest(<i>hyper-parameters...</i>, importance=T)
 imp <- importance(rf, type=1, scale = F) # permutation importances
