@@ -16,7 +16,7 @@
     border: 1px solid #aaa;
     display: table;
     font-size: 83%;
-    padding: 10px;
+    padding: 5px;
     width: auto;
 }
 .toc_title {
@@ -34,22 +34,7 @@
 	text-decoration: underline;
 }
 #author {
-        font-size: 16px;
-}
-.eqnvec {
-        font-family: Merriweather, serif;
-        font-weight: bold;
-        font-size: 14px;
-}
-.eqn {
-        font-family:  Merriweather, serif;
-        font-weight: normal;
-        font-style: italic;
-        font-size: 14px;
-}
-.blkeqn {
-		padding: 10px;
-		margin-left: 100px;
+        font-size: 110%;
 }
 body {
         font-family: "Merriweather", serif;
@@ -70,20 +55,12 @@ p {
 }
 @media (max-width: 415px) {
         /* iphone 6+ 414x628 browser window, iphone 6 is 375 x 559 in browser */
-        .blkeqn {
-                padding: 0px;
-                margin-left: 2%;
-        }
         body {
                 font-size: 100%;
         }
 }
 @media (max-width: 736px) {
         /* iphone7+ 736 wide */
-        .blkeqn {
-                padding: 0px;
-                margin-left: 2%;
-        }
         body {
                 font-size: 100%;
         }
