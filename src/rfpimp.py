@@ -180,7 +180,8 @@ def oob_regression_r2_score(rf, X_train, y_train):
     return oob_score
 
 
-def plot_importances(df_importances, save=None, xrot=0, tickstep=3, scalefig=(1.0,1.0)):
+def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
+                     scalefig=(1.0,1.0), showfig=True):
     """
     Given an array or data frame of importances, plot a horizontal bar chart
     showing the importance values.
@@ -194,6 +195,7 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3, scalefig=(1.
     :type tickstep: int
     :param scalefig: Scale width and height of image (widthscale,heightscale)
     :type scalefig: 2-tuple of floats
+    :param showfig: Execute plt.show() if true (the default).
     :return: None
 
     SAMPLE CODE
@@ -229,4 +231,5 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3, scalefig=(1.
     plt.tight_layout()
     if save:
         plt.savefig(save, bbox_inches="tight", pad_inches=0.03)
-    plt.show()
+    if showfig:
+        plt.show()
