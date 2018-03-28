@@ -30,6 +30,11 @@ def importances(rf, X_train, y_train):
     model performance measures (accuracy or R^2). The model
     is not retrained.
 
+    As X_train is modified to permute columns, passing in a view of a
+    data frame can cause the dreaded error: "A value is trying to be set on a
+    copy of a slice from a DataFrame."  Fix this by sending in a copy of
+    X_train.
+
     return: A data frame with Feature, Importance columns
 
     SAMPLE CODE
