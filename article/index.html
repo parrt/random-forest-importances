@@ -107,7 +107,7 @@ rf.fit(X_train, y_train)
 </div>
 
 <p>
-In order to explain feature selection, we added a column of random numbers and retrained a random forest regressor. (Any feature less important than a random column is junk and should be tossed out.) 
+In order to explain feature selection, we added a column of random numbers. (Any feature less important than a random column is junk and should be tossed out.) 
 
 <p>
 After training, we plotted the <font size=-1><tt>rf.feature_importances_</tt></font> as shown in <b>Figure 1(a)</b>. Wow! New Yorkers really care about bathrooms. The number of bathrooms is the strongest predictor of rent price.  That's weird but interesting.
