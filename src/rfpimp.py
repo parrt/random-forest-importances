@@ -30,11 +30,6 @@ def importances(rf, X_train, y_train):
     model performance measures (accuracy or R^2). The model
     is not retrained.
 
-    As X_train is modified to permute columns, passing in a view of a
-    data frame can cause the dreaded error: "A value is trying to be set on a
-    copy of a slice from a DataFrame."  Fix this by sending in a copy of
-    X_train.
-
     return: A data frame with Feature, Importance columns
 
     SAMPLE CODE
@@ -117,7 +112,15 @@ def permutation_importances_raw(rf, X_train, y_train, metric):
     imp = []
     for col in X_train.columns:
         save = X_train[col].copy()
-        X_train[col] = np.random.permutation(X_train[col])
+
+        # some weird code to perform:
+        #
+        #   X_train[col] = np.random.permutation(X_train[col])
+        #
+        # w/o hitting warning when X_train is slice.
+        args = {col:np.random.permutation(X_train[col])}
+        X_train = X_train.assign(**args)
+        print(X_train.columns.values)
         m = metric(rf, X_train, y_train)
         X_train[col] = save
         imp.append(baseline - m)
