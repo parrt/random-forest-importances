@@ -109,18 +109,11 @@ def permutation_importances_raw(rf, X_train, y_train, metric):
     works for regressors and classifiers.
     """
     baseline = metric(rf, X_train, y_train)
+    X_train = X_train.copy(deep=False) # shallow copy
     imp = []
     for col in X_train.columns:
         save = X_train[col].copy()
-
-        # some weird code to perform:
-        #
-        #   X_train[col] = np.random.permutation(X_train[col])
-        #
-        # w/o hitting warning when X_train is slice.
-        args = {col:np.random.permutation(X_train[col])}
-        X_train = X_train.assign(**args)
-        print(X_train.columns.values)
+        X_train[col] = np.random.permutation(X_train[col])
         m = metric(rf, X_train, y_train)
         X_train[col] = save
         imp.append(baseline - m)
