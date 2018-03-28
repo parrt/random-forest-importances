@@ -181,7 +181,7 @@ def oob_regression_r2_score(rf, X_train, y_train):
 
 
 def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
-                     scalefig=(1.0,1.0), showfig=True):
+                     scalefig=(1.0,1.0), show=True):
     """
     Given an array or data frame of importances, plot a horizontal bar chart
     showing the importance values.
@@ -195,7 +195,8 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
     :type tickstep: int
     :param scalefig: Scale width and height of image (widthscale,heightscale)
     :type scalefig: 2-tuple of floats
-    :param showfig: Execute plt.show() if true (the default).
+    :param showfig: Execute plt.show() if true (default is True). Sometimes
+                    we want to draw multiple things before calling plt.show()
     :return: None
 
     SAMPLE CODE
@@ -212,7 +213,7 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
     w, h = fig.get_size_inches()
     fig.set_size_inches(w*scalefig[0], h*scalefig[1], forward=True)
     ax = plt.gca()
-    ax.barh(np.arange(len(I.index)), I.Importance, height=.7, tick_label=I.index)
+    ax.barh(np.arange(len(I.index)), I.Importance, height=.6, tick_label=I.index)
 
     x0, x1 = ax.get_xlim()
     y0, y1 = ax.get_ylim()
@@ -231,5 +232,5 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
     plt.tight_layout()
     if save:
         plt.savefig(save, bbox_inches="tight", pad_inches=0.03)
-    if showfig:
+    if show:
         plt.show()
