@@ -41,6 +41,7 @@ The scikit-learn Random Forest feature importance and R's default Random Forest 
 		<li><a href="#8.2">R</a></li>
 		<li><a href="#8.3">Sample Kaggle apartment data</a></li>	
 	</ul>
+	<li><a href="#9">Epilogue: Explanations and Further Possibilities</a></li>
 </ul>
 </div>
 
@@ -178,7 +179,7 @@ As well as being broadly applicable, the implementation of permutation importanc
 </div>
 
 <p>
-	Notice that the function does not normalize the importance values, such as dividing by the standard deviation. According to <a href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-307">Conditional variable importance for random forests</a>, &ldquo;<i>the raw [permutation] importance&hellip; has better statistical properties</i>.&rdquo; Those importance values will not sum up to one and it's important to remember that we don't care what the values are <i>per se</i>. What we care about is the relative predictive strengths of the features.
+	Notice that the function does not normalize the importance values, such as dividing by the standard deviation. According to <a href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-307">Conditional variable importance for random forests</a>, &ldquo;<i>the raw [permutation] importance&hellip; has better statistical properties</i>.&rdquo; Those importance values will not sum up to one and it's important to remember that we don't care what the values are <i>per se</i>. What we care about is the relative predictive strengths of the features. (When using the <tt>importances()</tt> function in R, make sure to use <tt>scale=F</tt> to to prevent this normalization.)
 
 <p>
 The key to this &ldquo;baseline minus drop in performance metric&rdquo; computation is to use a validation set or the OOB samples, not the training set (for the same reason we measure model generality with a validation set or OOB samples). Our <font size=-1><tt>permutation_importances()</tt></font> function expects the <font size=-1><tt>metric</tt></font> argument (a function) to use out-of-bag samples when computing accuracy or R<sup>2</sup> because there is no validation set argument. (We figured out how to grab the OOB samples from the scikit RF source code.) You can check out our functions that compute the <a href="https://github.com/parrt/random-forest-importances/blob/master/src/rfpimp.py#L122">OOB classifier accuracy</a> and <a href="https://github.com/parrt/random-forest-importances/blob/master/src/rfpimp.py#L148">OOB regression R<sup>2</sup> score</a> (without altering the RF model state). Here are two code snippets that call the permutation importance function for regressors and classifiers:
@@ -203,7 +204,7 @@ To test permutation importances, we plotted the regressor and classifier importa
 <td style="vertical-align: bottom;">
 	<img src="images/regr_permute_random.svg" width="70%">
 <td style="vertical-align: bottom;">
-	<img src="images/cls_permute_random.svg" width="65%">
+	<img src="images/cls_permute_random.svg" width="70%">
 <tr>
 <td>
 <b>Figure 2(a)</b>. Importances derived by permuting each column and computing change in out-of-bag R<sup>2</sup> using <font size=-1><tt>scikit-learn</tt></font> <b>regressor</b>. Predicting apartment rental price from 4 features + a column of random numbers.
@@ -264,7 +265,7 @@ Notice that we force the <font size=-1><tt>random_state</tt></font> of each mode
 <td style="vertical-align: bottom;">
 	<img src="images/regr_dropcol_random.svg" width="70%">
 <td style="vertical-align: bottom;">
-	<img src="images/cls_dropcol_random.svg" width="75%">
+	<img src="images/cls_dropcol_random.svg" width="70%">
 <tr>
 <td>
 <b>Figure 3(a)</b>. Importances derived by dropping each column, retraining <font size=-1><tt>scikit-learn</tt></font> Random Forest <b>regressor</b>, and computing change in out-of-bag R<sup>2</sup>. Predicting apartment rental price from 4 features + a column of random numbers. The importance of the random column is at the bottom as it should be.
@@ -306,9 +307,9 @@ R's mean-decrease-in-impurity importance (type=2) gives the same implausible res
 <table class=figure>
 <tr>
 <td>
-	<img src="images/regr_dflt_random_R_annotated.png" width="80%">
+	<img src="images/regr_dflt_random_R_annotated.png" width="70%">
 <td>
-	<img src="images/cls_dflt_random_R_annotated.png" width="80%">
+	<img src="images/cls_dflt_random_R_annotated.png" width="70%">
 <tr>
 <td>
 <b>Figure 4(a)</b>. R's type=2 importances for Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.
@@ -324,7 +325,7 @@ As a means of checking our permutation implementation in Python, we plotted and 
 <table class=figure>
 <tr>
 <td>
-	<img src="images/regr_permute_random_R.svg" width="75%">
+	<img src="images/regr_permute_random_R.svg" width="70%">
 <td>
 	<img src="images/regr_permute_random.svg" width="70%">
 <tr>
@@ -339,7 +340,7 @@ As a means of checking our permutation implementation in Python, we plotted and 
 <table class=figure>
 <tr>
 <td>
-	<img src="images/cls_permute_random_R.svg" width="75%">
+	<img src="images/cls_permute_random_R.svg" width="70%">
 <td>
 	<img src="images/cls_permute_random.svg" width="70%">
 <tr>
@@ -357,9 +358,9 @@ For completeness, we implemented drop-column importance in R and compared it to 
 <table class=figure>
 <tr>
 <td>
-	<img src="images/regr_drop_random_R.svg" width="75%">
+	<img src="images/regr_drop_random_R.svg" width="70%">
 <td>
-	<img src="images/regr_dropcol_random.svg" width="65%">
+	<img src="images/regr_dropcol_random.svg" width="70%">
 <tr>
 <td>
 <b>Figure 8(a)</b>. Importances derived by dropping each column, retraining an RF <b>regressor</b> in R, and computing the change in out-of-bag R<sup>2</sup>.
@@ -372,9 +373,9 @@ For completeness, we implemented drop-column importance in R and compared it to 
 <table class=figure>
 <tr>
 <td>
-	<img src="images/cls_drop_random_R.svg" width="75%">
+	<img src="images/cls_drop_random_R.svg" width="70%">
 <td>
-	<img src="images/cls_dropcol_random.svg" width="65%">
+	<img src="images/cls_dropcol_random.svg" width="70%">
 <tr>
 <td>
 <b>Figure 9(a)</b>. Importances derived by dropping each column, retraining an RF <b>classifier</b> in R, and computing the change in out-of-bag accuracy.
