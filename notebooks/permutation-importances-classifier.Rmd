@@ -21,7 +21,8 @@ library(randomForest)
 library(cowplot)
 library(gridExtra)
 
-rent <- read.csv('./data/rent.csv')
+setwd("~/Downloads/")
+rent <- read.csv('rent.csv')
 class(rent$interest_level)
 #interest.map <- c("low"=1, "medium"=2, "high"=3)
 
@@ -79,17 +80,17 @@ rf1 = randomForest(interest_level ~ .,
                   nodesize = 1, importance = TRUE)
 #print(rf)
 
-#round(importance(rf, type = 1), 2)
+importance(rf1, type = 1)
 #round(importance(rf), 2)
 
 # Variable Importance
-#varImpPlot(rf,  
-           #sort = T,
-           #main="Top - Variable Importance")
+k = varImpPlot(rf1,  
+           sort = T,
+           main="Top - Variable Importance")
 
-p1 <- create_rfplot(rf1, type = 1)
-ggsave('../article/images/cls_permute_R.svg',
-       plot = p1, device = 'svg', height = 4, width = 6)
+#p1 <- create_rfplot(rf1, type = 1)
+#ggsave('../article/images/cls_permute_R.svg',
+ #      plot = p1, device = 'svg', height = 4, width = 6)
 ######## with random column ########
 
 
@@ -100,17 +101,23 @@ rf2 = randomForest(interest_level ~ .,
                   nodesize = 1, importance = TRUE)
 #print(rf)
 
-#round(importance(rf, type = 1), 2)
+#importance(rf2, type = 1)
+
+imp1 <- data.frame(importance(rf2, type = 2))
+write.csv(imp1, file="imp_R_class_gini.csv")
 #round(importance(rf), 2)
+
+imp1 <- data.frame(importance(rf2, type = 1))
+write.csv(imp1, file="imp_R_class_acc.csv")
 
 # Variable Importance
 #varImpPlot(rf,  
            #sort = T,
            #main="Top - Variable Importance")
 
-p2 <- create_rfplot(rf2, type = 1)
-ggsave('../article/images/cls_permute_random_R.svg',
-       plot = p2, device = 'svg', height = 4, width = 6)
+#p2 <- create_rfplot(rf2, type = 1)
+#ggsave('../article/images/cls_permute_random_R.svg',
+      # plot = p2, device = 'svg', height = 4, width = 6)
 ```
 
 ## Type = 2, mean decrease in Gini
@@ -119,21 +126,24 @@ ggsave('../article/images/cls_permute_random_R.svg',
 ####### no random column #########
 
 
-p1 <- create_rfplot(rf1, type = 2)
-ggsave('../article/images/cls_dflt_R.svg',
-       plot = p1, device = 'svg', height = 4, width = 6)
+#p1 <- create_rfplot(rf1, type = 2)
+#ggsave('../article/images/cls_dflt_R.svg',
+       #plot = p1, device = 'svg', height = 4, width = 6)
 
 ######## with random column ########
 
-p2 <- create_rfplot(rf2, type = 2)
-ggsave('../article/images/cls_dflt_random_R.svg',
-       plot = p2, device = 'svg', height = 4, width = 6)
+#imp1 <- data.frame(importance(rf2, type = 2))
+#write.csv(imp1, file="imp_R_class_gini.csv")
+
+#p2 <- create_rfplot(rf2, type = 2)
+#ggsave('../article/images/cls_dflt_random_R.svg',
+       #plot = p2, device = 'svg', height = 4, width = 6)
 
 ```
 
 ## Cost by dropping column analysis
 
-```{r cars5}
+```{r cars5, eval=FALSE}
 ####### no random column #########
 get_drop_imp <- function(rent, columns){
   X <- rent[,c(columns, 'interest_level')] # data
@@ -156,15 +166,19 @@ get_drop_imp <- function(rent, columns){
 
 columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude', 'price')
 featureImportance <- get_drop_imp(rent[, 1:6], columns)
-p1 <- create_ggplot(featureImportance)
-ggsave('../article/images/cls_drop_R.svg',
-       plot = p1, device = 'svg', height = 4, width = 6)
+
+write.csv(featureImportance, file="imp_R_class_gini.csv")
+#p1 <- create_ggplot(featureImportance)
+#ggsave('../article/images/cls_drop_R.svg',
+       #plot = p1, device = 'svg', height = 4, width = 6)
 
 columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude', 'random', 'price')
 featureImportance <- get_drop_imp(rent, columns)
-p2 <- create_ggplot(featureImportance)
-ggsave('../article/images/cls_drop_random_R.svg',
-       plot = p2, device = 'svg', height = 4, width = 6)
+
+write.csv(featureImportance, file="imp_R_class_drop.csv")
+#p2 <- create_ggplot(featureImportance)
+#ggsave('../article/images/cls_drop_random_R.svg',
+       #plot = p2, device = 'svg', height = 4, width = 6)
 ```
 
 ## Takeaways 

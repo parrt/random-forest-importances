@@ -78,8 +78,8 @@ rf1 <- randomForest(price~., data = df[, 1:5], mtry=4,
                  ntree = 40, importance=T)
 importance(rf1)
 p1 <- create_rfplot(rf1, type = 1)
-ggsave('../article/images/regr_permute_R.svg',
-       plot = p1, device = 'svg', height = 4, width = 6)
+#ggsave('../article/images/regr_permute_R.svg',
+       #plot = p1, device = 'svg', height = 4, width = 6)
 ```
 
 ```{r}
@@ -87,8 +87,10 @@ ggsave('../article/images/regr_permute_R.svg',
 rf2 <- randomForest(price~., data = df, mtry = 4,
                  ntree = 40, importance=T)
 p2 <- create_rfplot(rf2, type = 1)
-ggsave('../article/images/regr_permute_random_R.svg',
-       plot = p2, device = 'svg', height = 4, width = 6)
+#ggsave('../article/images/regr_permute_random_R.svg',
+       #plot = p2, device = 'svg', height = 4, width = 6)
+imp1 <- data.frame(importance(rf2, type = 1))
+write.csv(imp1, file="imp_R_regr_MSE.csv")
 ```
 
 #### TYPE 2 = Mean decrease in node impurity (RSS) by splitting on columns, **Python's default**
@@ -98,8 +100,9 @@ ggsave('../article/images/regr_permute_random_R.svg',
 rf1 <- randomForest(price~., data = df[, 1:5], mtry=4,
                  ntree = 40, importance=T)
 p1 <- create_rfplot(rf1, type = 2)
-ggsave('../article/images/regr_dflt_R.svg',
-       plot = p1, device = 'svg', height = 4, width = 6)
+#ggsave('../article/images/regr_dflt_R.svg',
+       #plot = p1, device = 'svg', height = 4, width = 6)
+
 ```
 
 
@@ -108,8 +111,10 @@ ggsave('../article/images/regr_dflt_R.svg',
 rf2 <- randomForest(price~., data = df, mtry = 4,
                  ntree = 40, importance=T)
 p2 <- create_rfplot(rf2, type = 2)
-ggsave('../article/images/regr_dflt_random_R.svg',
-       plot = p2, device = 'svg', height = 4, width = 6)
+#ggsave('../article/images/regr_dflt_random_R.svg',
+       #plot = p2, device = 'svg', height = 4, width = 6)
+imp1 <- data.frame(importance(rf2, type = 2))
+write.csv(imp1, file="imp_R_regr_RSS.csv")
 ```
 
 
@@ -144,16 +149,18 @@ get_drop_imp <- function(df, columns){
 columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude')
 featureImportance <- get_drop_imp(df, columns)
 p1 <- create_ggplot(featureImportance)
-ggsave('../article/images/regr_drop_R.svg',
-       plot = p1, device = 'svg', height = 4, width = 6)
+#ggsave('../article/images/regr_drop_R.svg',
+       #plot = p1, device = 'svg', height = 4, width = 6)
 ```
 
 ```{r}
 columns <- c('bathrooms', 'bedrooms', 'longitude', 'latitude', 'random')
 featureImportance <- get_drop_imp(df, columns)
 p2 <- create_ggplot(featureImportance)
-ggsave('../article/images/regr_drop_random_R.svg',
-       plot = p2, device = 'svg', height = 4, width = 6)
+#ggsave('../article/images/regr_drop_random_R.svg',
+       #plot = p2, device = 'svg', height = 4, width = 6)
+
+write.csv(featureImportance, file="imp_R_regr_drop.csv")
 ```
 
 
