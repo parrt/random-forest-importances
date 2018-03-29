@@ -149,13 +149,13 @@ df$price &lt;- log(df$price)
 # with random column
 df['random'] &lt;- runif(nrow(df))
 head(df)</code></pre>
-<pre><code>##   bathrooms bedrooms longitude latitude    price     random
-## 1       1.5        3  -73.9425  40.7145 8.006368 0.67101072
-## 2       1.0        2  -73.9667  40.7947 8.606119 0.26953012
-## 3       1.0        1  -74.0018  40.7388 7.955074 0.60871615
-## 4       1.0        1  -73.9677  40.7539 8.094073 0.68251027
-## 5       1.0        4  -73.9493  40.8241 8.116716 0.19867137
-## 6       2.0        4  -74.0028  40.7429 8.986572 0.04410477</code></pre>
+<pre><code>##   bathrooms bedrooms longitude latitude    price    random
+## 1       1.5        3  -73.9425  40.7145 8.006368 0.2382300
+## 2       1.0        2  -73.9667  40.7947 8.606119 0.2841672
+## 3       1.0        1  -74.0018  40.7388 7.955074 0.2475581
+## 4       1.0        1  -73.9677  40.7539 8.094073 0.2635202
+## 5       1.0        4  -73.9493  40.8241 8.116716 0.6712604
+## 6       2.0        4  -74.0028  40.7429 8.986572 0.9735896</code></pre>
 <div id="plotting-functions" class="section level2">
 <h2>PLOTTING FUNCTIONS</h2>
 <pre class="r"><code>create_rfplot &lt;- function(rf, type){
@@ -196,23 +196,30 @@ create_ggplot &lt;- function(featureImportance){
 <pre class="r"><code># without random column
 rf1 &lt;- randomForest(price~., data = df[, 1:5], mtry=4,
                  ntree = 40, importance=T)
-importance(rf1)</code></pre>
-<pre><code>##             %IncMSE IncNodePurity
-## bathrooms 106.45142      4018.798
-## bedrooms  114.61082      1064.994
-## longitude  37.12204      2213.718
-## latitude   38.57128      1619.036</code></pre>
+importance(rf1, scale=F)</code></pre>
+<pre><code>##              %IncMSE IncNodePurity
+## bathrooms 0.09057197      4034.560
+## bedrooms  0.10967819      1064.822
+## longitude 0.15949843      2222.183
+## latitude  0.14267707      1631.695</code></pre>
 <pre class="r"><code>p1 &lt;- create_rfplot(rf1, type = 1)
 #ggsave('../article/images/regr_permute_R.svg',
        #plot = p1, device = 'svg', height = 4, width = 6)</code></pre>
 <pre class="r"><code># with random column
 rf2 &lt;- randomForest(price~., data = df, mtry = 4,
                  ntree = 40, importance=T)
-p2 &lt;- create_rfplot(rf2, type = 1)
+importance(rf2, scale=F)</code></pre>
+<pre><code>##                 %IncMSE IncNodePurity
+## bathrooms  8.938602e-02     3667.5716
+## bedrooms   1.052651e-01     1359.3593
+## longitude  1.407121e-01     2160.4903
+## latitude   1.234316e-01     1548.3810
+## random    -5.688796e-05      358.3692</code></pre>
+<pre class="r"><code>p2 &lt;- create_rfplot(rf2, type = 1)
 #ggsave('../article/images/regr_permute_random_R.svg',
        #plot = p2, device = 'svg', height = 4, width = 6)
-imp1 &lt;- data.frame(importance(rf2, type = 1))
-write.csv(imp1, file=&quot;imp_R_regr_MSE.csv&quot;)</code></pre>
+imp1 &lt;- data.frame(importance(rf2, type = 1, scale=F))
+write.csv(imp1, file=&quot;./data/imp_R_regr_MSE.csv&quot;)</code></pre>
 </div>
 <div id="type-2-mean-decrease-in-node-impurity-rss-by-splitting-on-columns-pythons-default" class="section level4">
 <h4>TYPE 2 = Mean decrease in node impurity (RSS) by splitting on columns, <strong>Python’s default</strong></h4>
@@ -228,8 +235,8 @@ rf2 &lt;- randomForest(price~., data = df, mtry = 4,
 p2 &lt;- create_rfplot(rf2, type = 2)
 #ggsave('../article/images/regr_dflt_random_R.svg',
        #plot = p2, device = 'svg', height = 4, width = 6)
-imp1 &lt;- data.frame(importance(rf2, type = 2))
-write.csv(imp1, file=&quot;imp_R_regr_RSS.csv&quot;)</code></pre>
+imp1 &lt;- data.frame(importance(rf2, type = 2,scale=F))
+write.csv(imp1, file=&quot;./data/imp_R_regr_RSS.csv&quot;)</code></pre>
 </div>
 </div>
 <div id="examine-cost-by-dropping" class="section level2">
@@ -265,7 +272,7 @@ p2 &lt;- create_ggplot(featureImportance)
 #ggsave('../article/images/regr_drop_random_R.svg',
        #plot = p2, device = 'svg', height = 4, width = 6)
 
-write.csv(featureImportance, file=&quot;imp_R_regr_drop.csv&quot;)</code></pre>
+write.csv(featureImportance, file=&quot;./data/imp_R_regr_drop.csv&quot;)</code></pre>
 </div>
 
 
