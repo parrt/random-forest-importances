@@ -12,6 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import cross_val_score
 from sklearn.base import clone
 from sklearn.metrics import r2_score
 import warnings
@@ -19,12 +20,60 @@ import warnings
 from sklearn.ensemble.forest import _generate_unsampled_indices
 
 
-def importances(rf, X_train, y_train):
+def importances(model, X_valid, y_valid):
     """
-    Compute permutation feature importances for scikit-learn.
+    Compute permutation feature importances for scikit-learn models using
+    a validation set.
 
-    Given a RandomForestClassifier or RandomForestRegressor in rf
-    and training X and y data, return a data frame with columns
+    Given a Classifier or Regressor in model
+    and validation X and y data, return a data frame with columns
+    Feature and Importance sorted in reverse order by importance.
+    The validation data is needed to compute model performance
+    measures (accuracy or R^2). The model is not retrained.
+
+    The model.score() method is called to measure accuracy drops.
+
+    This version that computes accuracy drops with the validation set
+    is much faster than the OOB, cross validation, or drop column
+    versions. The OOB version is a less vectorized because it needs to dig
+    into the trees to get out of examples. The cross validation and drop column
+    versions need to do retraining and are necessarily much slower.
+
+    This function used OOB not validation sets in 1.0.5; switched to faster
+    test set version for 1.0.6. (breaking API change)
+
+    return: A data frame with Feature, Importance columns
+
+    SAMPLE CODE
+
+    rf = RandomForestRegressor(n_estimators=100, n_jobs=-1)
+    X_train, y_train = ..., ...
+    X_valid, y_valid = ..., ...
+    rf.fit(X_train, y_train)
+    imp = importances(rf, X_valid, y_valid)
+    """
+    baseline = model.score(X_valid, y_valid)
+    X_valid = X_valid.copy(deep=False)  # shallow copy
+    imp = []
+    for col in X_valid.columns:
+        save = X_valid[col].copy()
+        X_valid[col] = np.random.permutation(X_valid[col])
+        m = model.score(X_valid, y_valid)
+        X_valid[col] = save
+        imp.append(baseline - m)
+
+    I = pd.DataFrame(data={'Feature': X_valid.columns, 'Importance': np.array(imp)})
+    I = I.set_index('Feature')
+    I = I.sort_values('Importance', ascending=True)
+    return I
+
+
+def oob_importances(rf, X_train, y_train):
+    """
+    Compute permutation feature importances for scikit-learn
+    RandomForestClassifier or RandomForestRegressor in arg rf.
+
+    Given training X and y data, return a data frame with columns
     Feature and Importance sorted in reverse order by importance.
     The training data is needed to compute out of bag (OOB)
     model performance measures (accuracy or R^2). The model
@@ -37,13 +86,59 @@ def importances(rf, X_train, y_train):
     rf = RandomForestRegressor(n_estimators=100, n_jobs=-1, oob_score=True)
     X_train, y_train = ..., ...
     rf.fit(X_train, y_train)
-    imp = importances(rf, X_train, y_train)
+    imp = oob_importances(rf, X_train, y_train)
     """
     if isinstance(rf, RandomForestClassifier):
         return permutation_importances(rf, X_train, y_train, oob_classifier_accuracy)
     elif isinstance(rf, RandomForestRegressor):
         return permutation_importances(rf, X_train, y_train, oob_regression_r2_score)
     return None
+
+
+def cv_importances(model, X_train, y_train, k=3):
+    """
+    Compute permutation feature importances for scikit-learn models using
+    k-fold cross-validation (default k=3).
+
+    Given a Classifier or Regressor in model
+    and training X and y data, return a data frame with columns
+    Feature and Importance sorted in reverse order by importance.
+    The validation data is needed to compute model performance
+    measures (accuracy or R^2). The model is retrained during
+    cross-validation like with dropcol_dropcol_importances().
+
+    The model.score() method is called to measure accuracy drops.
+
+    return: A data frame with Feature, Importance columns
+
+    SAMPLE CODE
+
+    rf = RandomForestRegressor(n_estimators=100, n_jobs=-1)
+    X_train, y_train = ..., ...
+    rf.fit(X_train, y_train)
+    imp = cv_importances(rf, X_train, y_train)
+    """
+    def score(model):
+        cvscore = cross_val_score(
+            model,  # which model to use
+            X_train, y_train,  # what training data to split up
+            cv=k)  # number of folds/chunks
+        return np.mean(cvscore)
+
+    X_train = X_train.copy(deep=False)  # shallow copy
+    baseline = score(model)
+    imp = []
+    for col in X_train.columns:
+        save = X_train[col].copy()
+        X_train[col] = np.random.permutation(X_train[col])
+        m = score(model)
+        X_train[col] = save
+        imp.append(baseline - m)
+
+    I = pd.DataFrame(data={'Feature': X_train.columns, 'Importance': np.array(imp)})
+    I = I.set_index('Feature')
+    I = I.sort_values('Importance', ascending=True)
+    return I
 
 
 def permutation_importances(rf, X_train, y_train, metric):

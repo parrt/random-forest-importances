@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='rfpimp',
-    version='1.0.5',
+    version='1.0.6',
     url='https://github.com/parrt/random-forest-importances',
     license='MIT',
     py_modules=['rfpimp'],
