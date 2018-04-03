@@ -20,7 +20,7 @@ import warnings
 from sklearn.ensemble.forest import _generate_unsampled_indices
 
 
-def importances(model, X_valid, y_valid):
+def importances(model, X_valid, y_valid, n_samples=3500):
     """
     Compute permutation feature importances for scikit-learn models using
     a validation set.
@@ -42,6 +42,17 @@ def importances(model, X_valid, y_valid):
     This function used OOB not validation sets in 1.0.5; switched to faster
     test set version for 1.0.6. (breaking API change)
 
+    :param model: The scikit model fit to training data
+    :param X_valid: Data frame with feature vectors of the validation set
+    :param y_valid: Series with target variable of validation set
+    :param n_samples: How many records of the validation set to use
+                      to compute permutation importance. The default is
+                      3500, which we arrived at by experiment over a few data sets.
+                      As we cannot be sure how all data sets will react,
+                      you can pass in whatever sample size you want. Pass in -1
+                      to mean entire validation set. Our experiments show that
+                      not too many records are needed to get an accurate picture of
+                      feature importance.
     return: A data frame with Feature, Importance columns
 
     SAMPLE CODE
@@ -52,8 +63,16 @@ def importances(model, X_valid, y_valid):
     rf.fit(X_train, y_train)
     imp = importances(rf, X_valid, y_valid)
     """
+    if n_samples<0: n_samples = len(X_valid)
+    n_samples = min(n_samples, len(X_valid))
+    if n_samples<len(X_valid):
+        ix = np.random.choice(len(X_valid),n_samples)
+        X_valid = X_valid.iloc[ix].copy(deep=False) # shallow copy
+        y_valid = y_valid.iloc[ix].copy(deep=False)
+    else:
+        X_valid = X_valid.copy(deep=False) # we're modifying columns
+
     baseline = model.score(X_valid, y_valid)
-    X_valid = X_valid.copy(deep=False)  # shallow copy
     imp = []
     for col in X_valid.columns:
         save = X_valid[col].copy()

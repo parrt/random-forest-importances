@@ -1,6 +1,15 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-113303773-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-113303773-1');
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
 <link rel="stylesheet" type="text/css" href="css/book.css"/>
@@ -10,7 +19,8 @@
 <h1>Beware Default Random Forest Importances</h1>
 
 <p id=author><a href="http://parrt.cs.usfca.edu">Terence Parr</a>, <a href="https://www.linkedin.com/in/kerem-turgutlu-12906b65/">Kerem Turgutlu</a>, 
-<a href="https://www.linkedin.com/in/cpcsiszar/">Christopher Csiszar</a>, and <a href="http://www.fast.ai/about/#jeremy">Jeremy Howard</a></p>
+<a href="https://www.linkedin.com/in/cpcsiszar/">Christopher Csiszar</a>, and <a href="http://www.fast.ai/about/#jeremy">Jeremy Howard</a><br>
+March 26, 2018.</p>
 
 <p>(Terence and Jeremy teach in University of San Francisco's <a href="https://www.usfca.edu/arts-sciences/graduate-programs/data-science">MS in Data Science program</a>. You might know Terence as the creator of the <a href="http://www.antlr.org">ANTLR parser generator</a>. For more material, see Jeremy's <a href="http://course.fast.ai">fast.ai courses</a>. Kerem and Christopher are current MS Data Science students.)</p>
 
@@ -34,6 +44,7 @@ The scikit-learn Random Forest feature importance and R's default Random Forest 
 		<li><a href="#6.2">R permutation importance</a></li>
 		<li><a href="#6.3">R drop-column importance</a></li>
 	</ul>
+        <li><a href="#perf">Performance and model-neutrality considerations</a>
 	<li><a href="#7">Summary</a></li>
 	<li><a href="#8">Resources and sample code</a></li>
 	<ul>
@@ -382,7 +393,42 @@ For completeness, we implemented drop-column importance in R and compared it to 
 <td>
 <b>Figure 9(b)</b>. Importances derived by dropping each column, retraining a <font size=-1><tt>scikit</tt></font> RF <b>classifier</b>, and computing the change in out-of-bag accuracy.
 </table>
-	
+
+<a name="perf"></a><h3>Performance and model-neutrality considerations</h3>
+
+<p>The permutation importance code shown above uses out-of-bag (OOB) samples as validation samples, which limits its use to RFs. If we rely on the standard scikit <tt>score()</tt> function on models, it's a simple matter to alter the permutation importance to work on any model.  Instead of passing in the training data, from which OOB samples are drawn, we have to pass in a validation set. (Don't pass in your test set, which should only used as a final step to measure final model generality; the validation set is used to tune and probe a model.) Also, instead of using a generic metric function passed in as an argument:</p>
+
+<div class="codeblk">baseline = metric(rf, X_train, y_train)
+</div>
+
+<p>we can call the <tt>score()</tt> function to use the default accuracy mechanism directly:
+
+<div class="codeblk">baseline = model.score(X_valid, y_valid)
+</div>
+
+
+but that means iterating through the trees with a Python loop rather than using the highly vectorized code inside scikit/numpy. For large data sets, it's extremely slow.
+
+test set size 9660 x 4 for rent.csv (20%)
+
+confidential set: (36039, 36)
+rf = RandomForestClassifier(n_estimators=100, min_samples_leaf=1, n_jobs=-1)
+%time I = importances(rf, X_test, y_test)
+plot_importances(I)
+new impor with subsample: Wall time: 3.95 s
+will full 36k data set: 
+	%time I = importances(rf, X_test, y_test, n_samples=-1)
+	plot_importances(I)
+	CPU times: user 40.8 s, sys: 746 ms, total: 41.5 s
+	Wall time: 8.25 s
+
+Eli on confidential set:
+	from eli5.sklearn import PermutationImportance
+	import eli5
+	%time perm = PermutationImportance(rf).fit(X_test, y_test)
+	CPU times: user 2min 56s, sys: 2.76 s, total: 2min 58s
+	Wall time: 38.8 s
+ 
 <a name="7"></a><h3>Summary</h3>
 
 <p>
@@ -391,15 +437,20 @@ The takeaway from this article is that the most popular RF implementation in Pyt
 <p>
 Finally, we'd like to recommend the use of permutation, or even drop-column, importance strategies for all machine learning models rather than trying to interpret internal model parameters as proxies for feature importances.
 
+
 <a name="8"></a><h3>Resources and sample code</h3>
 
-<p>Breiman and Cutler are the inventors of RFs, so it's worth checking out their discussion of <a href="https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm#varimp">variable importance</a>. They describe the mean-decrease-in-impurity importance and also the permutation importance.
-
-<p>A good source of information on the bias associated with mean-decrease-in-impurity importance is Strobl <i>et al</i> from 2007: <a href="https://link.springer.com/article/10.1186%2F1471-2105-8-25">Bias in random forest variable importance measures: Illustrations, sources and a solution</a>.
-
-<p>To go beyond basic permutation importance, check out Strobl <i>et al</i>'s paper: <a href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-307">Conditional variable importance for random forests</a>. This article also talks about why we should use the raw mean decrease in accuracy score rather than normalizing it by dividing by the standard deviation.
+<ul>
+<li>Breiman and Cutler are the inventors of RFs, so it's worth checking out their discussion of <a href="https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm#varimp">variable importance</a>. They describe the mean-decrease-in-impurity importance and also the permutation importance.
 	
-<p>Ando Saabas has a nice blog entry called <a href="http://blog.datadive.net/selecting-good-features-part-iii-random-forests/">Selecting good features – Part III: random forests</a> that includes an implementation of permutation importance, but it requires a validation set instead of using out-of-bag samples.  The same author also has a blog describing <a href="http://blog.datadive.net/selecting-good-features-part-iv-stability-selection-rfe-and-everything-side-by-side/">stability selection and recursive feature implementation</a>, related to this topic.
+<li>The <a href="http://eli5.readthedocs.io/en/latest/index.html">eli5</a> library appears to be an excellent add-on to scikit-learn for visualizing and debugging. They have a <a href="http://eli5.readthedocs.io/en/latest/blackbox/permutation_importance.html">permutation importance</a> implemented as well.
+
+<li>A good source of information on the bias associated with mean-decrease-in-impurity importance is Strobl <i>et al</i> from 2007: <a href="https://link.springer.com/article/10.1186%2F1471-2105-8-25">Bias in random forest variable importance measures: Illustrations, sources and a solution</a>.
+
+<li>To go beyond basic permutation importance, check out Strobl <i>et al</i>'s paper: <a href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-307">Conditional variable importance for random forests</a>. This article also talks about why we should use the raw mean decrease in accuracy score rather than normalizing it by dividing by the standard deviation.
+	
+<li>Ando Saabas has a nice blog entry called <a href="http://blog.datadive.net/selecting-good-features-part-iii-random-forests/">Selecting good features – Part III: random forests</a> that includes an implementation of permutation importance, but it requires a validation set instead of using out-of-bag samples.  The same author also has a blog describing <a href="http://blog.datadive.net/selecting-good-features-part-iv-stability-selection-rfe-and-everything-side-by-side/">stability selection and recursive feature implementation</a>, related to this topic.
+</ul>
 
 <p>
 If your data set is not too big or you have a really beefy computer, you can always use the drop-column importance measure to get an accurate picture of how each variable affects the model performance.
