@@ -193,7 +193,7 @@ As well as being broadly applicable, the implementation of permutation importanc
 	Notice that the function does not normalize the importance values, such as dividing by the standard deviation. According to <a href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-307">Conditional variable importance for random forests</a>, &ldquo;<i>the raw [permutation] importance&hellip; has better statistical properties</i>.&rdquo; Those importance values will not sum up to one and it's important to remember that we don't care what the values are <i>per se</i>. What we care about is the relative predictive strengths of the features. (When using the <tt>importances()</tt> function in R, make sure to use <tt>scale=F</tt> to to prevent this normalization.)
 
 <p>
-The key to this &ldquo;baseline minus drop in performance metric&rdquo; computation is to use a validation set or the OOB samples, not the training set (for the same reason we measure model generality with a validation set or OOB samples). Our <font size=-1><tt>permutation_importances()</tt></font> function expects the <font size=-1><tt>metric</tt></font> argument (a function) to use out-of-bag samples when computing accuracy or R<sup>2</sup> because there is no validation set argument. (We figured out how to grab the OOB samples from the scikit RF source code.) You can check out our functions that compute the <a href="https://github.com/parrt/random-forest-importances/blob/master/src/rfpimp.py#L122">OOB classifier accuracy</a> and <a href="https://github.com/parrt/random-forest-importances/blob/master/src/rfpimp.py#L148">OOB regression R<sup>2</sup> score</a> (without altering the RF model state). Here are two code snippets that call the permutation importance function for regressors and classifiers:
+The key to this &ldquo;baseline minus drop in performance metric&rdquo; computation is to use a validation set or the OOB samples, not the training set (for the same reason we measure model generality with a validation set or OOB samples). Our <font size=-1><tt>permutation_importances()</tt></font> function expects the <font size=-1><tt>metric</tt></font> argument (a function) to use out-of-bag samples when computing accuracy or R<sup>2</sup> because there is no validation set argument. (We figured out how to grab the OOB samples from the scikit RF source code.) You can check out our functions that compute the <a href="https://github.com/parrt/random-forest-importances/blob/master/src/rfpimp.py#L237">OOB classifier accuracy</a> and <a href="https://github.com/parrt/random-forest-importances/blob/master/src/rfpimp.py#L263">OOB regression R<sup>2</sup> score</a> (without altering the RF model state). Here are two code snippets that call the permutation importance function for regressors and classifiers:
 
 <div class="codeblk">rf = RandomForestRegressor(...)
 rf.fit(X_train, y_train) # rf must be pre-trained
@@ -394,41 +394,139 @@ For completeness, we implemented drop-column importance in R and compared it to 
 <b>Figure 9(b)</b>. Importances derived by dropping each column, retraining a <font size=-1><tt>scikit</tt></font> RF <b>classifier</b>, and computing the change in out-of-bag accuracy.
 </table>
 
-<a name="perf"></a><h3>Performance and model-neutrality considerations</h3>
+<a name="empirical"></a><h3>Empirical results</h3>
 
-<p>The permutation importance code shown above uses out-of-bag (OOB) samples as validation samples, which limits its use to RFs. If we rely on the standard scikit <tt>score()</tt> function on models, it's a simple matter to alter the permutation importance to work on any model.  Instead of passing in the training data, from which OOB samples are drawn, we have to pass in a validation set. (Don't pass in your test set, which should only used as a final step to measure final model generality; the validation set is used to tune and probe a model.) Also, instead of using a generic metric function passed in as an argument:</p>
+<a name="neutral"></a><h4>Model-neutral permutation importance</h4>
 
-<div class="codeblk">baseline = metric(rf, X_train, y_train)
-</div>
-
-<p>we can call the <tt>score()</tt> function to use the default accuracy mechanism directly:
+<p>The permutation importance code shown above uses out-of-bag (OOB) samples as validation samples, which limits its use to RFs. If we rely on the standard scikit <tt>score()</tt> function on models, it's a simple matter to alter the permutation importance to work on any model.  Also, instead of passing in the training data, from which OOB samples are drawn, we have to pass in a validation set. (Don't pass in your test set, which should only used as a final step to measure final model generality; the validation set is used to tune and probe a model.) Here's the core of the model-neutral version:
 
 <div class="codeblk">baseline = model.score(X_valid, y_valid)
+imp = []
+for col in X_valid.columns:
+    save = X_valid[col].copy()
+    X_valid[col] = np.random.permutation(X_valid[col])
+    m = model.score(X_valid, y_valid)
+    X_valid[col] = save
+    imp.append(baseline - m)
 </div>
 
+See our function <a href="https://github.com/parrt/random-forest-importances/blob/master/src/rfpimp.py#L23">importances()</a> in the rfpimp package.
 
-but that means iterating through the trees with a Python loop rather than using the highly vectorized code inside scikit/numpy. For large data sets, it's extremely slow.
+<a name="perf"></a><h4>Performance considerations</h4>
 
-test set size 9660 x 4 for rent.csv (20%)
+<p>The use of OOB samples for permutation importance computation also has strongly negative performance implications. Using OOB samples means iterating through the trees with a Python loop rather than using the highly vectorized code inside scikit/numpy for making predictions. For even data sets of modest size, the  permutation function described in the main body of this article based upon OOB samples is extremely slow. 
 
-confidential set: (36039, 36)
-rf = RandomForestClassifier(n_estimators=100, min_samples_leaf=1, n_jobs=-1)
-%time I = importances(rf, X_test, y_test)
-plot_importances(I)
-new impor with subsample: Wall time: 3.95 s
-will full 36k data set: 
-	%time I = importances(rf, X_test, y_test, n_samples=-1)
-	plot_importances(I)
-	CPU times: user 40.8 s, sys: 746 ms, total: 41.5 s
-	Wall time: 8.25 s
+<p>On a (confidential) data set we have laying around with 452,122 training records and 36 features, OOB-based permutation importance takes about 7 minutes on a 4-core iMac running at 4Ghz with ample RAM. The invocation from a notebook in Jupyter Lab looks like:
 
-Eli on confidential set:
-	from eli5.sklearn import PermutationImportance
-	import eli5
-	%time perm = PermutationImportance(rf).fit(X_test, y_test)
-	CPU times: user 2min 56s, sys: 2.76 s, total: 2min 58s
-	Wall time: 38.8 s
- 
+<div class="codeblk">from rfpimp import *
+rf = RandomForestClassifier(n_estimators=100, n_jobs=-1)
+%time I = oob_importances(rf, X_train, y_train)
+</div>
+
+<p>
+Using a validation set with 36,039 records instead of OOB samples, takes about 8 seconds (<tt>n_samples=-1</tt> implies use all validation samples):
+
+<div class="codeblk">%time I = importances(rf, X_valid, y_valid, n_samples=-1)
+</div>
+
+<p>
+If we further let the importance is function use the default of 3,500 samples taken randomly from the validation set, the time drops to about 4 seconds. These test numbers are completely unscientific but give you a ballpark of speed improvement. 7 minutes down 4 seconds is pretty dramatic. (See the next section on validation set size.)
+
+<p>Using the much smaller rent.csv file, we see smaller durations overall but again using a validation set over OOB samples gives a nice boost in speed. With a  validation set size 9660 x 4 columns (20% of the data), we see about 1 second to compute importance is on the full validation set and 1/2 second using 3,500 validation samples.
+	
+<p>We added a permutation importance function that computes the drop in accuracy using cross validation. Even for the small data set, the time cost of 32 seconds is prohibitive because of the retraining involved. Here's the invocation:
+	
+<div class="codeblk">%time I = cv_importances(rf, X_train, y_train, k=5)
+</div>
+
+<p>Similarly, the drop column mechanism takes 20 seconds:
+	
+<div class="codeblk">%time I = dropcol_importances(rf, X_train, y_train)
+</div>
+
+<p>It's faster than the cross validation because it is only doing a single training per feature not <i>k</i> trainings per feature.
+	
+<p>We also looked at using the nice Eli5 library to compute permutation importances.  Eli5's permutation mechanism also supports various kinds of validation set and cross validation strategies; the mechanism is also model neutral, even to models outside of scikit. On the confidential data set with 36,039 validation records, eli5 takes 39 seconds. On the smaller data set with 9660 validation records, eli5 takes 2 seconds. Here's the invocation we used:
+	
+<div class="codeblk">from eli5.sklearn import PermutationImportance
+%time perm = PermutationImportance(rf).fit(X_test, y_test)	
+</div>
+
+<a name="size"></a><h4>The effect of validation set size on importance</h4>
+
+We hypothesized that it's possible to extract meaningful feature importance without using a very large validation set, which would give us the opportunity to improve speed by using a subsample of the validation set.  We ran simulations on two very different data sets, one of which is the rent data used in this article and the other is a 5x bigger confidential data set. <b>Figure 10</b> summarizes the results for the two data sets.  From this we can conclude that 3500 is a decent default number of samples to use when computing importance using a validation set. 
+
+<table class=figure>
+<tr>
+<td style="vertical-align: bottom;">
+	<img src="images/rent-pimp-sample-size.svg" width="100%">
+<td style="vertical-align: bottom;">
+	<img src="images/test-dataset-pimp-sample-size.svg" width="100%">
+<tr>
+<td>
+<b>Figure 10(a)</b>. <tt>rent.csv</tt> data set. Mean absolute difference of feature importance values for a validation set subsample compared to feature important values computed using entire validation set. Regressor on 38,640 training records and 4 features; 9,660 validation records.
+<td>
+
+<b>Figure 10(b)</b>. Confidential data set. Mean absolute difference of feature importance values for a validation set subsample compared to feature important values computed using entire validation set.  Binary classifier on 452,122 training records and 36 features; 36,039 validation records.
+</table>
+
+<p>Naturally, this is only two data sets and so the importances function takes a <tt>n_samples</tt> argument so you can experiment (-1 implies entire validation set.) Our rfpimp package is really meant as an educational exercise but you're welcome to use the library for actual work if you like. :)
+
+<a name="collinear"></a><h4>The effect of collinear features on importance</h4>
+
+<p>
+Feature importance is a key part of model interpretation and understanding the business problem that originally drove you to create a model in the first place.  We have to keep in mind, though, that the feature importance mechanisms we describe in this article consider each feature individually.  If all features are totally independent and not correlated in any way, than computing feature importance individually is no problem. If, however, two or more features are <i>collinear</i> (correlated in some way but not necessarily with a strictly linear relationship) computing feature importance individually can give unexpected results.
+
+<p>
+The effect of collinear features is most stark when looking at drop column importance. <b>Figure 11(a)</b> shows the drop column importance on a decent regressor model (R<sup>2</sup> is 0.85) for the rent data. <b>Figure 11(b)</b> shows the exact same model but with the longitude column duplicated. At first, it's shocking to see the most important feature disappear from the importance graph, but remember that we measure importance is a drop in accuracy. If we have two longitude columns and drop one, there should not be a change in accuracy (at least for a RF model that doesn't get confused by duplicate columns.) Without a change in accuracy from the baseline, the importance for a dropped feature is zero.
+
+<table class=figure>
+<tr>
+	<th colspan=2 align=center>Drop column importance dup'd longitude column</th>
+</tr>
+<tr>
+<td style="vertical-align: bottom;">
+	<img src="images/collinear_dropcol.svg" width="60%">
+<td style="vertical-align: bottom;">
+	<img src="images/collinear_dropcol_longitude_dup.svg" width="70%">
+<tr>
+<td>
+<b>Figure 11(a)</b>.  <b>Drop column importance</b> strategy using random forest regressor with R<sup>2</sup>=0.85 (so a pretty decent predictor of rent price).
+<td>
+
+<b>Figure 11(b)</b>. After duplicating <tt>longitude</tt> column and rerunning <b>drop column importance</b>. Both longitude columns disappear because removing one does not affect model accuracy at all.
+</table>
+
+<p>
+It's also worth pointing out that feature importances should only be trusted with a strong model. If your model does not generalize accurately, feature importances are worthless. If your model is weak, you will notice that the feature importance is fluctuate dramatically from run to run. That's why we mention the R<sup>2</sup> of our model.
+
+<p>
+The effect of collinear features on permutation importance is more nuanced and depends on the model; we'll only discuss RFs here.  During decision tree construction, node splitting should choose equally important variables roughly 50-50. So, in a sense, conking the RF on the head with a coconut by permuting one of those equally important columns should be half supported by the other identical column during prediction. In fact, that's exactly what we see empirically in <b>Figure 12(b)</b> after duplicating the longitude column, retraining, and rerunning permutation importance.
+
+<table class=figure>
+<tr>
+	<th colspan=2>Permutation importance dup'd longitude column</th>
+</tr>
+<tr>
+<td style="vertical-align: bottom;">
+	<img src="images/collinear_permute.svg" width="60%">
+<td style="vertical-align: bottom;">
+	<img src="images/collinear_permute_longitude_dup.svg" width="60%">
+<tr>
+<td>
+<b>Figure 12(a)</b>.  <b>Permutation importance</b> strategy using random forest regressor.
+<td>
+
+<b>Figure 12(b)</b>. After duplicating <tt>longitude</tt> column and rerunning <b>permutation importance</b>. Both longitude columns share importance and so we see roughly 50-50 important.
+</table>
+
+<p>
+The longitude range is 0.3938 so let's add uniform noise in range 0..c for some constant c.
+
+<div class="codeblk">noise = np.random.random(len(X_train_val)) * c
+X_train['longitude_noisy'] = X_train.longitude + noise
+</div>
+
 <a name="7"></a><h3>Summary</h3>
 
 <p>
@@ -473,21 +571,22 @@ import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 
 df = pd.read_csv("rent.csv")
-features = ['bathrooms','bedrooms','longitude','latitude', 'price']
-dfr = df[features].copy()
-dfr['price'] = np.log(dfr['price'])
+df_train, df_test = train_test_split(df, test_size=0.20)
 
-rf = RandomForestRegressor(n_estimators=100,
-                           min_samples_leaf=1,
-                           n_jobs=-1,
-                           oob_score=True)
+features = ['bathrooms','bedrooms','longitude','latitude',
+            'price']
+df_train = df_train[features]
+df_test = df_test[features]
 
-X_train, y_train = dfr.drop('price',axis=1), dfr['price']
-# Add column of random numbers
+rf = RandomForestRegressor(n_estimators=100, n_jobs=-1)
+
+X_train, y_train = df_train.drop('price',axis=1), df_train['price']
+X_test, y_test = df_test.drop('price',axis=1), df_test['price']
 X_train['random'] = np.random.random(size=len(X_train))
+X_test['random'] = np.random.random(size=len(X_test))
 rf.fit(X_train, y_train)
 
-imp = importances(rf, X_train, y_train) # permutation
+imp = importances(rf, X_test, y_test) # permutation
 plot_importances(imp)
 </div>
 
