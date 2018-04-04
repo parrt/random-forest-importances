@@ -291,7 +291,7 @@ def oob_regression_r2_score(rf, X_train, y_train):
 
 
 def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
-                     figsize=None, scalefig=(1.0,1.0), show=True):
+                     figsize=None, scalefig=(1.0, 1.0), show=True):
     """
     Given an array or data frame of importances, plot a horizontal bar chart
     showing the importance values.
@@ -309,6 +309,7 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
     :type scalefig: 2-tuple of floats
     :param showfig: Execute plt.show() if true (default is True). Sometimes
                     we want to draw multiple things before calling plt.show()
+    :type showfig: bool
     :return: None
 
     SAMPLE CODE
