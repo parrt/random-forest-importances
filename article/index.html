@@ -586,10 +586,10 @@ X_train['longitude_noisy'] = X_train.longitude + noise
 	<img src="images/collinear_dflt_longitude_dup.svg" width="60%">
 <tr>
 <td>
-<b>Figure 15(a)</b>.  With uniform noise in range 0-0.0005, noisy longitude column pulls down the importance of the real column.
+<b>Figure 15(a)</b>. <b>Mean-decrease-in-impurity importance</b> strategy using random forest regressor.
 <td>
 
-<b>Figure 15(b)</b>. With uniform noise in range 0-0.001, noisy longitude column doesn't pull down the importance of the real column very much.
+<b>Figure 15(b)</b>. After duplicating longitude column and rerunning <b>mean-decrease-in-impurity importance</b>. Both longitude columns share importance roughly 50-50.
 </table>
 
 <p>
