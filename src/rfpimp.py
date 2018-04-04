@@ -285,13 +285,13 @@ def oob_regression_r2_score(rf, X_train, y_train):
         n_predictions[n_predictions == 0] = 1
 
     predictions /= n_predictions
-    
+
     oob_score = r2_score(y, predictions)
     return oob_score
 
 
 def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
-                     scalefig=(1.0,1.0), show=True):
+                     figsize=None, scalefig=(1.0, 1.0), show=True):
     """
     Given an array or data frame of importances, plot a horizontal bar chart
     showing the importance values.
@@ -303,10 +303,13 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
     :type xrot: int
     :param tickstep: How many ticks to skip in X axis
     :type tickstep: int
+    :param figsize: Specify width and height of image (width,height)
+    :type figsize: 2-tuple of floats
     :param scalefig: Scale width and height of image (widthscale,heightscale)
     :type scalefig: 2-tuple of floats
     :param showfig: Execute plt.show() if true (default is True). Sometimes
                     we want to draw multiple things before calling plt.show()
+    :type showfig: bool
     :return: None
 
     SAMPLE CODE
@@ -320,7 +323,7 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
     I = df_importances
 
     fig = plt.figure()
-    w, h = fig.get_size_inches()
+    w, h = figsize if figsize else fig.get_size_inches()
     fig.set_size_inches(w*scalefig[0], h*scalefig[1], forward=True)
     ax = plt.gca()
     ax.barh(np.arange(len(I.index)), I.Importance, height=.6, tick_label=I.index)
