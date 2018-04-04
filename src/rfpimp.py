@@ -1,5 +1,3 @@
-git checkout -b figsize-random-forest-importances random-forest-importances
-
 """
 A simple library of functions that provide feature importances
 for scikit-learn random forest regressors and classifiers.
@@ -324,13 +322,7 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
     I = df_importances
 
     fig = plt.figure()
-
-    # directly set figure size
-    if figsize is None:
-        w, h = fig.get_size_inches()
-    else:
-        w, h = figsize
-
+    w, h = figsize if figsize else fig.get_size_inches()
     fig.set_size_inches(w*scalefig[0], h*scalefig[1], forward=True)
     ax = plt.gca()
     ax.barh(np.arange(len(I.index)), I.Importance, height=.6, tick_label=I.index)
