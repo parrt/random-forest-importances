@@ -46,7 +46,7 @@ The scikit-learn Random Forest feature importance and R's default Random Forest 
 		<li><a href="#6.2">R permutation importance</a></li>
 		<li><a href="#6.3">R drop-column importance</a></li>
 	</ul>
-        <li><a href="#empirical">Empirical results</a>
+        <li><a href="#experimental">Experimental results</a>
 	<ul>
 		<li><a href="#neutral">Model-neutral permutation importance</a>
 		<li><a href="#perf">Performance considerations</a>
@@ -402,7 +402,7 @@ For completeness, we implemented drop-column importance in R and compared it to 
 <b>Figure 9(b)</b>. Importances derived by dropping each column, retraining a <font size=-1><tt>scikit</tt></font> RF <b>classifier</b>, and computing the change in out-of-bag accuracy.
 </table>
 
-<a name="empirical"></a><h3>Empirical results</h3>
+<a name="experimental"></a><h3>Experimental results</h3>
 
 <a name="neutral"></a><h4>Model-neutral permutation importance</h4>
 
@@ -573,8 +573,47 @@ X_train['longitude_noisy'] = X_train.longitude + noise
 <b>Figure 14(b)</b>. With uniform noise in range 0-3, noisy bedrooms column doesn't pull down the importance of the real column very much.
 </table>
 
+<p>While we're at it, let's take a look at the effect of collinearity on the mean-decrease-in-impurity (gini importance). <b>Figure 15</b> illustrates the effect of adding a duplicate of the longitude column when using the default importance from scikit RFs. As with the permutation importance, the duplicated longitude column pulls down the importance of the original longitude column because it is sharing with the duplicated column.
+	
+<table class=figure>
+<tr>
+	<th colspan=2>Mean-decrease-in-impurity (gini) importance dup'd longitude column</th>
+</tr>
+<tr>
+<td style="vertical-align: bottom;">
+	<img src="images/collinear_dflt.svg" width="60%">
+<td style="vertical-align: bottom;">
+	<img src="images/collinear_dflt_longitude_dup.svg" width="60%">
+<tr>
+<td>
+<b>Figure 15(a)</b>.  With uniform noise in range 0-0.0005, noisy longitude column pulls down the importance of the real column.
+<td>
+
+<b>Figure 15(b)</b>. With uniform noise in range 0-0.001, noisy longitude column doesn't pull down the importance of the real column very much.
+</table>
+
 <p>
-From these experiments, it's safe to conclude that permutation importance computed on random forest models spreads importance across collinear variables. The amount of sharing appears to be a function of how much noise there is in between the two.  We do not give evidence that correlated, rather than duplicated and noisy variables, behave in the same way.  On the other hand, one can imagine that longitude and latitude are correlated in some way and could be combined into a single feature. Presumably this would show twice the importance of the individual features.
+Adding a noisy duplicate of the longitude column behaves like permutation importance as well, stealing importance from the original longitude column in proportion to the amount of noise, as shown in <b>Figure 16</b>. Naturally, we still have the odd behavior that bathrooms is considered the most important feature.
+ 
+<table class=figure>
+<tr>
+	<th colspan=2>Mean-decrease-in-impurity (gini) importance dup'd longitude + noise column</th>
+</tr>
+<tr>
+<td style="vertical-align: bottom;">
+	<img src="images/collinear_dflt_longitude_noise_0.0005.svg" width="60%">
+<td style="vertical-align: bottom;">
+	<img src="images/collinear_dflt_longitude_noise_0.0010.svg" width="60%">
+<tr>
+<td>
+<b>Figure 16(a)</b>.  With uniform noise in range 0-0.0005, noisy longitude column pulls down the importance of the real column, just as with permutation importance.
+<td>
+
+<b>Figure 16(b)</b>. With uniform noise in range 0-0.001, noisy longitude column doesn't pull down the importance of the real column very much, just as with permutation importance.
+</table>
+
+<p>
+From these experiments, it's safe to conclude that permutation importance (and mean-decrease-in-impurity importance) computed on random forest models spreads importance across collinear variables. The amount of sharing appears to be a function of how much noise there is in between the two.  We do not give evidence that correlated, rather than duplicated and noisy variables, behave in the same way.  On the other hand, one can imagine that longitude and latitude are correlated in some way and could be combined into a single feature. Presumably this would show twice the importance of the individual features.
  
 <p>
 You can find all of these collinearity experiments in <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/collinear.ipynb">collinear.ipynb</a>
