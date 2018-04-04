@@ -438,9 +438,9 @@ Using a validation set with 36,039 records instead of OOB samples, takes about 8
 </div>
 
 <p>
-If we further let the importance is function use the default of 3,500 samples taken randomly from the validation set, the time drops to about 4 seconds. These test numbers are completely unscientific but give you a ballpark of speed improvement. 7 minutes down 4 seconds is pretty dramatic. (See the next section on validation set size.)
+If we further let the importances function use the default of 3,500 samples taken randomly from the validation set, the time drops to about 4 seconds. These test numbers are completely unscientific but give you a ballpark of speed improvement. 7 minutes down 4 seconds is pretty dramatic. (See the next section on validation set size.)
 
-<p>Using the much smaller rent.csv file, we see smaller durations overall but again using a validation set over OOB samples gives a nice boost in speed. With a  validation set size 9660 x 4 columns (20% of the data), we see about 1 second to compute importance is on the full validation set and 1/2 second using 3,500 validation samples.
+<p>Using the much smaller rent.csv file, we see smaller durations overall but again using a validation set over OOB samples gives a nice boost in speed. With a  validation set size 9660 x 4 columns (20% of the data), we see about 1 second to compute importances on the full validation set and 1/2 second using 3,500 validation samples.
 	
 <p>We added a permutation importance function that computes the drop in accuracy using cross validation. Even for the small data set, the time cost of 32 seconds is prohibitive because of the retraining involved. Here's the invocation:
 	
@@ -486,7 +486,7 @@ We hypothesized that it's possible to extract meaningful feature importance with
 Feature importance is a key part of model interpretation and understanding the business problem that originally drove you to create a model in the first place.  We have to keep in mind, though, that the feature importance mechanisms we describe in this article consider each feature individually.  If all features are totally independent and not correlated in any way, than computing feature importance individually is no problem. If, however, two or more features are <i>collinear</i> (correlated in some way but not necessarily with a strictly linear relationship) computing feature importance individually can give unexpected results.
 
 <p>
-The effect of collinear features is most stark when looking at drop column importance. <b>Figure 11(a)</b> shows the drop column importance on a decent regressor model (R<sup>2</sup> is 0.85) for the rent data. <b>Figure 11(b)</b> shows the exact same model but with the longitude column duplicated. At first, it's shocking to see the most important feature disappear from the importance graph, but remember that we measure importance is a drop in accuracy. If we have two longitude columns and drop one, there should not be a change in accuracy (at least for a RF model that doesn't get confused by duplicate columns.) Without a change in accuracy from the baseline, the importance for a dropped feature is zero.
+The effect of collinear features is most stark when looking at drop column importance. <b>Figure 11(a)</b> shows the drop column importance on a decent regressor model (R<sup>2</sup> is 0.85) for the rent data. <b>Figure 11(b)</b> shows the exact same model but with the longitude column duplicated. At first, it's shocking to see the most important feature disappear from the importance graph, but remember that we measure importance as a drop in accuracy. If we have two longitude columns and drop one, there should not be a change in accuracy (at least for a RF model that doesn't get confused by duplicate columns.) Without a change in accuracy from the baseline, the importance for a dropped feature is zero.
 
 <table class=figure>
 <tr>
@@ -506,7 +506,7 @@ The effect of collinear features is most stark when looking at drop column impor
 </table>
 
 <p>
-It's also worth pointing out that feature importances should only be trusted with a strong model. If your model does not generalize accurately, feature importances are worthless. If your model is weak, you will notice that the feature importance is fluctuate dramatically from run to run. That's why we mention the R<sup>2</sup> of our model.
+It's also worth pointing out that feature importances should only be trusted with a strong model. If your model does not generalize accurately, feature importances are worthless. If your model is weak, you will notice that the feature importances fluctuate dramatically from run to run. That's why we mention the R<sup>2</sup> of our model.
 
 <p>
 The effect of collinear features on permutation importance is more nuanced and depends on the model; we'll only discuss RFs here.  During decision tree construction, node splitting should choose equally important variables roughly 50-50. So, in a sense, conking the RF on the head with a coconut by permuting one of those equally important columns should be half supported by the other identical column during prediction. In fact, that's exactly what we see empirically in <b>Figure 12(b)</b> after duplicating the longitude column, retraining, and rerunning permutation importance.
