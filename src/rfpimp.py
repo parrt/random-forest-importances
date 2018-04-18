@@ -20,7 +20,7 @@ import warnings
 from sklearn.ensemble.forest import _generate_unsampled_indices
 
 
-def importances(model, X_valid, y_valid, n_samples=3500):
+def importances(model, X_valid, y_valid, n_samples=3500, sort=True):
     """
     Compute permutation feature importances for scikit-learn models using
     a validation set.
@@ -83,7 +83,8 @@ def importances(model, X_valid, y_valid, n_samples=3500):
 
     I = pd.DataFrame(data={'Feature': X_valid.columns, 'Importance': np.array(imp)})
     I = I.set_index('Feature')
-    I = I.sort_values('Importance', ascending=True)
+    if sort:
+        I = I.sort_values('Importance', ascending=True)
     return I
 
 
