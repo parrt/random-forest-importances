@@ -12,12 +12,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble.forest import _generate_unsampled_indices
 from sklearn.model_selection import cross_val_score
 from sklearn.base import clone
 from sklearn.metrics import r2_score
+from scipy.stats import spearmanr
+from matplotlib.colors import ListedColormap
+import matplotlib.colors as mcolors
+from copy import copy
 import warnings
-
-from sklearn.ensemble.forest import _generate_unsampled_indices
 
 
 def importances(model, X_valid, y_valid, n_samples=3500, sort=True):
@@ -344,6 +347,77 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
     ax.set_xticks(new_ticks)
 
     plt.tight_layout()
+    if save:
+        plt.savefig(save, bbox_inches="tight", pad_inches=0.03)
+    if show:
+        plt.show()
+
+
+def feature_corr_matrix(df):
+    """
+    Return the Spearman's rank-order correlation between all pairs
+    of features as a matrix with feature names as index and column names.
+    The diagonal will be all 1.0 as features are self correlated.
+
+    Spearman's correlation is the same thing as converting two variables
+    to rank values and then running a standard Pearson's correlation
+    on those ranked variables. Spearman's is nonparametric and does not
+    assume a linear relationship between the variables; it looks for
+    monotonic relationships.
+
+    :param df_train: dataframe containing features as columns, and
+                     without the target variable.
+    :return: a data frame with the correlation matrix
+    """
+    corr = np.round(spearmanr(df).correlation, 4)
+    df_corr = pd.DataFrame(data=corr, index=df.columns, columns=df.columns)
+    return df_corr
+
+
+def plot_corr_heatmap(df,
+                      threshold=0.6,
+                      cmap=None,
+                      figsize=None,
+                      value_fontsize=12, label_fontsize=14,
+                      save=None,
+                      show=True):
+    """
+    Display the correlation matrix as a heatmap with any abs(value)>threshold
+    appearing with background color.
+    """
+    corr = np.round(spearmanr(df).correlation, 4)
+
+    filtered = copy(corr)
+    filtered = np.abs(filtered)  # work with abs but display negatives later
+    mask = np.ones_like(corr)
+    filtered[np.tril_indices_from(mask)] = -9999
+
+    if not cmap:
+        cw = plt.get_cmap('coolwarm')
+        cmap = ListedColormap([cw(x) for x in np.arange(.6, .85, 0.01)])
+    elif isinstance(cmap, str):
+        cmap = plt.get_cmap(cmap)
+    cm = copy(cmap)
+    cm.set_under(color='white')
+
+    if figsize:
+        plt.figure(figsize=figsize)
+    plt.imshow(filtered, cmap=cm, vmin=threshold, vmax=1, aspect='equal')
+
+    width, height = filtered.shape
+    for x in range(width):
+        for y in range(height):
+            if x < y:
+                plt.annotate(str(np.round(corr[x, y], 2)), xy=(y, x),
+                             horizontalalignment='center',
+                             verticalalignment='center',
+                             fontsize=value_fontsize)
+    plt.colorbar()
+    plt.xticks(range(width), df.columns, rotation=50, horizontalalignment='right',
+               fontsize=label_fontsize)
+    plt.yticks(range(width), df.columns, verticalalignment='center',
+               fontsize=label_fontsize)
+
     if save:
         plt.savefig(save, bbox_inches="tight", pad_inches=0.03)
     if show:
