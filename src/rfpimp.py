@@ -382,8 +382,21 @@ def plot_corr_heatmap(df,
                       save=None,
                       show=True):
     """
-    Display the correlation matrix as a heatmap with any abs(value)>threshold
-    appearing with background color.
+    Display the feature spearman's correlation matrix as a heatmap with
+    any abs(value)>threshold appearing with background color.
+
+    Spearman's correlation is the same thing as converting two variables
+    to rank values and then running a standard Pearson's correlation
+    on those ranked variables. Spearman's is nonparametric and does not
+    assume a linear relationship between the variables; it looks for
+    monotonic relationships.
+
+    SAMPLE CODE
+
+    from rfpimp import plot_corr_heatmap
+    plot_corr_heatmap(df_train, save='/tmp/corrheatmap.svg',
+                      figsize=(7,5), label_fontsize=13, value_fontsize=11)
+
     """
     corr = np.round(spearmanr(df).correlation, 4)
 
