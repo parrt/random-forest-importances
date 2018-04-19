@@ -23,7 +23,7 @@ from copy import copy
 import warnings
 
 
-def importances(model, X_valid, y_valid, n_samples=3500, sort=True):
+def importances(model, X_valid, y_valid, features=None, n_samples=3500, sort=True):
     """
     Compute permutation feature importances for scikit-learn models using
     a validation set.
@@ -48,6 +48,9 @@ def importances(model, X_valid, y_valid, n_samples=3500, sort=True):
     :param model: The scikit model fit to training data
     :param X_valid: Data frame with feature vectors of the validation set
     :param y_valid: Series with target variable of validation set
+    :param features: The list of features to show in importance graph.
+                     These can be strings (column names) or lists of column
+                     names. E.g., features = ['bathrooms', ['latitude', 'longitude']]
     :param n_samples: How many records of the validation set to use
                       to compute permutation importance. The default is
                       3500, which we arrived at by experiment over a few data sets.
@@ -66,6 +69,9 @@ def importances(model, X_valid, y_valid, n_samples=3500, sort=True):
     rf.fit(X_train, y_train)
     imp = importances(rf, X_valid, y_valid)
     """
+    if not features:
+        # each feature in its own group
+        features = X_valid.columns.values
     if n_samples<0: n_samples = len(X_valid)
     n_samples = min(n_samples, len(X_valid))
     if n_samples<len(X_valid):
@@ -77,14 +83,18 @@ def importances(model, X_valid, y_valid, n_samples=3500, sort=True):
 
     baseline = model.score(X_valid, y_valid)
     imp = []
-    for col in X_valid.columns:
-        save = X_valid[col].copy()
-        X_valid[col] = np.random.permutation(X_valid[col])
+    for group in features:
+        save = X_valid[group].copy()
+        if isinstance(group, str):
+            X_valid[group] = np.random.permutation(X_valid[group])
+        else:
+            for col in group:
+                X_valid[col] = np.random.permutation(X_valid[col])
         m = model.score(X_valid, y_valid)
-        X_valid[col] = save
+        X_valid[group] = save
         imp.append(baseline - m)
 
-    I = pd.DataFrame(data={'Feature': X_valid.columns, 'Importance': np.array(imp)})
+    I = pd.DataFrame(data={'Feature': features, 'Importance': np.array(imp)})
     I = I.set_index('Feature')
     if sort:
         I = I.sort_values('Importance', ascending=True)
@@ -330,7 +340,14 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
     w, h = figsize if figsize else fig.get_size_inches()
     fig.set_size_inches(w*scalefig[0], h*scalefig[1], forward=True)
     ax = plt.gca()
-    ax.barh(np.arange(len(I.index)), I.Importance, height=.6, tick_label=I.index)
+    labels = []
+    for col in I.index:
+        if isinstance(col,list):
+            labels.append('\n'.join(col))
+        else:
+            labels.append(col)
+
+    ax.barh(np.arange(len(I.index)), I.Importance, height=.6, tick_label=labels)
 
     x0, x1 = ax.get_xlim()
     y0, y1 = ax.get_ylim()
@@ -379,6 +396,7 @@ def plot_corr_heatmap(df,
                       cmap=None,
                       figsize=None,
                       value_fontsize=12, label_fontsize=14,
+                      xrot=80,
                       save=None,
                       show=True):
     """
@@ -426,7 +444,7 @@ def plot_corr_heatmap(df,
                              verticalalignment='center',
                              fontsize=value_fontsize)
     plt.colorbar()
-    plt.xticks(range(width), df.columns, rotation=50, horizontalalignment='right',
+    plt.xticks(range(width), df.columns, rotation=xrot, horizontalalignment='right',
                fontsize=label_fontsize)
     plt.yticks(range(width), df.columns, verticalalignment='center',
                fontsize=label_fontsize)
