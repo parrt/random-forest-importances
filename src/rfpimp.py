@@ -50,7 +50,8 @@ def importances(model, X_valid, y_valid, features=None, n_samples=3500, sort=Tru
     :param y_valid: Series with target variable of validation set
     :param features: The list of features to show in importance graph.
                      These can be strings (column names) or lists of column
-                     names. E.g., features = ['bathrooms', ['latitude', 'longitude']]
+                     names. E.g., features = ['bathrooms', ['latitude', 'longitude']].
+                     Feature groups can overlap, with features appearing in multiple.
     :param n_samples: How many records of the validation set to use
                       to compute permutation importance. The default is
                       3500, which we arrived at by experiment over a few data sets.

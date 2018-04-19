@@ -26,6 +26,8 @@ March 26, 2018.</p>
 
 <b>Updated April 4, 2018</b> to include many more experiments in the <a href="#experimental">Experimental results</a> section.
 
+<p><b>Updated April 19, 2018</b> to include new rfpimp package features to handle collinear dataframe columns in <a href="#corr_collinear">Dealing with collinear features</a> section.
+
 <h3>TL;DR</h3>
 
 <p>
@@ -53,6 +55,7 @@ The scikit-learn Random Forest feature importance and R's default Random Forest 
 		<li><a href="#size">The effect of validation set size on importance</a>
 		<li><a href="#collinear">The effect of collinear features on importance</a>
 	</ul>
+	<li><a href="#corr_collinear">Dealing with collinear features</a>
 	<li><a href="#7">Summary</a></li>
 	<li><a href="#8">Resources and sample code</a></li>
 	<ul>
@@ -482,6 +485,8 @@ We hypothesized that it's possible to extract meaningful feature importance with
 
 <a name="collinear"></a><h4>The effect of collinear features on importance</h4>
 
+[See <a href="#corr_collinear">Dealing with collinear features</a> section below.]
+
 <p>
 Feature importance is a key part of model interpretation and understanding the business problem that originally drove you to create a model in the first place.  We have to keep in mind, though, that the feature importance mechanisms we describe in this article consider each feature individually.  If all features are totally independent and not correlated in any way, than computing feature importance individually is no problem. If, however, two or more features are <i>collinear</i> (correlated in some way but not necessarily with a strictly linear relationship) computing feature importance individually can give unexpected results.
 
@@ -617,6 +622,8 @@ From these experiments, it's safe to conclude that permutation importance (and m
  
 <p>
 You can find all of these collinearity experiments in <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/collinear.ipynb">collinear.ipynb</a>
+
+<a name="corr_collinear"></a><h3>Dealing with collinear features</h3>
 
 <a name="7"></a><h3>Summary</h3>
 
