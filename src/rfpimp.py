@@ -18,7 +18,6 @@ from sklearn.base import clone
 from sklearn.metrics import r2_score
 from scipy.stats import spearmanr
 from matplotlib.colors import ListedColormap
-import matplotlib.colors as mcolors
 from copy import copy
 import warnings
 
