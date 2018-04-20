@@ -70,9 +70,23 @@ def importances(model, X_valid, y_valid, features=None, n_samples=3500, sort=Tru
     rf.fit(X_train, y_train)
     imp = importances(rf, X_valid, y_valid)
     """
+
+    def flatten(features):
+        all_features = set()
+        for sublist in features:
+            if isinstance(sublist, str):
+                all_features.add(sublist)
+            else:
+                for item in sublist:
+                    all_features.add(item)
+        return list(all_features)
+
     if not features:
         # each feature in its own group
         features = X_valid.columns.values
+    if hasattr(model, 'n_features_') and model.n_features_ != len(flatten(features)):
+        raise ValueError(f'Model has {model.n_features_} features but X_valid has {len(features)}')
+
     if n_samples<0: n_samples = len(X_valid)
     n_samples = min(n_samples, len(X_valid))
     if n_samples<len(X_valid):
@@ -85,14 +99,20 @@ def importances(model, X_valid, y_valid, features=None, n_samples=3500, sort=Tru
     baseline = model.score(X_valid, y_valid)
     imp = []
     for group in features:
-        save = X_valid[group].copy()
         if isinstance(group, str):
+            save = X_valid[group].copy()
             X_valid[group] = np.random.permutation(X_valid[group])
+            m = model.score(X_valid, y_valid)
+            X_valid[group] = save
         else:
+            save = {}
+            for col in group:
+                save[col] = X_valid[col].copy()
             for col in group:
                 X_valid[col] = np.random.permutation(X_valid[col])
-        m = model.score(X_valid, y_valid)
-        X_valid[group] = save
+            m = model.score(X_valid, y_valid)
+            for col in group:
+                X_valid[col] = save[col]
         imp.append(baseline - m)
 
     I = pd.DataFrame(data={'Feature': features, 'Importance': np.array(imp)})

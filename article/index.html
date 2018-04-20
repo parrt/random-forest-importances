@@ -625,6 +625,36 @@ You can find all of these collinearity experiments in <a href="https://github.co
 
 <a name="corr_collinear"></a><h3>Dealing with collinear features</h3>
 
+We updated the rfpimp package (1.1 and beyond) to help understand importance graphs in the presence of collinear variables.
+
+To get an understanding of collinearity between variables, we created <tt>feature_corr_matrix(df)</tt> that takes a data frame and returns the Spearman's rank-order correlation between all pairs  of features as a matrix with feature names as index and column names. The result is a data frame in its own right. Here's a sample:
+
+<p><img src="images/corr_matrix.png" width="90%">
+
+<p>Spearman's correlation is the same thing as converting two variables  to rank values and then running a standard Pearson's correlation  on those ranked variables. Spearman's is nonparametric and does not  assume a linear relationship between the variables; it looks for monotonic relationships. You can visualize this more easily using <tt>plot_corr_heatmap()</tt>:
+	
+<p>
+<div class="codeblk">from rfpimp import plot_corr_heatmap
+plot_corr_heatmap(df_train, figsize=(7,5), label_fontsize=13, value_fontsize=11)
+</div>
+
+<p><img src="images/corrheatmap.svg" width="60%">
+
+<p>Because it is a symmetric matrix, only the upper triangle is shown. The diagonal is all 1.0 Spearman's correlation and is not shown either.
+
+<p>As we discussed,  permutation feature importance is computed by permuting a specific column and measuring the decrease in accuracy of the overall classifier or regressor. Of course, features that are collinear really should be permuted together. We have updated <tt>importances()</tt> so you can pass in either a list of features, such as a subset, or a list of lists containing groups. Let's start with the default:
+	
+<p><img src="images/imp.svg" width="50%">
+
+<p><img src="images/grouped_imp.svg" width="50%">
+
+<p><img src="images/subset_imp.svg" width="30%">
+
+<p><img src="images/grouped_dup_imp.svg" width="50%">
+
+<p>
+You can find all of these experiments trying to deal with collinearity in <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/rfpimp-collinear.ipynb">rfpimp-collinear.ipynb</a>
+
 <a name="7"></a><h3>Summary</h3>
 
 <p>
