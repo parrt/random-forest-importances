@@ -34,6 +34,13 @@ def importances(model, X_valid, y_valid, features=None, n_samples=3500, sort=Tru
     The validation data is needed to compute model performance
     measures (accuracy or R^2). The model is not retrained.
 
+    You can pass in a list with a subset of features interesting to you.
+    All unmentioned features will be grouped together into a single meta-feature
+    on the graph. You can also pass in a list that has sublists like:
+    [['latitude', 'longitude'], 'price', 'bedrooms']. Each string or sublist
+    will be permuted together as a feature or meta-feature; the drop in
+    overall accuracy of the model is the relative importance.
+
     The model.score() method is called to measure accuracy drops.
 
     This version that computes accuracy drops with the validation set
@@ -70,7 +77,6 @@ def importances(model, X_valid, y_valid, features=None, n_samples=3500, sort=Tru
     rf.fit(X_train, y_train)
     imp = importances(rf, X_valid, y_valid)
     """
-
     def flatten(features):
         all_features = set()
         for sublist in features:
@@ -79,22 +85,28 @@ def importances(model, X_valid, y_valid, features=None, n_samples=3500, sort=Tru
             else:
                 for item in sublist:
                     all_features.add(item)
-        return list(all_features)
+        return all_features
 
     if not features:
         # each feature in its own group
         features = X_valid.columns.values
-    if hasattr(model, 'n_features_') and model.n_features_ != len(flatten(features)):
-        raise ValueError(f'Model has {model.n_features_} features but X_valid has {len(features)}')
+    else:
+        req_feature_set = flatten(features)
+        model_feature_set = set(X_valid.columns.values)
+        # any features left over?
+        other_feature_set = model_feature_set.difference(req_feature_set)
+        if len(other_feature_set) > 0:
+            # if leftovers, we need group together as single new feature
+            features.append(list(other_feature_set))
 
-    if n_samples<0: n_samples = len(X_valid)
+    if n_samples < 0: n_samples = len(X_valid)
     n_samples = min(n_samples, len(X_valid))
-    if n_samples<len(X_valid):
-        ix = np.random.choice(len(X_valid),n_samples)
-        X_valid = X_valid.iloc[ix].copy(deep=False) # shallow copy
+    if n_samples < len(X_valid):
+        ix = np.random.choice(len(X_valid), n_samples)
+        X_valid = X_valid.iloc[ix].copy(deep=False)  # shallow copy
         y_valid = y_valid.iloc[ix].copy(deep=False)
     else:
-        X_valid = X_valid.copy(deep=False) # we're modifying columns
+        X_valid = X_valid.copy(deep=False)  # we're modifying columns
 
     baseline = model.score(X_valid, y_valid)
     imp = []

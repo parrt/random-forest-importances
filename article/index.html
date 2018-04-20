@@ -646,14 +646,56 @@ plot_corr_heatmap(df_train, figsize=(7,5), label_fontsize=13, value_fontsize=11)
 	
 <p><img src="images/imp.svg" width="50%">
 
+<p>You can pass in a list with a subset of features interesting to you.
+All unmentioned features will be grouped together into a single meta-feature
+on the graph. You can also pass in a list that has sublists like:
+<tt>[['latitude', 'longitude'], 'price', 'bedrooms']</tt>. Each string or sublist
+will be permuted together as a feature or meta-feature; the drop in
+overall accuracy of the model is the relative importance. Consider the following list of features and groups of features and snippet.
+	
+<p>
+<div class="codeblk">features = ['bathrooms', 'bedrooms', 
+            ['latitude', 'longitude'],  
+            ['price_to_median_beds', 'beds_baths', 'price'], 
+            ['beds_per_price','bedrooms']]
+I = importances(rf, X_test, y_test, features=features)
+plot_importances(I)		
+</div>
+
+<p>Notice how, in the following result, latitude and longitude together are very important as a meta-feature. The meta-features "steal" importance from the individual bedrooms and bathrooms columns.
+
 <p><img src="images/grouped_imp.svg" width="50%">
 
-<p><img src="images/subset_imp.svg" width="30%">
+<p>Any features not mentioned get lumped together into a single "other" meta-feature, so that all features are considered.  Imagine a model with 10 features and we requested a feature importance graph with just two very unimportant features. He would look like one or the other were very important, which could be very confusing. So, the importance of the specified features is given only in comparison to all possible futures. <b>Figure 17</b> shows two different sets of features and how all others are lumped together as one meta-feature.	
+
+<table class=figure>
+<tr>
+<td style="vertical-align: bottom;">
+	<img src="images/subset_imp.svg" width="90%">
+<td style="vertical-align: bottom;">
+	<img src="images/latlong_imp.svg" width="90%">
+<tr>
+<td>
+<b>Figure 17(a)</b>. features=['price',['latitude','longitude']]
+<td>
+
+<b>Figure 17(b)</b>. features=[['latitude','longitude']]
+</table>
+
+<p>Features can also appear in multiple  feature groups so that we can compare the relative importance of multiple meta-features that once. Remember that the permutation importance is just permuting all features associated with the meta-feature and comparing the drop in overall accuracy. There's no reason we can't do multiple overlapping sets of features in the same graph. For example, in the following, feature list, bedrooms appears in two meta-features as does beds_per_price.
+	
+<p>
+<div class="codeblk">features = [['latitude', 'longitude'],
+            ['price_to_median_beds', 'beds_baths', 'beds_per_price', 'bedrooms'],
+            ['price','beds_per_price','bedrooms']]
+</div>
 
 <p><img src="images/grouped_dup_imp.svg" width="50%">
 
 <p>
 You can find all of these experiments trying to deal with collinearity in <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/rfpimp-collinear.ipynb">rfpimp-collinear.ipynb</a>
+
+Finally, a starting point for examining collinear features is to look at the correlation heat map and see which features are correlated and group those into meta-features for use in the importance plot.
 
 <a name="7"></a><h3>Summary</h3>
 
