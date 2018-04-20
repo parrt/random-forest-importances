@@ -24,46 +24,52 @@ Here's some sample Python code that uses the `rfpimp` package contained in the `
 from rfpimp import *
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
 
-df = pd.read_csv("rent.csv")
+df = pd.read_csv("/Users/parrt/github/random-forest-importances/notebooks/data/rent.csv")
 
 #df = df.iloc[0:5000]
 
-print(df.head(5))
+#print(df.head(5))
+
+df_train, df_test = train_test_split(df, test_size=0.20)
 
 # Regressor
 
 features = ['bathrooms','bedrooms','longitude','latitude',
             'price']
-dfr = df[features].copy()
-
-dfr['price'] = np.log(dfr['price'])
+df_train = df_train[features]
+df_test = df_test[features]
 
 rf = RandomForestRegressor(n_estimators=100,
                            min_samples_leaf=1,
-                           n_jobs=-1,
-                           oob_score=True)
+                           n_jobs=-1)
 
-X_train, y_train = dfr.drop('price',axis=1), dfr['price']
+X_train, y_train = df_train.drop('price',axis=1), df_train['price']
+X_test, y_test = df_test.drop('price',axis=1), df_test['price']
 # Add column of random numbers
 X_train['random'] = np.random.random(size=len(X_train))
+X_test['random'] = np.random.random(size=len(X_test))
 rf.fit(X_train, y_train)
 
-imp = importances(rf, X_train, y_train) # permutation
+imp = importances(rf, X_test, y_test) # permutation
 plot_importances(imp)
 
-imp = dropcol_importances(rf, X_train, y_train)
-plot_importances(imp)
 
 # Classifier
 
+df_train, df_test = train_test_split(df, test_size=0.20)
+
 features = ['bathrooms','bedrooms','price','longitude','latitude',
             'interest_level']
-dfc = df[features].copy()
+df_train = df_train[features]
+df_test = df_test[features]
 
-X_train, y_train = dfc.drop('interest_level',axis=1), dfc['interest_level']
+X_train, y_train = df_train.drop('interest_level',axis=1), df_train['interest_level']
+X_test, y_test = df_test.drop('interest_level',axis=1), df_test['interest_level']
 # Add column of random numbers
 X_train['random'] = np.random.random(size=len(X_train))
+X_test['random'] = np.random.random(size=len(X_test))
 
 rf = RandomForestClassifier(n_estimators=100,
                             min_samples_leaf=5,
@@ -71,13 +77,6 @@ rf = RandomForestClassifier(n_estimators=100,
                             oob_score=True)
 rf.fit(X_train, y_train)
 
-imp = importances(rf, X_train, y_train) # permutation
-plot_importances(imp)
-
-rf = RandomForestClassifier(n_estimators=100,
-                            min_samples_leaf=5,
-                            n_jobs=-1,
-                            oob_score=True)
-imp = dropcol_importances(rf, X_train, y_train)
+imp = importances(rf, X_test, y_test, n_samples=-1) # permutation
 plot_importances(imp)
 ```
