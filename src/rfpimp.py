@@ -326,6 +326,7 @@ def oob_regression_r2_score(rf, X_train, y_train):
 
 
 def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
+                     label_fontsize=12,
                      figsize=None, scalefig=(1.0, 1.0), show=True):
     """
     Given an array or data frame of importances, plot a horizontal bar chart
@@ -338,13 +339,15 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
     :type xrot: int
     :param tickstep: How many ticks to skip in X axis
     :type tickstep: int
+    :param label_fontsize:  The font size for the column names and x ticks
+    :type label_fontsize:  int
     :param figsize: Specify width and height of image (width,height)
     :type figsize: 2-tuple of floats
     :param scalefig: Scale width and height of image (widthscale,heightscale)
     :type scalefig: 2-tuple of floats
-    :param showfig: Execute plt.show() if true (default is True). Sometimes
-                    we want to draw multiple things before calling plt.show()
-    :type showfig: bool
+    :param show: Execute plt.show() if true (default is True). Sometimes
+                 we want to draw multiple things before calling plt.show()
+    :type show: bool
     :return: None
 
     SAMPLE CODE
@@ -352,27 +355,32 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
     rf = RandomForestRegressor(n_estimators=100, n_jobs=-1, oob_score=True)
     X_train, y_train = ..., ...
     rf.fit(X_train, y_train)
-    imp = importances(rf, X_train, y_train)
+    imp = importances(rf, X_test, y_test)
     plot_importances(imp)
     """
     I = df_importances
 
-    fig = plt.figure()
-    w, h = figsize if figsize else fig.get_size_inches()
-    fig.set_size_inches(w*scalefig[0], h*scalefig[1], forward=True)
+    if figsize:
+        fig = plt.figure(figsize=figsize)
+    elif scalefig:
+        fig = plt.figure()
+        w, h = fig.get_size_inches()
+        fig.set_size_inches(w * scalefig[0], h * scalefig[1], forward=True)
+    else:
+        fig = plt.figure()
     ax = plt.gca()
     labels = []
     for col in I.index:
-        if isinstance(col,list):
+        if isinstance(col, list):
             labels.append('\n'.join(col))
         else:
             labels.append(col)
 
-    ax.barh(np.arange(len(I.index)), I.Importance, height=.6, tick_label=labels)
-
-    x0, x1 = ax.get_xlim()
-    y0, y1 = ax.get_ylim()
-    ax.set_aspect((x1 - x0) / (y1 - y0))
+    for tick in ax.get_xticklabels():
+        tick.set_size(label_fontsize)
+    for tick in ax.get_yticklabels():
+        tick.set_size(label_fontsize)
+    ax.barh(np.arange(len(I.index)), I.Importance, height=0.6, tick_label=labels)
 
     # rotate x-ticks
     if xrot is not None:
@@ -384,7 +392,6 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
     new_ticks = xticks[np.arange(0, nticks, step=tickstep)]
     ax.set_xticks(new_ticks)
 
-    plt.tight_layout()
     if save:
         plt.savefig(save, bbox_inches="tight", pad_inches=0.03)
     if show:
