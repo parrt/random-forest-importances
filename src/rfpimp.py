@@ -126,7 +126,15 @@ def importances(model, X_valid, y_valid, features=None, n_samples=3500, sort=Tru
                 X_valid[col] = save[col]
         imp.append(baseline - m)
 
-    I = pd.DataFrame(data={'Feature': features, 'Importance': np.array(imp)})
+    # Convert and groups/lists into string column names
+    labels = []
+    for col in features:
+        if isinstance(col, list):
+            labels.append('\n'.join(col))
+        else:
+            labels.append(col)
+
+    I = pd.DataFrame(data={'Feature': labels, 'Importance': np.array(imp)})
     I = I.set_index('Feature')
     if sort:
         I = I.sort_values('Importance', ascending=True)
