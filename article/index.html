@@ -2,13 +2,13 @@
 <html>
 <head>
 <!-- Global site tag (gtag.js) - Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=UA-113303773-1"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-118361649-1"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
 
-  gtag('config', 'UA-113303773-1');
+  gtag('config', 'UA-118361649-1');
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
@@ -17,6 +17,10 @@
 </head>
 <body>
 <h1>Beware Default Random Forest Importances</h1>
+
+<div class="watermark">
+<i>Brought to you by <a href='http://explained.ai'>explained.ai</a></i><br>
+</div>
 
 <p id=author><a href="http://parrt.cs.usfca.edu">Terence Parr</a>, <a href="https://www.linkedin.com/in/kerem-turgutlu-12906b65/">Kerem Turgutlu</a>, 
 <a href="https://www.linkedin.com/in/cpcsiszar/">Christopher Csiszar</a>, and <a href="http://www.fast.ai/about/#jeremy">Jeremy Howard</a><br>
@@ -695,8 +699,7 @@ plot_importances(I)
 <p>
 You can find all of these experiments trying to deal with collinearity in <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/rfpimp-collinear.ipynb">rfpimp-collinear.ipynb</a>
 
-<p>
-Finally, a starting point for examining collinear features is to look at the correlation heat map and see which features are correlated and group those into meta-features for use in the importance plot.
+<p>Finally, a starting point for examining collinear features is to look at the correlation heat map and see which features are correlated and group those into meta-features for use in the importance plot.
 
 <a name="7"></a><h3>Summary</h3>
 

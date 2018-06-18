@@ -50,6 +50,14 @@ body {
 p {
         margin: 15px 5px 15px 0px;
 }
+.watermark {
+    font-size: 100%;
+    right: 10px;
+    opacity: 0.4;
+    color: BLACK;
+    position: absolute;
+    top: 30px;
+}
 .caption {
 	font-size: 80%;
 }
@@ -58,11 +66,17 @@ p {
         body {
                 font-size: 100%;
         }
+        .watermark {
+            position: static;
+        }
 }
 @media (max-width: 736px) {
         /* iphone7+ 736 wide */
         body {
                 font-size: 100%;
+        }
+        .watermark {
+            position: static;
         }
 }
 h1 {
