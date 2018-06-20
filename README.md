@@ -1,6 +1,6 @@
 # Feature importances for scikit random forests
 
-By <a href="http://parrt.cs.usfca.edu">Terence Parr</a> and <a href="https://www.linkedin.com/in/kerem-turgutlu-12906b65/">Kerem Turgutlu</a>.
+By <a href="http://explained.ai/">Terence Parr</a> and <a href="https://www.linkedin.com/in/kerem-turgutlu-12906b65/">Kerem Turgutlu</a>. See [Explained.ai](http://explained.ai) for more stuff.
 
 The scikit-learn Random Forest feature importances strategy is <i>mean decrease in impurity</i> (or <i>gini importance</i>) mechanism, which is unreliable.
 To get reliable results, use permutation importance, provided in the `rfpimp` package in the `src` dir. Install with:
