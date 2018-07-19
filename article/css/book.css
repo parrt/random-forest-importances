@@ -83,11 +83,11 @@ h1 {
         line-height: 1.2em;
 }
 .inlinecode {
-    font-family: Monaco;
+    font-family: "Monaco", monospace;
     font-size: 80%;	
 }
 .codeblk {
-    font-family: Monaco;
+    font-family: "Monaco", monospace;
     font-size: 80%;
     box-sizing: border-box;
     margin: 0 0 1em 0;
