@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble.forest import _generate_unsampled_indices
+from sklearn.ensemble import forest
 from sklearn.model_selection import cross_val_score
 from sklearn.base import clone
 from sklearn.metrics import r2_score
@@ -420,20 +421,45 @@ def oob_dependences(rf,X_train):
     """
     Given a random forest model, rf, and training observation independent
     variables in X_train (a dataframe), compute the OOB R^2 score using each var
-    as a dependent variable. We retrain rf for each var.  Return a DataFrame
-    with Feature/Dependence values for each variable. Feature is the dataframe
-    index.
+    as a dependent variable. We retrain rf for each var.    Only numeric columns are considered.
+
+    :return: Return a DataFrame with Feature/Dependence values for each variable. Feature is the dataframe index.
     """
     numcols = [col for col in X_train if is_numeric_dtype(X_train[col])]
 
-    deps = pd.DataFrame(columns=['Feature','Dependence'])
-    deps = deps.set_index('Feature')
+    df_dep = pd.DataFrame(columns=['Feature','Dependence'])
+    df_dep = df_dep.set_index('Feature')
     for col in numcols:
         X, y = X_train.drop(col, axis=1), X_train[col]
         rf.fit(X, y)
-        deps.loc[col] = rf.oob_score_
-    deps = deps.sort_values('Dependence', ascending=False)
-    return deps
+        df_dep.loc[col] = rf.oob_score_
+    df_dep = df_dep.sort_values('Dependence', ascending=False)
+    return df_dep
+
+
+def feature_dependence_matrix(X_train):
+    """
+    Given training observation independent variables in X_train (a dataframe),
+    compute the feature importance using each var as a dependent variable.
+    We retrain a random forest for each var as target using the others as
+    independent vars.  Only numeric columns are considered.
+
+    :return: a non-symmetric data frame with the dependence matrix where each row is the importance of each var to the row's var used as a model target.
+    """
+    numcols = [col for col in X_train if is_numeric_dtype(X_train[col])]
+
+    df_dep = pd.DataFrame(index=X_train.columns, columns=['Dependence']+X_train.columns.tolist())
+    for i in range(len(numcols)):
+        col = numcols[i]
+        X, y = X_train.drop(col, axis=1), X_train[col]
+        rf = RandomForestRegressor(n_estimators=50, n_jobs=-1, oob_score=True)
+        rf.fit(X,y)
+        #imp = rf.feature_importances_
+        imp = permutation_importances_raw(rf, X, y, oob_regression_r2_score)
+        imp = np.insert(imp, i, 1.0)
+        df_dep.iloc[i] = np.insert(imp, 0, rf.oob_score_) # add overall dependence
+
+    return df_dep
 
 
 def feature_corr_matrix(df):
@@ -519,3 +545,16 @@ def plot_corr_heatmap(df,
         plt.savefig(save, bbox_inches="tight", pad_inches=0.03)
     if show:
         plt.show()
+
+
+def jeremy_trick_RF_sample_size(n):
+    # Jeremy's trick; hmm.. this won't work as a separate function?
+    # def batch_size_for_node_splitting(rs, n_samples):
+    #     forest.check_random_state(rs).randint(0, n_samples, 20000)
+    # forest._generate_sample_indices = batch_size_for_node_splitting
+    forest._generate_sample_indices = \
+        (lambda rs, n_samples: forest.check_random_state(rs).randint(0, n_samples, n))
+
+def jeremy_trick_reset_RF_sample_size():
+    forest._generate_sample_indices = (lambda rs, n_samples:
+        forest.check_random_state(rs).randint(0, n_samples, n_samples))
