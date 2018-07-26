@@ -137,7 +137,7 @@ def importances(model, X_valid, y_valid, features=None, n_samples=3500, sort=Tru
     I = pd.DataFrame(data={'Feature': labels, 'Importance': np.array(imp)})
     I = I.set_index('Feature')
     if sort:
-        I = I.sort_values('Importance', ascending=True)
+        I = I.sort_values('Importance', ascending=False)
     return I
 
 
@@ -210,7 +210,7 @@ def cv_importances(model, X_train, y_train, k=3):
 
     I = pd.DataFrame(data={'Feature': X_train.columns, 'Importance': np.array(imp)})
     I = I.set_index('Feature')
-    I = I.sort_values('Importance', ascending=True)
+    I = I.sort_values('Importance', ascending=False)
     return I
 
 
@@ -218,7 +218,7 @@ def permutation_importances(rf, X_train, y_train, metric):
     imp = permutation_importances_raw(rf, X_train, y_train, metric)
     I = pd.DataFrame(data={'Feature':X_train.columns, 'Importance':imp})
     I = I.set_index('Feature')
-    I = I.sort_values('Importance', ascending=True)
+    I = I.sort_values('Importance', ascending=False)
     return I
 
 
@@ -258,7 +258,7 @@ def dropcol_importances(rf, X_train, y_train):
     imp = np.array(imp)
     I = pd.DataFrame(data={'Feature':X_train.columns, 'Importance':imp})
     I = I.set_index('Feature')
-    I = I.sort_values('Importance', ascending=True)
+    I = I.sort_values('Importance', ascending=False)
     return I
 
 
