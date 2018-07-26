@@ -17,6 +17,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.base import clone
 from sklearn.metrics import r2_score
 from scipy.stats import spearmanr
+from pandas.api.types import is_numeric_dtype
 from matplotlib.colors import ListedColormap
 from copy import copy
 import warnings
@@ -176,9 +177,7 @@ def cv_importances(model, X_train, y_train, k=3):
     Given a Classifier or Regressor in model
     and training X and y data, return a data frame with columns
     Feature and Importance sorted in reverse order by importance.
-    The validation data is needed to compute model performance
-    measures (accuracy or R^2). The model is retrained during
-    cross-validation like with dropcol_dropcol_importances().
+    Cross-validation observations are taken from X_train, y_train.
 
     The model.score() method is called to measure accuracy drops.
 
@@ -415,6 +414,26 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
         plt.savefig(save, bbox_inches="tight", pad_inches=0.03)
     if show:
         plt.show()
+
+
+def oob_dependences(rf,X_train):
+    """
+    Given a random forest model, rf, and training observation independent
+    variables in X_train (a dataframe), compute the OOB R^2 score using each var
+    as a dependent variable. We retrain rf for each var.  Return a DataFrame
+    with Feature/Dependence values for each variable. Feature is the dataframe
+    index.
+    """
+    numcols = [col for col in X_train if is_numeric_dtype(X_train[col])]
+
+    deps = pd.DataFrame(columns=['Feature','Dependence'])
+    deps = deps.set_index('Feature')
+    for col in numcols:
+        X, y = X_train.drop(col, axis=1), X_train[col]
+        rf.fit(X, y)
+        deps.loc[col] = rf.oob_score_
+    deps = deps.sort_values('Dependence', ascending=False)
+    return deps
 
 
 def feature_corr_matrix(df):
