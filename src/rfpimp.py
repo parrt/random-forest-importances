@@ -100,14 +100,7 @@ def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=Tru
             # if leftovers, we need group together as single new feature
             features.append(list(other_feature_set))
 
-    if n_samples < 0: n_samples = len(X_valid)
-    n_samples = min(n_samples, len(X_valid))
-    if n_samples < len(X_valid):
-        ix = np.random.choice(len(X_valid), n_samples)
-        X_valid = X_valid.iloc[ix].copy(deep=False)  # shallow copy
-        y_valid = y_valid.iloc[ix].copy(deep=False)
-    else:
-        X_valid = X_valid.copy(deep=False)  # we're modifying columns
+    X_valid, y_valid = sample(X_valid, y_valid, n_samples)
 
     baseline = model.score(X_valid, y_valid)
     imp = []
@@ -141,6 +134,18 @@ def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=Tru
     if sort:
         I = I.sort_values('Importance', ascending=False)
     return I
+
+
+def sample(X_valid, y_valid, n_samples):
+    if n_samples < 0: n_samples = len(X_valid)
+    n_samples = min(n_samples, len(X_valid))
+    if n_samples < len(X_valid):
+        ix = np.random.choice(len(X_valid), n_samples)
+        X_valid = X_valid.iloc[ix].copy(deep=False)  # shallow copy
+        y_valid = y_valid.iloc[ix].copy(deep=False)
+    else:
+        X_valid = X_valid.copy(deep=False)  # we're modifying columns
+    return X_valid, y_valid
 
 
 def oob_importances(rf, X_train, y_train, n_samples=5000):
@@ -272,18 +277,47 @@ def importances_raw(rf, X_train, y_train, n_samples=5000):
     return None
 
 
+def new_permutation_importances_raw(rf, X_train, y_train, metric, n_samples=5000):
+    """
+    Return array of importances from pre-fit rf; metric is function
+    that measures accuracy or R^2 or similar. This function
+    works for regressors and classifiers.
+    """
+    X_sample, y_sample = sample(X_train, y_train, n_samples)
+    X_sample = X_sample.values
+    y_sample = y_sample.values
+
+    # X_train_np = X_train.values # convert to numpy array for speed
+    # idx = np.random.choice(len(X_train_np), size=n_samples, replace=False)
+    # X_sample = X_train_np[idx, :]
+    # y_sample = X_train_np[idx, :]
+    if not hasattr(rf, 'estimators_'):
+        rf.fit(X_sample, y_sample)
+    baseline = metric(rf, X_sample, y_sample)
+    ncols = X_sample.shape[1]
+    imp = []
+    for i in range(ncols):
+        save = X_sample[:,i].copy()
+        X_sample[:, i] = np.random.permutation(X_sample[:,i])
+        m = metric(rf, X_sample, y_sample)
+        X_sample[:, i] = save
+        imp.append(baseline - m)
+    return np.array(imp)
+
+
 def permutation_importances_raw(rf, X_train, y_train, metric, n_samples=5000):
     """
     Return array of importances from pre-fit rf; metric is function
     that measures accuracy or R^2 or similar. This function
     works for regressors and classifiers.
     """
-    X_train = X_train.values # convert to numpy array for speed
-    idx = np.random.choice(len(X_train), size=n_samples, replace=False)
-    X_sample = X_train[idx, :]
-    y_sample = y_train[idx, :]
-    baseline = metric(rf, X_sample, y_train)
-    X_sample = X_sample.copy(deep=False) # shallow copy
+    X_sample, y_sample = sample(X_train, y_train, n_samples)
+
+    if not hasattr(rf, 'estimators_'):
+        rf.fit(X_sample, y_sample)
+
+    baseline = metric(rf, X_sample, y_sample)
+    X_train = X_train.copy(deep=False) # shallow copy
     imp = []
     for col in X_train.columns:
         save = X_train[col].copy()
@@ -328,8 +362,8 @@ def oob_regression_r2_score(rf, X_train, y_train):
 
     https://github.com/scikit-learn/scikit-learn/blob/a24c8b46/sklearn/ensemble/forest.py#L702
     """
-    X = X_train.values
-    y = y_train.values
+    X = X_train.values if isinstance(X_train, pd.DataFrame) else X_train
+    y = y_train.values if isinstance(y_train, pd.Series) else y_train
 
     n_samples = len(X)
     predictions = np.zeros(n_samples)
@@ -385,6 +419,9 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
     """
     I = df_importances
 
+    # this is backwards but seems to undo weird reversed order in barh()
+    I = I.sort_values('Importance', ascending=True)
+
     if figsize:
         fig = plt.figure(figsize=figsize)
     elif scalefig:
@@ -405,6 +442,7 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
         tick.set_size(label_fontsize)
     for tick in ax.get_yticklabels():
         tick.set_size(label_fontsize)
+
     ax.barh(np.arange(len(I.index)), I.Importance, height=0.6, tick_label=labels)
 
     # rotate x-ticks
