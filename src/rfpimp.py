@@ -101,6 +101,7 @@ def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=Tru
             features.append(list(other_feature_set))
 
     X_valid, y_valid = sample(X_valid, y_valid, n_samples)
+    X_valid = X_valid.copy(deep=False)  # we're modifying columns
 
     baseline = model.score(X_valid, y_valid)
     imp = []
@@ -143,9 +144,16 @@ def sample(X_valid, y_valid, n_samples):
         ix = np.random.choice(len(X_valid), n_samples)
         X_valid = X_valid.iloc[ix].copy(deep=False)  # shallow copy
         y_valid = y_valid.iloc[ix].copy(deep=False)
-    else:
-        X_valid = X_valid.copy(deep=False)  # we're modifying columns
     return X_valid, y_valid
+
+
+def sample_rows(X, n_samples):
+    if n_samples < 0: n_samples = len(X)
+    n_samples = min(n_samples, len(X))
+    if n_samples < len(X):
+        ix = np.random.choice(len(X), n_samples)
+        X = X.iloc[ix].copy(deep=False)  # shallow copy
+    return X
 
 
 def oob_importances(rf, X_train, y_train, n_samples=5000):
@@ -434,15 +442,19 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
         plt.show()
 
 
-def oob_dependences(rf,X_train):
+def oob_dependences(rf, X_train, n_samples=5000):
     """
     Given a random forest model, rf, and training observation independent
     variables in X_train (a dataframe), compute the OOB R^2 score using each var
     as a dependent variable. We retrain rf for each var.    Only numeric columns are considered.
 
+    By default, sample up to 5000 observations to compute feature dependencies.
+
     :return: Return a DataFrame with Feature/Dependence values for each variable. Feature is the dataframe index.
     """
     numcols = [col for col in X_train if is_numeric_dtype(X_train[col])]
+
+    X_train = sample_rows(X_train, n_samples)
 
     df_dep = pd.DataFrame(columns=['Feature','Dependence'])
     df_dep = df_dep.set_index('Feature')
@@ -454,7 +466,7 @@ def oob_dependences(rf,X_train):
     return df_dep
 
 
-def feature_dependence_matrix(rf,X_train, n_samples=5000):
+def feature_dependence_matrix(rf, X_train, n_samples=5000):
     """
     Given training observation independent variables in X_train (a dataframe),
     compute the feature importance using each var as a dependent variable.
@@ -466,6 +478,8 @@ def feature_dependence_matrix(rf,X_train, n_samples=5000):
     :return: a non-symmetric data frame with the dependence matrix where each row is the importance of each var to the row's var used as a model target.
     """
     numcols = [col for col in X_train if is_numeric_dtype(X_train[col])]
+
+    X_train = sample_rows(X_train, n_samples)
 
     df_dep = pd.DataFrame(index=X_train.columns, columns=['Dependence']+X_train.columns.tolist())
     for i in range(len(numcols)):

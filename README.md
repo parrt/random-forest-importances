@@ -88,8 +88,8 @@ See [Feature collinearity heatmap](http://localhost:8921/notebooks/rfpimp-collin
 
 The features we use in machine learning are rarely completely independent, which makes interpreting feature importance tricky. We could compute correlation coefficients, but that only identifies linear relationships. A way to at least identify if a feature, x, is dependent on other features is to train a model using x as a dependent variable and all other features as independent variables. Because random forests give us an easy out of bag error estimate, the feature dependence functions rely on random forest models. The R^2 prediction error from the model indicates how easy it is to predict feature x using the other features. The higher the score, the more dependent feature x is. Example:
 
-```
-from rfpimp import oob_dependences
+```python
+from rfpimp import *
 X_train, y_train = df.drop('price',axis=1), df['price']
 rf = RandomForestRegressor(n_estimators=50, n_jobs=-1, oob_score=True)
 D = oob_dependences(rf, X_train)
@@ -99,4 +99,8 @@ That gives something like the following:
 
 <img src="article/images/dependencies.png" width="180">
 
-You can also get a feature dependence matrix that returns a non-symmetric data frame where each row is the importance of each var to the row's var used as a model target.
+You can also get a feature dependence matrix that returns a non-symmetric data frame where each row is the importance of each var to the row's var used as a model target. Example:
+
+```python
+DM = feature_dependence_matrix(rf, X_train)
+```
