@@ -277,34 +277,6 @@ def importances_raw(rf, X_train, y_train, n_samples=5000):
     return None
 
 
-def new_permutation_importances_raw(rf, X_train, y_train, metric, n_samples=5000):
-    """
-    Return array of importances from pre-fit rf; metric is function
-    that measures accuracy or R^2 or similar. This function
-    works for regressors and classifiers.
-    """
-    X_sample, y_sample = sample(X_train, y_train, n_samples)
-    X_sample = X_sample.values
-    y_sample = y_sample.values
-
-    # X_train_np = X_train.values # convert to numpy array for speed
-    # idx = np.random.choice(len(X_train_np), size=n_samples, replace=False)
-    # X_sample = X_train_np[idx, :]
-    # y_sample = X_train_np[idx, :]
-    if not hasattr(rf, 'estimators_'):
-        rf.fit(X_sample, y_sample)
-    baseline = metric(rf, X_sample, y_sample)
-    ncols = X_sample.shape[1]
-    imp = []
-    for i in range(ncols):
-        save = X_sample[:,i].copy()
-        X_sample[:, i] = np.random.permutation(X_sample[:,i])
-        m = metric(rf, X_sample, y_sample)
-        X_sample[:, i] = save
-        imp.append(baseline - m)
-    return np.array(imp)
-
-
 def permutation_importances_raw(rf, X_train, y_train, metric, n_samples=5000):
     """
     Return array of importances from pre-fit rf; metric is function
@@ -317,7 +289,8 @@ def permutation_importances_raw(rf, X_train, y_train, metric, n_samples=5000):
         rf.fit(X_sample, y_sample)
 
     baseline = metric(rf, X_sample, y_sample)
-    X_train = X_train.copy(deep=False) # shallow copy
+    X_train = X_sample.copy(deep=False) # shallow copy
+    y_train = y_sample
     imp = []
     for col in X_train.columns:
         save = X_train[col].copy()

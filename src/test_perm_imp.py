@@ -20,12 +20,10 @@ rf = RandomForestRegressor(n_estimators=50,
                            oob_score=True,
                            max_features=.4)
 X_train, y_train = df.drop('SalePrice', axis=1), df['SalePrice']
-X_sample, y_sample = sample(X_train, y_train, 1000)
-rf.fit(X_sample, y_sample)
 
 start = timer() # ------------
 
-I = oob_importances(rf, X_sample, y_sample)
+I = oob_importances(rf, X_train, y_train, n_samples=3000)
 
 end = timer() # ------------
 print(f"{end - start:.2f}s")
