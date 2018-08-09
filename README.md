@@ -9,7 +9,7 @@ To get reliable results, use permutation importance, provided in the `rfpimp` pa
 
 ## Description
 
-See <a href="http://parrt.cs.usfca.edu/doc/rf-importance/index.html">Beware Default Random Forest Importances</a> for a deeper discussion of the issues surrounding feature importances in random forests (authored by <a href="http://parrt.cs.usfca.edu">Terence Parr</a>, <a href="https://www.linkedin.com/in/kerem-turgutlu-12906b65/">Kerem Turgutlu</a>, <a href="https://www.linkedin.com/in/cpcsiszar/">Christopher Csiszar</a>, and <a href="http://www.fast.ai/about/#jeremy">Jeremy Howard</a>).
+See <a href="http://explained.ai/rf-importance/index.html">Beware Default Random Forest Importances</a> for a deeper discussion of the issues surrounding feature importances in random forests (authored by <a href="http://parrt.cs.usfca.edu">Terence Parr</a>, <a href="https://www.linkedin.com/in/kerem-turgutlu-12906b65/">Kerem Turgutlu</a>, <a href="https://www.linkedin.com/in/cpcsiszar/">Christopher Csiszar</a>, and <a href="http://www.fast.ai/about/#jeremy">Jeremy Howard</a>).
 
 The mean-decrease-in-impurity importance of a feature is computed by measuring how effective the feature is at reducing uncertainty (classifiers) or variance (regressors) when creating decision trees within random forests.  The problem is that this mechanism, while fast, does not always give an accurate picture of importance. Strobl <i>et al</i> pointed out in <a href="https://link.springer.com/article/10.1186%2F1471-2105-8-25">Bias in random forest variable importance measures: Illustrations, sources and a solution</a> that &ldquo;<i>the variable importance measures of Breiman's original random forest method ... are not reliable in situations where potential predictor variables vary in their scale of measurement or their number of categories</i>.&rdquo; 
 
@@ -80,3 +80,23 @@ rf.fit(X_train, y_train)
 imp = importances(rf, X_test, y_test, n_samples=-1) # permutation
 plot_importances(imp)
 ```
+### Feature correlation
+
+See [Feature collinearity heatmap](http://localhost:8921/notebooks/rfpimp-collinear.ipynb)
+
+### Feature dependencies
+
+The features we use in machine learning are rarely completely independent, which makes interpreting feature importance tricky. We could compute correlation coefficients, but that only identifies linear relationships. A way to at least identify if a feature, x, is dependent on other features is to train a model using x as a dependent variable and all other features as independent variables. Because random forests give us an easy out of bag error estimate, the feature dependence functions rely on random forest models. The R^2 prediction error from the model indicates how easy it is to predict feature x using the other features. The higher the score, the more dependent feature x is. Example:
+
+```
+from rfpimp import oob_dependences
+X_train, y_train = df.drop('price',axis=1), df['price']
+rf = RandomForestRegressor(n_estimators=50, n_jobs=-1, oob_score=True)
+D = oob_dependences(rf, X_train)
+```
+
+That gives something like the following:
+
+<img src="article/images/dependencies.png" width="180">
+
+You can also get a feature dependence matrix that returns a non-symmetric data frame where each row is the importance of each var to the row's var used as a model target.

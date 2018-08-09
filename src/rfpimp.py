@@ -24,7 +24,7 @@ from copy import copy
 import warnings
 
 
-def importances(model, X_valid, y_valid, features=None, n_samples=3500, sort=True):
+def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=True):
     """
     Compute permutation feature importances for scikit-learn models using
     a validation set.
@@ -62,7 +62,7 @@ def importances(model, X_valid, y_valid, features=None, n_samples=3500, sort=Tru
                      Feature groups can overlap, with features appearing in multiple.
     :param n_samples: How many records of the validation set to use
                       to compute permutation importance. The default is
-                      3500, which we arrived at by experiment over a few data sets.
+                      5000, which we arrived at by experiment over a few data sets.
                       As we cannot be sure how all data sets will react,
                       you can pass in whatever sample size you want. Pass in -1
                       to mean entire validation set. Our experiments show that
@@ -143,7 +143,7 @@ def importances(model, X_valid, y_valid, features=None, n_samples=3500, sort=Tru
     return I
 
 
-def oob_importances(rf, X_train, y_train):
+def oob_importances(rf, X_train, y_train, n_samples=5000):
     """
     Compute permutation feature importances for scikit-learn
     RandomForestClassifier or RandomForestRegressor in arg rf.
@@ -153,6 +153,8 @@ def oob_importances(rf, X_train, y_train):
     The training data is needed to compute out of bag (OOB)
     model performance measures (accuracy or R^2). The model
     is not retrained.
+
+    By default, sample up to 5000 observations to compute feature importances.
 
     return: A data frame with Feature, Importance columns
 
@@ -164,9 +166,9 @@ def oob_importances(rf, X_train, y_train):
     imp = oob_importances(rf, X_train, y_train)
     """
     if isinstance(rf, RandomForestClassifier):
-        return permutation_importances(rf, X_train, y_train, oob_classifier_accuracy)
+        return permutation_importances(rf, X_train, y_train, oob_classifier_accuracy, n_samples)
     elif isinstance(rf, RandomForestRegressor):
-        return permutation_importances(rf, X_train, y_train, oob_regression_r2_score)
+        return permutation_importances(rf, X_train, y_train, oob_regression_r2_score, n_samples)
     return None
 
 
@@ -214,8 +216,8 @@ def cv_importances(model, X_train, y_train, k=3):
     return I
 
 
-def permutation_importances(rf, X_train, y_train, metric):
-    imp = permutation_importances_raw(rf, X_train, y_train, metric)
+def permutation_importances(rf, X_train, y_train, metric, n_samples=5000):
+    imp = permutation_importances_raw(rf, X_train, y_train, metric, n_samples)
     I = pd.DataFrame(data={'Feature':X_train.columns, 'Importance':imp})
     I = I.set_index('Feature')
     I = I.sort_values('Importance', ascending=False)
@@ -262,22 +264,26 @@ def dropcol_importances(rf, X_train, y_train):
     return I
 
 
-def importances_raw(rf, X_train, y_train):
+def importances_raw(rf, X_train, y_train, n_samples=5000):
     if isinstance(rf, RandomForestClassifier):
-        return permutation_importances_raw(rf, X_train, y_train, oob_classifier_accuracy)
+        return permutation_importances_raw(rf, X_train, y_train, oob_classifier_accuracy, n_samples)
     elif isinstance(rf, RandomForestRegressor):
-        return permutation_importances_raw(rf, X_train, y_train, oob_regression_r2_score)
+        return permutation_importances_raw(rf, X_train, y_train, oob_regression_r2_score, n_samples)
     return None
 
 
-def permutation_importances_raw(rf, X_train, y_train, metric):
+def permutation_importances_raw(rf, X_train, y_train, metric, n_samples=5000):
     """
     Return array of importances from pre-fit rf; metric is function
     that measures accuracy or R^2 or similar. This function
     works for regressors and classifiers.
     """
-    baseline = metric(rf, X_train, y_train)
-    X_train = X_train.copy(deep=False) # shallow copy
+    X_train = X_train.values # convert to numpy array for speed
+    idx = np.random.choice(len(X_train), size=n_samples, replace=False)
+    X_sample = X_train[idx, :]
+    y_sample = y_train[idx, :]
+    baseline = metric(rf, X_sample, y_train)
+    X_sample = X_sample.copy(deep=False) # shallow copy
     imp = []
     for col in X_train.columns:
         save = X_train[col].copy()
@@ -437,12 +443,14 @@ def oob_dependences(rf,X_train):
     return df_dep
 
 
-def feature_dependence_matrix(X_train):
+def feature_dependence_matrix(rf,X_train, n_samples=5000):
     """
     Given training observation independent variables in X_train (a dataframe),
     compute the feature importance using each var as a dependent variable.
     We retrain a random forest for each var as target using the others as
     independent vars.  Only numeric columns are considered.
+
+    By default, sample up to 5000 observations to compute feature dependencies.
 
     :return: a non-symmetric data frame with the dependence matrix where each row is the importance of each var to the row's var used as a model target.
     """
@@ -452,10 +460,9 @@ def feature_dependence_matrix(X_train):
     for i in range(len(numcols)):
         col = numcols[i]
         X, y = X_train.drop(col, axis=1), X_train[col]
-        rf = RandomForestRegressor(n_estimators=50, n_jobs=-1, oob_score=True)
         rf.fit(X,y)
         #imp = rf.feature_importances_
-        imp = permutation_importances_raw(rf, X, y, oob_regression_r2_score)
+        imp = permutation_importances_raw(rf, X, y, oob_regression_r2_score, n_samples)
         imp = np.insert(imp, i, 1.0)
         df_dep.iloc[i] = np.insert(imp, 0, rf.oob_score_) # add overall dependence
 
