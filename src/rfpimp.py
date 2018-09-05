@@ -24,7 +24,7 @@ from copy import copy
 import warnings
 
 
-def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=True, metric=None):
+def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=True, metric=None, sample_weights = None):
     """
     Compute permutation feature importances for scikit-learn models using
     a validation set.
@@ -69,8 +69,10 @@ def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=Tru
                       not too many records are needed to get an accurate picture of
                       feature importance.
     :param sort: Whether to sort the resulting importances
-    :param metric: Metric in the form of callable(model, X_valid, y_valid) to evaluate for,
+    :param metric: Metric in the form of callable(model, X_valid, y_valid, sample_weights) to evaluate for,
                     if not set default's to model.score()
+    :param sample_weights: set if a different weighting is required for the validation samples
+
 
     return: A data frame with Feature, Importance columns
 
@@ -109,9 +111,9 @@ def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=Tru
 
     baseline = None
     if callable(metric):
-        baseline = model.score(X_valid, y_valid)
+        baseline = model.score(X_valid, y_valid, sample_weights)
     else:
-        baseline = metric(model, X_valid, y_valid)
+        baseline = metric(model, X_valid, y_valid, sample_weights)
 
     imp = []
     m = None
@@ -120,9 +122,9 @@ def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=Tru
             save = X_valid[group].copy()
             X_valid[group] = np.random.permutation(X_valid[group])
             if callable(metric):
-                m = metric(model, X_valid, y_valid)
+                m = metric(model, X_valid, y_valid, sample_weights)
             else:
-                m = model.score(X_valid, y_valid)
+                m = model.score(X_valid, y_valid, sample_weights)
             X_valid[group] = save
         else:
             save = {}
@@ -132,9 +134,9 @@ def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=Tru
                 X_valid[col] = np.random.permutation(X_valid[col])
 
             if callable(metric):
-                m = metric(model, X_valid, y_valid)
+                m = metric(model, X_valid, y_valid, sample_weights)
             else:
-                m = model.score(X_valid, y_valid)
+                m = model.score(X_valid, y_valid, sample_weights)
             for col in group:
                 X_valid[col] = save[col]
         imp.append(baseline - m)
@@ -254,7 +256,51 @@ def permutation_importances(rf, X_train, y_train, metric, n_samples=5000):
     return I
 
 
-def dropcol_importances(rf, X_train, y_train):
+def dropcol_importances(rf, X_train, y_train, metric=None, X_valid = None, y_valid = None, sample_weights = None):
+    """
+    Compute drop-column feature importances for scikit-learn.
+
+    Given a RandomForestClassifier or RandomForestRegressor in rf
+    and training X and y data, return a data frame with columns
+    Feature and Importance sorted in reverse order by importance.
+
+    A clone of rf is trained once to get the baseline score and then
+    again, once per feature to compute the drop in either the model's .score() output
+    or a custom metric callable in the form of metric(model, X_valid, y_valid). In case of a custom metric
+    the X_valid and y_valid parameters should be set.
+
+    return: A data frame with Feature, Importance columns
+
+    SAMPLE CODE
+
+    rf = RandomForestRegressor(n_estimators=100, n_jobs=-1, oob_score=True)
+    X_train, y_train = ..., ...
+    rf.fit(X_train, y_train)
+    imp = dropcol_importances(rf, X_train, y_train)
+    """
+    rf_ = clone(rf)
+    rf_.random_state = 999
+    rf_.fit(X_train, y_train)
+    baseline = rf_.oob_score_
+    imp = []
+    for col in X_train.columns:
+        X = X_train.drop(col, axis=1)
+        rf_ = clone(rf)
+        rf_.random_state = 999
+        rf_.fit(X, y_train)
+        if callable(metric):
+            o = metric(rf_, X_valid, y_valid, sample_weights)
+        else:
+            o = rf_.score(X_valid, y_valid, sample_weights)
+        imp.append(baseline - o)
+    imp = np.array(imp)
+    I = pd.DataFrame(data={'Feature':X_train.columns, 'Importance':imp})
+    I = I.set_index('Feature')
+    I = I.sort_values('Importance', ascending=False)
+    return I
+
+
+def oob_dropcol_importances(rf, X_train, y_train):
     """
     Compute drop-column feature importances for scikit-learn.
 
@@ -273,7 +319,7 @@ def dropcol_importances(rf, X_train, y_train):
     rf = RandomForestRegressor(n_estimators=100, n_jobs=-1, oob_score=True)
     X_train, y_train = ..., ...
     rf.fit(X_train, y_train)
-    imp = dropcol_importances(rf, X_train, y_train)
+    imp = oob_dropcol_importances(rf, X_train, y_train)
     """
     rf_ = clone(rf)
     rf_.random_state = 999
