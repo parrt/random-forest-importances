@@ -24,7 +24,7 @@ from copy import copy
 import warnings
 
 
-def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=True):
+def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=True, metric=None):
     """
     Compute permutation feature importances for scikit-learn models using
     a validation set.
@@ -68,6 +68,10 @@ def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=Tru
                       to mean entire validation set. Our experiments show that
                       not too many records are needed to get an accurate picture of
                       feature importance.
+    :param sort: Whether to sort the resulting importances
+    :param metric: Metric in the form of callable(model, X_valid, y_valid) to evaluate for,
+                    if not set default's to model.score()
+
     return: A data frame with Feature, Importance columns
 
     SAMPLE CODE
@@ -103,13 +107,22 @@ def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=Tru
     X_valid, y_valid = sample(X_valid, y_valid, n_samples)
     X_valid = X_valid.copy(deep=False)  # we're modifying columns
 
-    baseline = model.score(X_valid, y_valid)
+    baseline = None
+    if callable(metric):
+        baseline = model.score(X_valid, y_valid)
+    else:
+        baseline = metric(model, X_valid, y_valid)
+
     imp = []
+    m = None
     for group in features:
         if isinstance(group, str):
             save = X_valid[group].copy()
             X_valid[group] = np.random.permutation(X_valid[group])
-            m = model.score(X_valid, y_valid)
+            if callable(metric):
+                m = metric(model, X_valid, y_valid)
+            else:
+                m = model.score(X_valid, y_valid)
             X_valid[group] = save
         else:
             save = {}
@@ -117,7 +130,11 @@ def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=Tru
                 save[col] = X_valid[col].copy()
             for col in group:
                 X_valid[col] = np.random.permutation(X_valid[col])
-            m = model.score(X_valid, y_valid)
+
+            if callable(metric):
+                m = metric(model, X_valid, y_valid)
+            else:
+                m = model.score(X_valid, y_valid)
             for col in group:
                 X_valid[col] = save[col]
         imp.append(baseline - m)
