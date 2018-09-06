@@ -111,9 +111,9 @@ def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=Tru
 
     baseline = None
     if callable(metric):
-        baseline = model.score(X_valid, y_valid, sample_weights)
-    else:
         baseline = metric(model, X_valid, y_valid, sample_weights)
+    else:
+        baseline = model.score(X_valid, y_valid, sample_weights)
 
     imp = []
     m = None
