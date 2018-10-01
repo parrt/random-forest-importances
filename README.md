@@ -82,7 +82,7 @@ plot_importances(imp)
 ```
 ### Feature correlation
 
-See [Feature collinearity heatmap](http://localhost:8921/notebooks/rfpimp-collinear.ipynb)
+See [Feature collinearity heatmap](notebooks/rfpimp-collinear.ipynb)
 
 ### Feature dependencies
 
