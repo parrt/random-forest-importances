@@ -428,24 +428,27 @@ def oob_regression_r2_score(rf, X_train, y_train):
     return oob_score
 
 
-def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
-                     label_fontsize=12,
-                     figsize=None, scalefig=(1.0, 1.0), show=True):
+def plot_importances(df_importances,
+                     filename=None,
+                     yrot=0,
+                     label_fontsize=11,
+                     width=4,
+                     show=True,
+                     barcolor='#c7e9b4'):
     """
     Given an array or data frame of importances, plot a horizontal bar chart
     showing the importance values.
 
     :param df_importances: A data frame with Feature, Importance columns
     :type df_importances: pd.DataFrame
-    :param save: A filename identifying where to save the image.
-    :param xrot: Degrees to rotate importance (X axis) labels
-    :type xrot: int
-    :param tickstep: How many ticks to skip in X axis
-    :type tickstep: int
+    :param filename: A filename identifying where to save the image.
+    :param width: Figure width in default units (inches I think). Height determined
+                  by number of features.
+    :type width: int
+    :param yrot: Degrees to rotate feature (Y axis) labels
+    :type yrot: int
     :param label_fontsize:  The font size for the column names and x ticks
     :type label_fontsize:  int
-    :param figsize: Specify width and height of image (width,height)
-    :type figsize: 2-tuple of floats
     :param scalefig: Scale width and height of image (widthscale,heightscale)
     :type scalefig: 2-tuple of floats
     :param show: Execute plt.show() if true (default is True). Sometimes
@@ -461,46 +464,31 @@ def plot_importances(df_importances, save=None, xrot=0, tickstep=3,
     imp = importances(rf, X_test, y_test)
     plot_importances(imp)
     """
+    GREY = '#444443'
     I = df_importances
-
-    # this is backwards but seems to undo weird reversed order in barh()
-    I = I.sort_values('Importance', ascending=True)
-
-    if figsize:
-        fig = plt.figure(figsize=figsize)
-    elif scalefig:
-        fig = plt.figure()
-        w, h = fig.get_size_inches()
-        fig.set_size_inches(w * scalefig[0], h * scalefig[1], forward=True)
-    else:
-        fig = plt.figure()
+    N = len(I.index)
+    unit = 1
+    fig = plt.figure(figsize=(width,(N+1)*unit*.5))
     ax = plt.gca()
-    labels = []
-    for col in I.index:
-        if isinstance(col, list):
-            labels.append('\n'.join(col))
-        else:
-            labels.append(col)
+    yloc = np.arange(0,N*unit,unit)
+    imp = I.Importance.values
+    ax.tick_params(labelsize=label_fontsize, labelcolor=GREY)
+    ax.invert_yaxis()  # labels read top-to-bottom
+    ax.set_xlabel("Relative importance", fontsize=label_fontsize+1, fontname="Arial", color=GREY)
+    barcontainer = plt.barh(y=yloc, width=imp, height=unit*.8, tick_label=I.index, color=barcolor)
 
-    for tick in ax.get_xticklabels():
-        tick.set_size(label_fontsize)
-    for tick in ax.get_yticklabels():
-        tick.set_size(label_fontsize)
+    # Alter appearance of each bar
+    for rect in barcontainer.patches:
+            rect.set_linewidth(.5)
+            rect.set_edgecolor(GREY)
 
-    ax.barh(np.arange(len(I.index)), I.Importance, height=0.6, tick_label=labels)
+    # rotate y-ticks
+    if yrot is not None:
+        plt.yticks(rotation=yrot)
 
-    # rotate x-ticks
-    if xrot is not None:
-        plt.xticks(rotation=xrot)
-
-    # xticks freq
-    xticks = ax.get_xticks()
-    nticks = len(xticks)
-    new_ticks = xticks[np.arange(0, nticks, step=tickstep)]
-    ax.set_xticks(new_ticks)
-
-    if save:
-        plt.savefig(save, bbox_inches="tight", pad_inches=0.03)
+    plt.tight_layout()
+    if filename is not None:
+        plt.savefig(filename, bbox_inches='tight', pad_inches=0)
     if show:
         plt.show()
 
