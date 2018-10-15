@@ -468,9 +468,16 @@ def plot_importances(df_importances,
     """
     GREY = '#444443'
     I = df_importances
-    N = len(I.index)
+#     N = len(I.index)
     unit = .5
     minheight=1.5
+
+    barwidths = np.array([f.count('\n')+1 for f in I.index])
+    print(barwidths)
+    N = np.sum(barwidths)
+    barwidths = barwidths * unit
+    print(N)
+    print(barwidths)
     height = max(minheight,(N+1)*unit*.5)
     fig = plt.figure(figsize=(width,height))
     ax = plt.gca()
@@ -479,12 +486,18 @@ def plot_importances(df_importances,
     ax.spines['left'].set_linewidth(.3)
     ax.spines['bottom'].set_linewidth(.3)
 
-    yloc = np.arange(0,N*unit,unit)
+    yloc = []
+    y = unit
+    for w in reversed(barwidths):
+        yloc.append(y)
+        y += w
+    # yloc = np.arange(unit,N*unit,unit)
+    yloc = np.array(yloc)
     imp = I.Importance.values
     ax.tick_params(labelsize=label_fontsize, labelcolor=GREY)
     ax.invert_yaxis()  # labels read top-to-bottom
     ax.set_xlabel("Relative importance", fontsize=label_fontsize+1, fontname="Arial", color=GREY)
-    barcontainer = plt.barh(y=yloc, width=imp, height=unit*.8, tick_label=I.index, color=color)
+    barcontainer = plt.barh(y=yloc, width=imp, height=barwidths, tick_label=I.index, color=color)
 
     # Alter appearance of each bar
     for rect in barcontainer.patches:
