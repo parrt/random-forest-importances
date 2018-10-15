@@ -109,14 +109,12 @@ def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=Tru
     X_valid, y_valid = sample(X_valid, y_valid, n_samples)
     X_valid = X_valid.copy(deep=False)  # we're modifying columns
 
-    baseline = None
     if callable(metric):
         baseline = metric(model, X_valid, y_valid, sample_weights)
     else:
         baseline = model.score(X_valid, y_valid, sample_weights)
 
     imp = []
-    m = None
     for group in features:
         if isinstance(group, str):
             save = X_valid[group].copy()
@@ -256,43 +254,46 @@ def permutation_importances(rf, X_train, y_train, metric, n_samples=5000):
     return I
 
 
-def dropcol_importances(rf, X_train, y_train, metric=None, X_valid = None, y_valid = None, sample_weights = None):
+def dropcol_importances(model, X_train, y_train, X_valid = None, y_valid = None, metric=None, sample_weights = None):
     """
     Compute drop-column feature importances for scikit-learn.
 
-    Given a RandomForestClassifier or RandomForestRegressor in rf
+    Given a classifier or regression in model
     and training X and y data, return a data frame with columns
     Feature and Importance sorted in reverse order by importance.
 
-    A clone of rf is trained once to get the baseline score and then
+    A clone of model is trained once to get the baseline score and then
     again, once per feature to compute the drop in either the model's .score() output
-    or a custom metric callable in the form of metric(model, X_valid, y_valid). In case of a custom metric
-    the X_valid and y_valid parameters should be set.
+    or a custom metric callable in the form of metric(model, X_valid, y_valid).
+    In case of a custom metric the X_valid and y_valid parameters should be set.
 
     return: A data frame with Feature, Importance columns
 
     SAMPLE CODE
 
-    rf = RandomForestRegressor(n_estimators=100, n_jobs=-1, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=100, n_jobs=-1)
     X_train, y_train = ..., ...
     rf.fit(X_train, y_train)
     imp = dropcol_importances(rf, X_train, y_train)
     """
-    rf_ = clone(rf)
-    rf_.random_state = 999
-    rf_.fit(X_train, y_train)
-    baseline = rf_.oob_score_
+    model_ = clone(model)
+    model_.random_state = 999
+    model_.fit(X_train, y_train)
+    if callable(metric):
+        baseline = metric(model_, X_valid, y_valid, sample_weights)
+    else:
+        baseline = model_.score(X_valid, y_valid, sample_weights)
     imp = []
     for col in X_train.columns:
-        X = X_train.drop(col, axis=1)
-        rf_ = clone(rf)
-        rf_.random_state = 999
-        rf_.fit(X, y_train)
+        model_ = clone(model)
+        model_.random_state = 999
+        model_.fit(X_train.drop(col,axis=1), y_train)
         if callable(metric):
-            o = metric(rf_, X_valid, y_valid, sample_weights)
+            s = metric(model_, X_valid.drop(col,axis=1), y_valid, sample_weights)
         else:
-            o = rf_.score(X_valid, y_valid, sample_weights)
-        imp.append(baseline - o)
+            s = model_.score(X_valid.drop(col,axis=1), y_valid, sample_weights)
+        drop_in_score = baseline - s
+        imp.append(drop_in_score)
     imp = np.array(imp)
     I = pd.DataFrame(data={'Feature':X_train.columns, 'Importance':imp})
     I = I.set_index('Feature')
@@ -323,16 +324,17 @@ def oob_dropcol_importances(rf, X_train, y_train):
     """
     rf_ = clone(rf)
     rf_.random_state = 999
+    rf_.oob_score = True
     rf_.fit(X_train, y_train)
     baseline = rf_.oob_score_
     imp = []
     for col in X_train.columns:
-        X = X_train.drop(col, axis=1)
         rf_ = clone(rf)
         rf_.random_state = 999
-        rf_.fit(X, y_train)
-        o = rf_.oob_score_
-        imp.append(baseline - o)
+        rf_.oob_score = True
+        rf_.fit(X_train.drop(col, axis=1), y_train)
+        drop_in_score = baseline - rf_.oob_score_
+        imp.append(drop_in_score)
     imp = np.array(imp)
     I = pd.DataFrame(data={'Feature':X_train.columns, 'Importance':imp})
     I = I.set_index('Feature')
@@ -434,7 +436,7 @@ def plot_importances(df_importances,
                      label_fontsize=11,
                      width=4,
                      show=True,
-                     barcolor='#c7e9b4'):
+                     color='#D9E6F5'):
     """
     Given an array or data frame of importances, plot a horizontal bar chart
     showing the importance values.
@@ -467,15 +469,22 @@ def plot_importances(df_importances,
     GREY = '#444443'
     I = df_importances
     N = len(I.index)
-    unit = 1
-    fig = plt.figure(figsize=(width,(N+1)*unit*.5))
+    unit = .5
+    minheight=1.5
+    height = max(minheight,(N+1)*unit*.5)
+    fig = plt.figure(figsize=(width,height))
     ax = plt.gca()
+    ax.spines['top'].set_linewidth(.3)
+    ax.spines['right'].set_linewidth(.3)
+    ax.spines['left'].set_linewidth(.3)
+    ax.spines['bottom'].set_linewidth(.3)
+
     yloc = np.arange(0,N*unit,unit)
     imp = I.Importance.values
     ax.tick_params(labelsize=label_fontsize, labelcolor=GREY)
     ax.invert_yaxis()  # labels read top-to-bottom
     ax.set_xlabel("Relative importance", fontsize=label_fontsize+1, fontname="Arial", color=GREY)
-    barcontainer = plt.barh(y=yloc, width=imp, height=unit*.8, tick_label=I.index, color=barcolor)
+    barcontainer = plt.barh(y=yloc, width=imp, height=unit*.8, tick_label=I.index, color=color)
 
     # Alter appearance of each bar
     for rect in barcontainer.patches:
