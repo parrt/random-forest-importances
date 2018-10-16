@@ -437,21 +437,28 @@ class PimpViz:
     For use with jupyter notebooks, plot_importances returns an instance
     of this class so we display SVG not PNG.
     """
-
-    def __init__(self,svgfilename):
-        with open(svgfilename, "r", encoding='UTF-8') as f:
-            self.svg = f.read()
+    def __init__(self):
+        tmp = tempfile.gettempdir()
+        self.svgfilename = f"{tmp}/PimpViz_{getpid()}.svg"
+        plt.savefig(self.svgfilename, bbox_inches='tight', pad_inches=0)
 
     def _repr_svg_(self):
-        return self.svg
+        with open(self.svgfilename, "r", encoding='UTF-8') as f:
+            svg = f.read()
+        plt.close()
+        return svg
+
+    def save(self, filename):
+        plt.savefig(filename, bbox_inches='tight', pad_inches=0)
+
+    def view(self):
+        plt.show()
 
 
 def plot_importances(df_importances,
-                     filename=None,
                      yrot=0,
-                     label_fontsize=11,
+                     label_fontsize=10,
                      width=4,
-                     show=True,
                      irange=(-.003,.2),
                      color='#D9E6F5',
                      xtick_precision=2,
@@ -462,7 +469,6 @@ def plot_importances(df_importances,
 
     :param df_importances: A data frame with Feature, Importance columns
     :type df_importances: pd.DataFrame
-    :param filename: A filename identifying where to save the image.
     :param width: Figure width in default units (inches I think). Height determined
                   by number of features.
     :type width: int
@@ -498,9 +504,10 @@ def plot_importances(df_importances,
     barcounts = np.array([f.count('\n')+1 for f in I.index])
     N = np.sum(barcounts)
     ymax = N * unit + len(I.index) * ypadding + ypadding
-    print(f"barcounts {barcounts}, N={N}, ymax={ymax}")
-    height = max(minheight,ymax*.3)
+    # print(f"barcounts {barcounts}, N={N}, ymax={ymax}")
+    height = max(minheight,ymax*.25)
 
+    plt.close()
     fig = plt.figure(figsize=(width,height))
     ax = plt.gca()
     ax.set_xlim(*irange)
@@ -518,7 +525,6 @@ def plot_importances(df_importances,
         w = barcounts[i]
         y += (wprev + w)/2 * unit + ypadding
         yloc.append(y)
-    print(yloc)
     yloc = np.array(yloc)
     ax.xaxis.set_major_formatter(FormatStrFormatter(f'%.{xtick_precision}f'))
     ax.set_xticks([maxdrop, irange[1]])
@@ -544,14 +550,8 @@ def plot_importances(df_importances,
         plt.yticks(rotation=yrot)
 
     plt.tight_layout()
-    if filename is None:
-        tmp = tempfile.gettempdir()
-        filename = f"{tmp}/PimpViz_{getpid()}.svg"
-    plt.savefig(filename, bbox_inches='tight', pad_inches=0)
 
-    if show:
-        plt.show()
-    return PimpViz(filename)
+    return PimpViz()
 
 
 def oob_dependences(rf, X_train, n_samples=5000):
@@ -578,7 +578,7 @@ def oob_dependences(rf, X_train, n_samples=5000):
     return df_dep
 
 
-def feature_dependence_matrix(rf, X_train, n_samples=5000):
+def feature_dependence_matrix(X_train, n_samples=5000):
     """
     Given training observation independent variables in X_train (a dataframe),
     compute the feature importance using each var as a dependent variable.
@@ -597,6 +597,10 @@ def feature_dependence_matrix(rf, X_train, n_samples=5000):
     for i in range(len(numcols)):
         col = numcols[i]
         X, y = X_train.drop(col, axis=1), X_train[col]
+        if is_numeric_dtype(X_train[col]):
+            rf = RandomForestRegressor(n_estimators=50, oob_score=True)
+        else:
+            rf = RandomForestClassifier(n_estimators=50, oob_score=True)
         rf.fit(X,y)
         #imp = rf.feature_importances_
         imp = permutation_importances_raw(rf, X, y, oob_regression_r2_score, n_samples)

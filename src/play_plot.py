@@ -77,10 +77,12 @@ def test3():
     return I
 
 
-plot_importances(test1(), filename='/tmp/t.svg', show=False)
-plt.close()
+viz = plot_importances(test1())
+viz.save(filename='/tmp/t.svg')
 I = test2()
-plot_importances(I, filename='/tmp/t2.svg', show=False)
+viz = plot_importances(I)
+viz.save(filename='/tmp/t2.svg')
 
 I = test3()
-plot_importances(I, filename='/tmp/t3.svg', show=False)
+viz = plot_importances(I)
+viz.save(filename='/tmp/t3.svg')
