@@ -20,9 +20,11 @@ from sklearn.metrics import r2_score
 from scipy.stats import spearmanr
 from pandas.api.types import is_numeric_dtype
 from matplotlib.colors import ListedColormap
+from matplotlib.ticker import FormatStrFormatter
 from copy import copy
 import warnings
-
+import tempfile
+from os import getpid, makedirs
 
 def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=True, metric=None, sample_weights = None):
     """
@@ -430,13 +432,30 @@ def oob_regression_r2_score(rf, X_train, y_train):
     return oob_score
 
 
+class PimpViz:
+    """
+    For use with jupyter notebooks, plot_importances returns an instance
+    of this class so we display SVG not PNG.
+    """
+
+    def __init__(self,svgfilename):
+        with open(svgfilename, "r", encoding='UTF-8') as f:
+            self.svg = f.read()
+
+    def _repr_svg_(self):
+        return self.svg
+
+
 def plot_importances(df_importances,
                      filename=None,
                      yrot=0,
                      label_fontsize=11,
                      width=4,
                      show=True,
-                     color='#D9E6F5'):
+                     irange=(-.003,.2),
+                     color='#D9E6F5',
+                     xtick_precision=2,
+                     title="Feature importance via drop in accuracy"):
     """
     Given an array or data frame of importances, plot a horizontal bar chart
     showing the importance values.
@@ -468,36 +487,52 @@ def plot_importances(df_importances,
     """
     GREY = '#444443'
     I = df_importances
-#     N = len(I.index)
-    unit = .5
+    unit = 1
+    ypadding = .1
     minheight=1.5
+    imp = I.Importance.values
+    mindrop = np.min(imp)
+    maxdrop = np.max(imp)
+    irange = (min(irange[0],mindrop - 0.003), max(irange[1],maxdrop))
 
-    barwidths = np.array([f.count('\n')+1 for f in I.index])
-    print(barwidths)
-    N = np.sum(barwidths)
-    barwidths = barwidths * unit
-    print(N)
-    print(barwidths)
-    height = max(minheight,(N+1)*unit*.5)
+    barcounts = np.array([f.count('\n')+1 for f in I.index])
+    N = np.sum(barcounts)
+    ymax = N * unit + len(I.index) * ypadding + ypadding
+    print(f"barcounts {barcounts}, N={N}, ymax={ymax}")
+    height = max(minheight,ymax*.3)
+
     fig = plt.figure(figsize=(width,height))
     ax = plt.gca()
+    ax.set_xlim(*irange)
+    ax.set_ylim(0,ymax)
     ax.spines['top'].set_linewidth(.3)
     ax.spines['right'].set_linewidth(.3)
     ax.spines['left'].set_linewidth(.3)
     ax.spines['bottom'].set_linewidth(.3)
 
     yloc = []
-    y = unit
-    for w in reversed(barwidths):
+    y = barcounts[0]*unit / 2 + ypadding
+    yloc.append(y)
+    for i in range(1,len(barcounts)):
+        wprev = barcounts[i-1]
+        w = barcounts[i]
+        y += (wprev + w)/2 * unit + ypadding
         yloc.append(y)
-        y += w
-    # yloc = np.arange(unit,N*unit,unit)
+    print(yloc)
     yloc = np.array(yloc)
-    imp = I.Importance.values
+    ax.xaxis.set_major_formatter(FormatStrFormatter(f'%.{xtick_precision}f'))
+    ax.set_xticks([maxdrop, irange[1]])
     ax.tick_params(labelsize=label_fontsize, labelcolor=GREY)
     ax.invert_yaxis()  # labels read top-to-bottom
-    ax.set_xlabel("Relative importance", fontsize=label_fontsize+1, fontname="Arial", color=GREY)
-    barcontainer = plt.barh(y=yloc, width=imp, height=barwidths, tick_label=I.index, color=color)
+    if title:
+        ax.set_title(title, fontsize=label_fontsize, fontname="Arial", color=GREY)
+
+    barcontainer = plt.barh(y=yloc, width=imp,
+                            height=barcounts*unit,
+                            tick_label=I.index,
+                            #tick_label=np.arange(0,len(barcounts),1),
+                            # tick_label=yloc,
+                            color=color, align='center')
 
     # Alter appearance of each bar
     for rect in barcontainer.patches:
@@ -509,10 +544,14 @@ def plot_importances(df_importances,
         plt.yticks(rotation=yrot)
 
     plt.tight_layout()
-    if filename is not None:
-        plt.savefig(filename, bbox_inches='tight', pad_inches=0)
+    if filename is None:
+        tmp = tempfile.gettempdir()
+        filename = f"{tmp}/PimpViz_{getpid()}.svg"
+    plt.savefig(filename, bbox_inches='tight', pad_inches=0)
+
     if show:
         plt.show()
+    return PimpViz(filename)
 
 
 def oob_dependences(rf, X_train, n_samples=5000):

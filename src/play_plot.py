@@ -34,7 +34,7 @@ def test1():
     X_train, y_train = df_train.drop('interest_level',axis=1), df_train['interest_level']
     X_test, y_test = df_test.drop('interest_level',axis=1), df_test['interest_level']
 
-    rf = RandomForestClassifier(n_estimators=100, n_jobs=-1,
+    rf = RandomForestClassifier(n_estimators=30, n_jobs=-1,
                                 max_features=1.0,
                                 min_samples_leaf=10, oob_score=True)
     rf.fit(X_train, y_train)
@@ -47,14 +47,40 @@ def test2():
     df_train, df_test = train_test_split(df, test_size=0.15)
     X_train, y_train = df_train.drop('interest_level',axis=1), df_train['interest_level']
     X_test, y_test = df_test.drop('interest_level',axis=1), df_test['interest_level']
-    rf = RandomForestClassifier(n_estimators=100, n_jobs=-1,
+    rf = RandomForestClassifier(n_estimators=30, n_jobs=-1,
                                 max_features=1.0,
                                 min_samples_leaf=10, oob_score=True)
     rf.fit(X_train, y_train)
     I = importances(rf, X_test, y_test, features=['bedrooms','bathrooms',['latitude', 'longitude']])
     return I
 
-#plot_importances(test1(), filename='/tmp/t.svg', show=False)
+
+def test3():
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.datasets import load_breast_cancer
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import accuracy_score
+    import pandas as pd
+
+    cancer = load_breast_cancer()
+
+    X, y = cancer.data, cancer.target
+    # show first 5 columns only
+    # df = pd.DataFrame(X[:, 0:10], columns=cancer.feature_names[0:10])
+    df = pd.DataFrame(X, columns=cancer.feature_names)
+    #df['diagnosis'] = cancer.target
+    X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3)
+
+    cl = RandomForestClassifier(n_estimators=10)
+    cl.fit(X_train, y_train)
+    I = importances(cl, X_test, y_test)
+    return I
+
+
+plot_importances(test1(), filename='/tmp/t.svg', show=False)
+plt.close()
 I = test2()
-print(I)
 plot_importances(I, filename='/tmp/t2.svg', show=False)
+
+I = test3()
+plot_importances(I, filename='/tmp/t3.svg', show=False)
