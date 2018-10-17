@@ -460,7 +460,7 @@ def plot_importances(df_importances,
                      label_fontsize=10,
                      width=4,
                      vscale = .25,
-                     imp_range=(-.003, .2),
+                     imp_range=(-.002, .2),
                      color='#D9E6F5',
                      xtick_precision=2,
                      title="Feature importance via drop in accuracy"):
@@ -505,7 +505,8 @@ def plot_importances(df_importances,
     imp = I.Importance.values
     mindrop = np.min(imp)
     maxdrop = np.max(imp)
-    imp_range = (min(imp_range[0], mindrop - 0.003), max(imp_range[1], maxdrop))
+    imp_padding = 0.002
+    imp_range = (min(imp_range[0], mindrop - imp_padding), max(imp_range[1], maxdrop))
 
     barcounts = np.array([f.count('\n')+1 for f in I.index])
     N = np.sum(barcounts)
@@ -611,7 +612,7 @@ def feature_dependence_matrix(X_train,
         imp = np.insert(imp, i, 1.0)
         df_dep.iloc[i] = np.insert(imp, 0, rf.oob_score_) # add overall dependence
 
-    return df_dep
+    return df_dep.sort_values('Dependence', ascending=False)
 
 
 def feature_corr_matrix(df):
