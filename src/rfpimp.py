@@ -459,7 +459,8 @@ def plot_importances(df_importances,
                      yrot=0,
                      label_fontsize=10,
                      width=4,
-                     irange=(-.003,.2),
+                     vscale = .25,
+                     imp_range=(-.003, .2),
                      color='#D9E6F5',
                      xtick_precision=2,
                      title="Feature importance via drop in accuracy"):
@@ -472,15 +473,20 @@ def plot_importances(df_importances,
     :param width: Figure width in default units (inches I think). Height determined
                   by number of features.
     :type width: int
+    :param vscale: Scale vertical plot (default .25) to make it taller
+    :type width: float
+    :param label_fontsize: Font size for feature names and importance values
+    :type width: int
     :param yrot: Degrees to rotate feature (Y axis) labels
     :type yrot: int
     :param label_fontsize:  The font size for the column names and x ticks
     :type label_fontsize:  int
     :param scalefig: Scale width and height of image (widthscale,heightscale)
     :type scalefig: 2-tuple of floats
-    :param show: Execute plt.show() if true (default is True). Sometimes
-                 we want to draw multiple things before calling plt.show()
-    :type show: bool
+    :param xtick_precision: How many digits after decimal for importance values.
+    :type xtick_precision: int
+    :param xtick_precision: Title of plot; set to None to avoid.
+    :type xtick_precision: string
     :return: None
 
     SAMPLE CODE
@@ -499,18 +505,18 @@ def plot_importances(df_importances,
     imp = I.Importance.values
     mindrop = np.min(imp)
     maxdrop = np.max(imp)
-    irange = (min(irange[0],mindrop - 0.003), max(irange[1],maxdrop))
+    imp_range = (min(imp_range[0], mindrop - 0.003), max(imp_range[1], maxdrop))
 
     barcounts = np.array([f.count('\n')+1 for f in I.index])
     N = np.sum(barcounts)
     ymax = N * unit + len(I.index) * ypadding + ypadding
     # print(f"barcounts {barcounts}, N={N}, ymax={ymax}")
-    height = max(minheight,ymax*.25)
+    height = max(minheight, ymax * vscale)
 
     plt.close()
     fig = plt.figure(figsize=(width,height))
     ax = plt.gca()
-    ax.set_xlim(*irange)
+    ax.set_xlim(*imp_range)
     ax.set_ylim(0,ymax)
     ax.spines['top'].set_linewidth(.3)
     ax.spines['right'].set_linewidth(.3)
@@ -527,7 +533,7 @@ def plot_importances(df_importances,
         yloc.append(y)
     yloc = np.array(yloc)
     ax.xaxis.set_major_formatter(FormatStrFormatter(f'%.{xtick_precision}f'))
-    ax.set_xticks([maxdrop, irange[1]])
+    ax.set_xticks([maxdrop, imp_range[1]])
     ax.tick_params(labelsize=label_fontsize, labelcolor=GREY)
     ax.invert_yaxis()  # labels read top-to-bottom
     if title:
@@ -578,10 +584,13 @@ def oob_dependences(rf, X_train, n_samples=5000):
     return df_dep
 
 
-def feature_dependence_matrix(X_train, n_samples=5000):
+def feature_dependence_matrix(X_train,
+                              rfmodel=RandomForestRegressor(n_estimators=50, oob_score=True),
+                              n_samples=5000):
     """
     Given training observation independent variables in X_train (a dataframe),
-    compute the feature importance using each var as a dependent variable.
+    compute the feature importance using each var as a dependent variable using
+    a RandomForestRegressor (even if var is actually categorical).
     We retrain a random forest for each var as target using the others as
     independent vars.  Only numeric columns are considered.
 
@@ -589,20 +598,15 @@ def feature_dependence_matrix(X_train, n_samples=5000):
 
     :return: a non-symmetric data frame with the dependence matrix where each row is the importance of each var to the row's var used as a model target.
     """
-    numcols = [col for col in X_train if is_numeric_dtype(X_train[col])]
+    numeric_cols = [col for col in X_train if is_numeric_dtype(X_train[col])]
 
     X_train = sample_rows(X_train, n_samples)
 
     df_dep = pd.DataFrame(index=X_train.columns, columns=['Dependence']+X_train.columns.tolist())
-    for i in range(len(numcols)):
-        col = numcols[i]
+    for i,col in enumerate(numeric_cols):
         X, y = X_train.drop(col, axis=1), X_train[col]
-        if is_numeric_dtype(X_train[col]):
-            rf = RandomForestRegressor(n_estimators=50, oob_score=True)
-        else:
-            rf = RandomForestClassifier(n_estimators=50, oob_score=True)
+        rf = clone(rfmodel)
         rf.fit(X,y)
-        #imp = rf.feature_importances_
         imp = permutation_importances_raw(rf, X, y, oob_regression_r2_score, n_samples)
         imp = np.insert(imp, i, 1.0)
         df_dep.iloc[i] = np.insert(imp, 0, rf.oob_score_) # add overall dependence
