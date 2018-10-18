@@ -52,6 +52,9 @@ class PimpViz:
     def view(self):
         plt.show()
 
+    def close(self):
+        plt.close()
+
 
 def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=True, metric=None, sample_weights = None):
     """
