@@ -28,7 +28,7 @@ March 26, 2018.</p>
 
 <p>(Terence and Jeremy teach in University of San Francisco's <a href="https://www.usfca.edu/arts-sciences/graduate-programs/data-science">MS in Data Science program</a>. You might know Terence as the creator of the <a href="http://www.antlr.org">ANTLR parser generator</a>. For more material, see Jeremy's <a href="http://course.fast.ai">fast.ai courses</a>. Kerem and Christopher are current MS Data Science students.)</p>
 
-<p><b>Update October 18, 2018</b> to show better feature importance plot and a new feature dependence heatmap. See</p>
+<p><b>Update October 18, 2018</b> to show better feature importance plot and a new feature dependence heatmap. Updated all plots.</p>
 	
 <p><b>Updated April 19, 2018</b> to include new rfpimp package features to handle collinear dataframe columns in <a href="#corr_collinear">Dealing with collinear features</a> section.</p>
 	
@@ -144,13 +144,13 @@ After training, we plotted the <font size=-1><tt>rf.feature_importances_</tt></f
 <table class=figure>
 <tr>
 <td style="vertical-align: bottom;">
-	<img src="images/regr_dflt_random_annotated.png" width="70%">
+	<img src="images/regr_dflt_random_annotated.png" width="100%">
 <td style="vertical-align: bottom;">
-	<img src="images/cls_dflt_random_annotated.png" width="70%">
+	<img src="images/cls_dflt_random_annotated.png" width="100%">
 <tr>
-<td>
+<td style="padding-left: 10px;">
 <b>Figure 1(a)</b>. <font size=-1><tt>scikit-learn</tt></font> default importances for Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.
-<td>
+<td style="padding-left: 10px;">
 <b>Figure 1(b)</b>. <font size=-1><tt>scikit-learn</tt></font> default importances for Random Forest <b>classifier</b> predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. Highly suspicious that random column is much more important than the number of bedrooms.
 </table>
 
@@ -234,9 +234,9 @@ To test permutation importances, we plotted the regressor and classifier importa
 <td style="vertical-align: bottom;">
 	<img src="images/cls_permute_random.svg" width="100%">
 <tr>
-<td>
+<td style="padding-left: 10px;">
 <b>Figure 2(a)</b>. Importances derived by permuting each column and computing change in out-of-bag R<sup>2</sup> using <font size=-1><tt>scikit-learn</tt></font> <b>regressor</b>. Predicting apartment rental price from 4 features + a column of random numbers.
-<td>
+<td style="padding-left: 10px;">
 <b>Figure 2(b)</b>. Importances derived by permuting each column and computing change in out-of-bag accuracy using <font size=-1><tt>scikit-learn</tt></font> Random Forest <b>classifier</b>.
 </table>
 
@@ -295,9 +295,9 @@ Notice that we force the <font size=-1><tt>random_state</tt></font> of each mode
 <td style="vertical-align: bottom;">
 	<img src="images/cls_dropcol_random.svg" width="100%">
 <tr>
-<td>
+<td style="padding-left: 10px;">
 <b>Figure 3(a)</b>. Importances derived by dropping each column, retraining <font size=-1><tt>scikit-learn</tt></font> Random Forest <b>regressor</b>, and computing change in out-of-bag R<sup>2</sup>. Predicting apartment rental price from 4 features + a column of random numbers. The importance of the random column is at the bottom as it should be.
-<td>
+<td style="padding-left: 10px;">
 <b>Figure 3(b)</b>. Importances derived by dropping each column, retraining <font size=-1><tt>scikit-learn</tt></font> Random Forest <b>classifier</b>, and computing change in out-of-bag accuracy. Predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. The importance of the random column is at the bottom as it should be.
 </table>
 
@@ -335,9 +335,9 @@ R's mean-decrease-in-impurity importance (type=2) gives the same implausible res
 <table class=figure>
 <tr>
 <td>
-	<img src="images/regr_dflt_random_R_annotated.png" width="70%">
+	<img src="images/regr_dflt_random_R_annotated.png" width="100%">
 <td>
-	<img src="images/cls_dflt_random_R_annotated.png" width="70%">
+	<img src="images/cls_dflt_random_R_annotated.png" width="100%">
 <tr>
 <td>
 <b>Figure 4(a)</b>. R's type=2 importances for Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.
@@ -501,7 +501,7 @@ The effect of collinear features is most stark when looking at drop column impor
 
 <table class=figure>
 <tr>
-	<th colspan=2 align=center>Drop column importance dup'd longitude column</th>
+	<th colspan=2  style="padding-bottom:5px;">Drop column importance dup'd longitude column</th>
 </tr>
 <tr>
 <td style="vertical-align: bottom;">
@@ -524,7 +524,7 @@ The effect of collinear features on permutation importance is more nuanced and d
 
 <table class=figure>
 <tr>
-	<th colspan=2>Permutation importance dup'd longitude column</th>
+	<th colspan=2 style="padding-bottom:5px;">Permutation importance dup'd longitude column</th>
 </tr>
 <tr>
 <td style="vertical-align: bottom;">
@@ -550,7 +550,7 @@ X_train['longitude_noisy'] = X_train.longitude + noise
 
 <table class=figure>
 <tr>
-	<th colspan=2>Permutation importance dup'd longitude + noise column</th>
+	<th colspan=2 style="padding-bottom:5px;">Permutation importance dup'd longitude + noise column</th>
 </tr>
 <tr>
 <td style="vertical-align: bottom;">
@@ -569,7 +569,7 @@ X_train['longitude_noisy'] = X_train.longitude + noise
 	
 <table class=figure>
 <tr>
-	<th colspan=2>Permutation importance dup'd bedrooms + noise column</th>
+	<th colspan=2 style="padding-bottom:5px;">Permutation importance dup'd bedrooms + noise column</th>
 </tr>
 <tr>
 <td style="vertical-align: bottom;">
@@ -588,7 +588,7 @@ X_train['longitude_noisy'] = X_train.longitude + noise
 	
 <table class=figure>
 <tr>
-	<th colspan=2>Mean-decrease-in-impurity (gini) importance dup'd longitude column</th>
+	<th colspan=2 style="padding-bottom:5px;">Mean-decrease-in-impurity importance dup'd longitude column</th>
 </tr>
 <tr>
 <td style="vertical-align: bottom;">
@@ -608,7 +608,7 @@ Adding a noisy duplicate of the longitude column behaves like permutation import
  
 <table class=figure>
 <tr>
-	<th colspan=2>Mean-decrease-in-impurity (gini) importance dup'd longitude + noise column</th>
+	<th colspan=2 style="padding-bottom:5px;">Mean-decrease-in-impurity importance dup'd longitude + noise column</th>
 </tr>
 <tr>
 <td style="vertical-align: bottom;">
@@ -672,6 +672,8 @@ plot_importances(I)
 <p>Notice how, in the following result, latitude and longitude together are very important as a meta-feature. The meta-features "steal" importance from the individual bedrooms and bathrooms columns.
 
 <p><img src="images/grouped_imp.svg" width="50%">
+	
+<p>Bar thickness indicates the number of features in the group.</p>
 
 <p>Any features not mentioned get lumped together into a single "other" meta-feature, so that all features are considered.  Imagine a model with 10 features and we requested a feature importance graph with just two very unimportant features. He would look like one or the other were very important, which could be very confusing. So, the importance of the specified features is given only in comparison to all possible futures. <b>Figure 17</b> shows two different sets of features and how all others are lumped together as one meta-feature.	
 
