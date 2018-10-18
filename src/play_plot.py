@@ -8,6 +8,10 @@ from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split
 from sklearn.base import clone
 from rfpimp import *
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
 
 df_all = pd.read_csv("../notebooks/data/rent-cls.csv")
 
@@ -34,7 +38,7 @@ def test1():
     X_train, y_train = df_train.drop('interest_level',axis=1), df_train['interest_level']
     X_test, y_test = df_test.drop('interest_level',axis=1), df_test['interest_level']
 
-    rf = RandomForestClassifier(n_estimators=30, n_jobs=-1,
+    rf = RandomForestClassifier(n_estimators=50, n_jobs=-1,
                                 max_features=1.0,
                                 min_samples_leaf=10, oob_score=True)
     rf.fit(X_train, y_train)
@@ -47,7 +51,7 @@ def test2():
     df_train, df_test = train_test_split(df, test_size=0.15)
     X_train, y_train = df_train.drop('interest_level',axis=1), df_train['interest_level']
     X_test, y_test = df_test.drop('interest_level',axis=1), df_test['interest_level']
-    rf = RandomForestClassifier(n_estimators=30, n_jobs=-1,
+    rf = RandomForestClassifier(n_estimators=50, n_jobs=-1,
                                 max_features=1.0,
                                 min_samples_leaf=10, oob_score=True)
     rf.fit(X_train, y_train)
@@ -56,11 +60,6 @@ def test2():
 
 
 def test3():
-    from sklearn.ensemble import RandomForestClassifier
-    from sklearn.datasets import load_breast_cancer
-    from sklearn.model_selection import train_test_split
-    from sklearn.metrics import accuracy_score
-    import pandas as pd
 
     cancer = load_breast_cancer()
 
@@ -71,18 +70,28 @@ def test3():
     #df['diagnosis'] = cancer.target
     X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3)
 
-    cl = RandomForestClassifier(n_estimators=10)
+    cl = RandomForestClassifier(n_estimators=20)
     cl.fit(X_train, y_train)
+
     I = importances(cl, X_test, y_test)
     return I
 
 
-viz = plot_importances(test1())
-viz.save(filename='/tmp/t.svg')
-I = test2()
-viz = plot_importances(I)
-viz.save(filename='/tmp/t2.svg')
+# viz = plot_importances(test1())
+# viz.save(filename='/tmp/t.svg')
+# I = test2()
+# viz = plot_importances(I)
+# viz.save(filename='/tmp/t2.svg')
 
-I = test3()
-viz = plot_importances(I)
-viz.save(filename='/tmp/t3.svg')
+# I = test3()
+# viz = plot_importances(I)
+# viz.save(filename='/tmp/t3.svg')
+
+cancer = load_breast_cancer()
+# X, y = cancer.data, cancer.target
+# df = pd.DataFrame(X, columns=cancer.feature_names)
+#viz = plot_dependence_heatmap(D, figsize=(12, 12))
+
+D = feature_dependence_matrix(df, n_samples=5000)
+viz = plot_dependence_heatmap(D, figsize=(4,4))
+viz.view()
