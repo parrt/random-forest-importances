@@ -820,7 +820,8 @@ def plot_corr_heatmap(df,
                       color_threshold=0.6,
                       cmap=None,
                       figsize=None,
-                      value_fontsize=12, label_fontsize=14,
+                      value_fontsize=8,
+                      label_fontsize=9,
                       precision=2,
                       xrot=80):
     """
