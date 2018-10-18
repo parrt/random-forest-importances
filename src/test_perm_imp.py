@@ -28,4 +28,5 @@ I = oob_importances(rf, X_train, y_train, n_samples=3000)
 end = timer() # ------------
 print(f"{end - start:.2f}s")
 
-plot_importances(I)
+viz = plot_importances(I)
+viz.view()
