@@ -77,21 +77,21 @@ def test3():
     return I
 
 
-# viz = plot_importances(test1())
-# viz.save(filename='/tmp/t.svg')
-# I = test2()
-# viz = plot_importances(I)
-# viz.save(filename='/tmp/t2.svg')
+viz = plot_importances(test1())
+viz.save(filename='/tmp/t.svg')
+I = test2()
+viz = plot_importances(I)
+viz.save(filename='/tmp/t2.svg')
 
 # I = test3()
 # viz = plot_importances(I)
 # viz.save(filename='/tmp/t3.svg')
 
-cancer = load_breast_cancer()
+#cancer = load_breast_cancer()
 # X, y = cancer.data, cancer.target
 # df = pd.DataFrame(X, columns=cancer.feature_names)
 #viz = plot_dependence_heatmap(D, figsize=(12, 12))
 
-D = feature_dependence_matrix(df, n_samples=5000)
-viz = plot_dependence_heatmap(D, figsize=(4,4))
-viz.view()
+# D = feature_dependence_matrix(df, n_samples=5000)
+# viz = plot_dependence_heatmap(D, figsize=(4,4))
+# viz.view()

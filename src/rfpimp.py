@@ -286,7 +286,7 @@ def permutation_importances(rf, X_train, y_train, metric, n_samples=5000):
     return I
 
 
-def dropcol_importances(model, X_train, y_train, X_valid = None, y_valid = None, metric=None, sample_weights = None):
+def dropcol_importances(model, X_train, y_train, X_valid, y_valid, metric=None, sample_weights = None):
     """
     Compute drop-column feature importances for scikit-learn.
 
@@ -473,7 +473,7 @@ def stemplot_importances(df_importances,
                          color='#375FA5',
                          bgcolor=None,  # seaborn uses '#F1F8FE'
                          xtick_precision=2,
-                     title="Feature importance via drop in accuracy"):
+                     title="Feature importance via drop in model accuracy"):
     GREY = '#444443'
     I = df_importances
     unit = 1
@@ -548,7 +548,7 @@ def plot_importances(df_importances,
                      color='#D9E6F5',
                      bgcolor=None,  # seaborn uses '#F1F8FE'
                      xtick_precision=2,
-                     title="Feature importance via drop in accuracy"):
+                     title="Feature importance via drop in model accuracy"):
     """
     Given an array or data frame of importances, plot a horizontal bar chart
     showing the importance values.
@@ -583,6 +583,8 @@ def plot_importances(df_importances,
     rf.fit(X_train, y_train)
     imp = importances(rf, X_test, y_test)
     viz = plot_importances(imp)
+    viz.save('file.svg')
+    viz.save('file.pdf')
     viz.view() # or just viz in notebook
     """
     I = df_importances
@@ -623,7 +625,10 @@ def plot_importances(df_importances,
         yloc.append(y)
     yloc = np.array(yloc)
     ax.xaxis.set_major_formatter(FormatStrFormatter(f'%.{xtick_precision}f'))
-    ax.set_xticks([maxdrop, imp_range[1]])
+    if maxdrop/imp_range[1] > 0.92: # too close to show both max and right edge?
+        ax.set_xticks([0, imp_range[1]])
+    else:
+        ax.set_xticks([0,maxdrop, imp_range[1]])
     ax.tick_params(labelsize=label_fontsize, labelcolor=GREY)
     ax.invert_yaxis()  # labels read top-to-bottom
     if title:
