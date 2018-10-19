@@ -465,7 +465,7 @@ def oob_regression_r2_score(rf, X_train, y_train):
 
 def stemplot_importances(df_importances,
                          yrot=0,
-                         label_fontsize=9,
+                         label_fontsize=10,
                          width=4,
                          minheight=1.5,
                          vscale=1.0,
@@ -540,7 +540,7 @@ def stemplot_importances(df_importances,
 
 def plot_importances(df_importances,
                      yrot=0,
-                     label_fontsize=8,
+                     label_fontsize=10,
                      width=4,
                      minheight=1.5,
                      vscale=1,
@@ -626,7 +626,7 @@ def plot_importances(df_importances,
     yloc = np.array(yloc)
     ax.xaxis.set_major_formatter(FormatStrFormatter(f'%.{xtick_precision}f'))
     # too close to show both max and right edge?
-    if maxdrop/imp_range[1] > 0.92 or maxdrop < 0.015:
+    if maxdrop/imp_range[1] > 0.9 or maxdrop < 0.02:
         ax.set_xticks([0, imp_range[1]])
     else:
         ax.set_xticks([0, maxdrop, imp_range[1]])

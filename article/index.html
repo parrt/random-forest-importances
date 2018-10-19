@@ -755,7 +755,7 @@ As another example, let's look at the techniques described in this article appli
 
 <p>Here are the dependence measures for the various features (from the first column of the dependence matrix):
 
-<table style="font-size: 30%;">
+<table style="font-size: 80%;">
 <tr>
 <th align=right>Feature</th><th align=right>Dependence</th>
 <tr> <td align=right>mean radius<td align=right>             0.995
@@ -792,7 +792,7 @@ As another example, let's look at the techniques described in this article appli
 
 <p>Dependence numbers close to one indicate that the feature is completely predictable using the other features, which means it could be dropped without affecting accuracy. (Dropping features is a good idea because it makes it easier to explain models to consumers and also increases training and testing efficiency/speed.) For example, the mean radius is extremely important in predicting mean perimeter and mean area, so we can probably drop those two. It also looks like radius error is important to predicting perimeter error and area error, so we can drop those last two.  Mean and worst texture also appear to be dependent, so we can drop one of those too.  Similarly, let's drop concavity error and fractal dimension error because compactness error seems to predict them well. Worst radius also predicts worst perimeter and worst area well.  Essentially, we're looking for columns with multiple entries close to 1.0 as those are the features that predict multiple other features. Dropping those 9 features has little effect on the OOB and test accuracy when modeled using a 100-tree random forest.  Here's what the dependence matrix looks like without those features (click to enlarge):
 	
-<a href="images/cancer_dep_less4.svg"><img src="images/cancer_dep_less4.svg" width="70%"></a>
+<a href="images/cancer_dep_less4.svg"><img src="images/cancer_dep_less4.svg" width="80%"></a>
 	
 <p>Keep in mind that low feature dependence does not imply an important. It just means that the feature is not collinear in some way with other features.
 
