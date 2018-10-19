@@ -625,10 +625,11 @@ def plot_importances(df_importances,
         yloc.append(y)
     yloc = np.array(yloc)
     ax.xaxis.set_major_formatter(FormatStrFormatter(f'%.{xtick_precision}f'))
-    if maxdrop/imp_range[1] > 0.92: # too close to show both max and right edge?
+    # too close to show both max and right edge?
+    if maxdrop/imp_range[1] > 0.92 or maxdrop < 0.015:
         ax.set_xticks([0, imp_range[1]])
     else:
-        ax.set_xticks([0,maxdrop, imp_range[1]])
+        ax.set_xticks([0, maxdrop, imp_range[1]])
     ax.tick_params(labelsize=label_fontsize, labelcolor=GREY)
     ax.invert_yaxis()  # labels read top-to-bottom
     if title:
