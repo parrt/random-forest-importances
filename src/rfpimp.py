@@ -473,7 +473,7 @@ def stemplot_importances(df_importances,
                          color='#375FA5',
                          bgcolor=None,  # seaborn uses '#F1F8FE'
                          xtick_precision=2,
-                     title="Feature importance via drop in model accuracy"):
+                         title=None):
     GREY = '#444443'
     I = df_importances
     unit = 1
@@ -548,7 +548,7 @@ def plot_importances(df_importances,
                      color='#D9E6F5',
                      bgcolor=None,  # seaborn uses '#F1F8FE'
                      xtick_precision=2,
-                     title="Feature importance via drop in model accuracy"):
+                     title=None):
     """
     Given an array or data frame of importances, plot a horizontal bar chart
     showing the importance values.
