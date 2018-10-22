@@ -14,6 +14,24 @@
 <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
 <link rel="stylesheet" type="text/css" href="css/book.css"/>
 <title>Beware Default Random Forest Importances</title>
+<!-- META -->
+<!-- LinkedIn meta -->
+<meta property='og:title' content="Beware Default Random Forest Importances"/>
+<meta property='og:image' content="http://explained.ai/rf-importance/images/cls_dflt_random_annotated.png">
+<meta property='og:description' content="Training a model that accurately predicts outcomes is great, but most of the time you don't just need predictions, you want to be able to interpret your model. The problem is that the scikit-learn Random Forest feature importance and R's default Random Forest feature importance strategies are biased. To get reliable results in Python, use permutation importance, provided here and in our rfpimp package (via pip). For R, use importance=T in the Random Forest constructor then type=1 in R's importance() function."/>
+<meta property='og:url' content="http://explained.ai/decision-tree-viz/index.html"/>
+
+<!-- Facebook meta -->
+<meta property="og:type" content="article" />
+
+<!-- Twitter meta -->
+<meta name="twitter:title" content="Beware Default Random Forest Importances">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@the_antlr_guy">
+<meta name="twitter:creator" content="@the_antlr_guy">
+<meta name="twitter:description" content="Training a model that accurately predicts outcomes is great, but most of the time you don't just need predictions, you want to be able to interpret your model. The problem is that the scikit-learn Random Forest feature importance and R's default Random Forest feature importance strategies are biased. To get reliable results in Python, use permutation importance, provided here and in our rfpimp package (via pip). For R, use importance=T in the Random Forest constructor then type=1 in R's importance() function.">
+<meta name="twitter:image" content="http://explained.ai/rf-importance/images/cls_dflt_random_annotated.png">
+<!-- END META -->
 </head>
 <body>
 <h1>Beware Default Random Forest Importances</h1>
@@ -28,10 +46,12 @@ March 26, 2018.</p>
 
 <p>(Terence and Jeremy teach in University of San Francisco's <a href="https://www.usfca.edu/arts-sciences/graduate-programs/data-science">MS in Data Science program</a>. You might know Terence as the creator of the <a href="http://www.antlr.org">ANTLR parser generator</a>. For more material, see Jeremy's <a href="http://course.fast.ai">fast.ai courses</a>. Kerem and Christopher are current MS Data Science students.)</p>
 
-<b>Updated April 4, 2018</b> to include many more experiments in the <a href="#experimental">Experimental results</a> section.
-
-<p><b>Updated April 19, 2018</b> to include new rfpimp package features to handle collinear dataframe columns in <a href="#corr_collinear">Dealing with collinear features</a> section.
-
+<p><b>Update October 20, 2018</b> to show better feature importance plot and a new feature dependence heatmap. Updated all plots and section <a href="#corr_collinear">Dealing with collinear features</a>.  See new section <a href="#cancer">Breast cancer data set multi-collinearities</a>.</p>
+	
+<p><b>Updated April 19, 2018</b> to include new rfpimp package features to handle collinear dataframe columns in <a href="#corr_collinear">Dealing with collinear features</a> section.</p>
+	
+<p><b>Updated April 4, 2018</b> to include many more experiments in the <a href="#experimental">Experimental results</a> section.</p>
+	
 <h3>TL;DR</h3>
 
 <p>
@@ -60,6 +80,9 @@ The scikit-learn Random Forest feature importance and R's default Random Forest 
 		<li><a href="#collinear">The effect of collinear features on importance</a>
 	</ul>
 	<li><a href="#corr_collinear">Dealing with collinear features</a>
+	<ul>
+		<li><a href="#cancer">Breast cancer data set multi-collinearities</a>
+	</ul>
 	<li><a href="#7">Summary</a></li>
 	<li><a href="#8">Resources and sample code</a></li>
 	<ul>
@@ -142,13 +165,13 @@ After training, we plotted the <font size=-1><tt>rf.feature_importances_</tt></f
 <table class=figure>
 <tr>
 <td style="vertical-align: bottom;">
-	<img src="images/regr_dflt_random_annotated.png" width="70%">
+	<img src="images/regr_dflt_random_annotated.png" width="100%">
 <td style="vertical-align: bottom;">
-	<img src="images/cls_dflt_random_annotated.png" width="70%">
+	<img src="images/cls_dflt_random_annotated.png" width="100%">
 <tr>
-<td>
+<td style="padding-left: 10px;">
 <b>Figure 1(a)</b>. <font size=-1><tt>scikit-learn</tt></font> default importances for Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.
-<td>
+<td style="padding-left: 10px;">
 <b>Figure 1(b)</b>. <font size=-1><tt>scikit-learn</tt></font> default importances for Random Forest <b>classifier</b> predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. Highly suspicious that random column is much more important than the number of bedrooms.
 </table>
 
@@ -228,13 +251,13 @@ To test permutation importances, we plotted the regressor and classifier importa
 <table class=figure>
 <tr>
 <td style="vertical-align: bottom;">
-	<img src="images/regr_permute_random.svg" width="70%">
+	<img src="images/regr_permute_random.svg" width="100%">
 <td style="vertical-align: bottom;">
-	<img src="images/cls_permute_random.svg" width="70%">
+	<img src="images/cls_permute_random.svg" width="100%">
 <tr>
-<td>
+<td style="padding-left: 10px;">
 <b>Figure 2(a)</b>. Importances derived by permuting each column and computing change in out-of-bag R<sup>2</sup> using <font size=-1><tt>scikit-learn</tt></font> <b>regressor</b>. Predicting apartment rental price from 4 features + a column of random numbers.
-<td>
+<td style="padding-left: 10px;">
 <b>Figure 2(b)</b>. Importances derived by permuting each column and computing change in out-of-bag accuracy using <font size=-1><tt>scikit-learn</tt></font> Random Forest <b>classifier</b>.
 </table>
 
@@ -289,13 +312,13 @@ Notice that we force the <font size=-1><tt>random_state</tt></font> of each mode
 <table class=figure>
 <tr>
 <td style="vertical-align: bottom;">
-	<img src="images/regr_dropcol_random.svg" width="70%">
+	<img src="images/regr_dropcol_random.svg" width="100%">
 <td style="vertical-align: bottom;">
-	<img src="images/cls_dropcol_random.svg" width="70%">
+	<img src="images/cls_dropcol_random.svg" width="100%">
 <tr>
-<td>
+<td style="padding-left: 10px;">
 <b>Figure 3(a)</b>. Importances derived by dropping each column, retraining <font size=-1><tt>scikit-learn</tt></font> Random Forest <b>regressor</b>, and computing change in out-of-bag R<sup>2</sup>. Predicting apartment rental price from 4 features + a column of random numbers. The importance of the random column is at the bottom as it should be.
-<td>
+<td style="padding-left: 10px;">
 <b>Figure 3(b)</b>. Importances derived by dropping each column, retraining <font size=-1><tt>scikit-learn</tt></font> Random Forest <b>classifier</b>, and computing change in out-of-bag accuracy. Predicting apartment interest level (low, medium, high) using 5 features + a column of random numbers. The importance of the random column is at the bottom as it should be.
 </table>
 
@@ -333,9 +356,9 @@ R's mean-decrease-in-impurity importance (type=2) gives the same implausible res
 <table class=figure>
 <tr>
 <td>
-	<img src="images/regr_dflt_random_R_annotated.png" width="70%">
+	<img src="images/regr_dflt_random_R_annotated.png" width="100%">
 <td>
-	<img src="images/cls_dflt_random_R_annotated.png" width="70%">
+	<img src="images/cls_dflt_random_R_annotated.png" width="100%">
 <tr>
 <td>
 <b>Figure 4(a)</b>. R's type=2 importances for Random Forest <b>regressor</b> predicting apartment rental price from 4 features + a column of random numbers. Random column is last, as we would expect but the importance of the number of bathrooms for predicting price is highly suspicious.
@@ -351,9 +374,9 @@ As a means of checking our permutation implementation in Python, we plotted and 
 <table class=figure>
 <tr>
 <td>
-	<img src="images/regr_permute_random_R.svg" width="70%">
+	<img src="images/regr_permute_random_R.svg" width="100%">
 <td>
-	<img src="images/regr_permute_random.svg" width="70%">
+	<img src="images/regr_permute_random.svg" width="100%">
 <tr>
 <td>
 <b>Figure 5(a)</b>. R's type=1 permutation importance for RF <b>regressor</b>.
@@ -366,9 +389,9 @@ As a means of checking our permutation implementation in Python, we plotted and 
 <table class=figure>
 <tr>
 <td>
-	<img src="images/cls_permute_random_R.svg" width="70%">
+	<img src="images/cls_permute_random_R.svg" width="100%">
 <td>
-	<img src="images/cls_permute_random.svg" width="70%">
+	<img src="images/cls_permute_random.svg" width="100%">
 <tr>
 <td>
 <b>Figure 6(a)</b>. R's type=1 permutation importance for RF <b>classifier</b>.
@@ -384,9 +407,9 @@ For completeness, we implemented drop-column importance in R and compared it to 
 <table class=figure>
 <tr>
 <td>
-	<img src="images/regr_drop_random_R.svg" width="70%">
+	<img src="images/regr_drop_random_R.svg" width="100%">
 <td>
-	<img src="images/regr_dropcol_random.svg" width="70%">
+	<img src="images/regr_dropcol_random.svg" width="100%">
 <tr>
 <td>
 <b>Figure 8(a)</b>. Importances derived by dropping each column, retraining an RF <b>regressor</b> in R, and computing the change in out-of-bag R<sup>2</sup>.
@@ -399,9 +422,9 @@ For completeness, we implemented drop-column importance in R and compared it to 
 <table class=figure>
 <tr>
 <td>
-	<img src="images/cls_drop_random_R.svg" width="70%">
+	<img src="images/cls_drop_random_R.svg" width="100%">
 <td>
-	<img src="images/cls_dropcol_random.svg" width="70%">
+	<img src="images/cls_dropcol_random.svg" width="100%">
 <tr>
 <td>
 <b>Figure 9(a)</b>. Importances derived by dropping each column, retraining an RF <b>classifier</b> in R, and computing the change in out-of-bag accuracy.
@@ -499,13 +522,13 @@ The effect of collinear features is most stark when looking at drop column impor
 
 <table class=figure>
 <tr>
-	<th colspan=2 align=center>Drop column importance dup'd longitude column</th>
+	<th colspan=2  style="padding-bottom:5px;">Drop column importance dup'd longitude column</th>
 </tr>
 <tr>
 <td style="vertical-align: bottom;">
-	<img src="images/collinear_dropcol.svg" width="60%">
+	<img src="images/collinear_dropcol.svg" width="100%">
 <td style="vertical-align: bottom;">
-	<img src="images/collinear_dropcol_longitude_dup.svg" width="70%">
+	<img src="images/collinear_dropcol_longitude_dup.svg" width="100%">
 <tr>
 <td>
 <b>Figure 11(a)</b>.  <b>Drop column importance</b> strategy using random forest regressor with R<sup>2</sup>=0.85 (so a pretty decent predictor of rent price).
@@ -522,13 +545,13 @@ The effect of collinear features on permutation importance is more nuanced and d
 
 <table class=figure>
 <tr>
-	<th colspan=2>Permutation importance dup'd longitude column</th>
+	<th colspan=2 style="padding-bottom:5px;">Permutation importance dup'd longitude column</th>
 </tr>
 <tr>
 <td style="vertical-align: bottom;">
-	<img src="images/collinear_permute.svg" width="60%">
+	<img src="images/collinear_permute.svg" width="100%">
 <td style="vertical-align: bottom;">
-	<img src="images/collinear_permute_longitude_dup.svg" width="60%">
+	<img src="images/collinear_permute_longitude_dup.svg" width="100%">
 <tr>
 <td>
 <b>Figure 12(a)</b>.  <b>Permutation importance</b> strategy using random forest regressor.
@@ -548,13 +571,13 @@ X_train['longitude_noisy'] = X_train.longitude + noise
 
 <table class=figure>
 <tr>
-	<th colspan=2>Permutation importance dup'd longitude + noise column</th>
+	<th colspan=2 style="padding-bottom:5px;">Permutation importance dup'd longitude + noise column</th>
 </tr>
 <tr>
 <td style="vertical-align: bottom;">
-	<img src="images/collinear_permute_longitude_noise_0.0005.svg" width="60%">
+	<img src="images/collinear_permute_longitude_noise_0.0005.svg" width="100%">
 <td style="vertical-align: bottom;">
-	<img src="images/collinear_permute_longitude_noise_0.0010.svg" width="60%">
+	<img src="images/collinear_permute_longitude_noise_0.0010.svg" width="100%">
 <tr>
 <td>
 <b>Figure 13(a)</b>.  With uniform noise in range 0-0.0005, noisy longitude column pulls down the importance of the real column.
@@ -567,13 +590,13 @@ X_train['longitude_noisy'] = X_train.longitude + noise
 	
 <table class=figure>
 <tr>
-	<th colspan=2>Permutation importance dup'd bedrooms + noise column</th>
+	<th colspan=2 style="padding-bottom:5px;">Permutation importance dup'd bedrooms + noise column</th>
 </tr>
 <tr>
 <td style="vertical-align: bottom;">
-	<img src="images/collinear_permute_bedrooms_noise_1.0000.svg" width="60%">
+	<img src="images/collinear_permute_bedrooms_noise_1.0000.svg" width="100%">
 <td style="vertical-align: bottom;">
-	<img src="images/collinear_permute_bedrooms_noise_3.0000.svg" width="60%">
+	<img src="images/collinear_permute_bedrooms_noise_3.0000.svg" width="100%">
 <tr>
 <td>
 <b>Figure 14(a)</b>.  With uniform noise in range 0-1, noisy bedrooms column pulls down the importance of the real column. 
@@ -586,13 +609,13 @@ X_train['longitude_noisy'] = X_train.longitude + noise
 	
 <table class=figure>
 <tr>
-	<th colspan=2>Mean-decrease-in-impurity (gini) importance dup'd longitude column</th>
+	<th colspan=2 style="padding-bottom:5px;">Mean-decrease-in-impurity importance dup'd longitude column</th>
 </tr>
 <tr>
 <td style="vertical-align: bottom;">
-	<img src="images/collinear_dflt.svg" width="60%">
+	<img src="images/collinear_dflt.svg" width="100%">
 <td style="vertical-align: bottom;">
-	<img src="images/collinear_dflt_longitude_dup.svg" width="60%">
+	<img src="images/collinear_dflt_longitude_dup.svg" width="100%">
 <tr>
 <td>
 <b>Figure 15(a)</b>. <b>Mean-decrease-in-impurity importance</b> strategy using random forest regressor.
@@ -606,13 +629,13 @@ Adding a noisy duplicate of the longitude column behaves like permutation import
  
 <table class=figure>
 <tr>
-	<th colspan=2>Mean-decrease-in-impurity (gini) importance dup'd longitude + noise column</th>
+	<th colspan=2 style="padding-bottom:5px;">Mean-decrease-in-impurity importance dup'd longitude + noise column</th>
 </tr>
 <tr>
 <td style="vertical-align: bottom;">
-	<img src="images/collinear_dflt_longitude_noise_0.0005.svg" width="60%">
+	<img src="images/collinear_dflt_longitude_noise_0.0005.svg" width="100%">
 <td style="vertical-align: bottom;">
-	<img src="images/collinear_dflt_longitude_noise_0.0010.svg" width="60%">
+	<img src="images/collinear_dflt_longitude_noise_0.0010.svg" width="100%">
 <tr>
 <td>
 <b>Figure 16(a)</b>.  With uniform noise in range 0-0.0005, noisy longitude column pulls down the importance of the real column, just as with permutation importance.
@@ -628,7 +651,7 @@ From these experiments, it's safe to conclude that permutation importance (and m
 You can find all of these collinearity experiments in <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/collinear.ipynb">collinear.ipynb</a>
 
 <a name="corr_collinear"></a><h3>Dealing with collinear features</h3>
-
+	
 We updated the rfpimp package (1.1 and beyond) to help understand importance graphs in the presence of collinear variables.
 
 To get an understanding of collinearity between variables, we created <tt>feature_corr_matrix(df)</tt> that takes a data frame and returns the Spearman's rank-order correlation between all pairs  of features as a matrix with feature names as index and column names. The result is a data frame in its own right. Here's a sample:
@@ -639,12 +662,15 @@ To get an understanding of collinearity between variables, we created <tt>featur
 	
 <p>
 <div class="codeblk">from rfpimp import plot_corr_heatmap
-plot_corr_heatmap(df_train, figsize=(7,5), label_fontsize=13, value_fontsize=11)
+viz = plot_corr_heatmap(df_train, figsize=(7,5))
+viz.view()
 </div>
 
-<p><img src="images/corrheatmap.svg" width="60%">
 
-<p>Because it is a symmetric matrix, only the upper triangle is shown. The diagonal is all 1.0 Spearman's correlation and is not shown either.
+<p><a href="images/corrheatmap.svg"><img src="images/corrheatmap.svg" width="60%"></a>
+	
+
+<p>Because it is a symmetric matrix, only the upper triangle is shown. The diagonal is all x's since auto-correlation is not useful.
 
 <p>As we discussed,  permutation feature importance is computed by permuting a specific column and measuring the decrease in accuracy of the overall classifier or regressor. Of course, features that are collinear really should be permuted together. We have updated <tt>importances()</tt> so you can pass in either a list of features, such as a subset, or a list of lists containing groups. Let's start with the default:
 	
@@ -668,16 +694,18 @@ plot_importances(I)
 
 <p>Notice how, in the following result, latitude and longitude together are very important as a meta-feature. The meta-features "steal" importance from the individual bedrooms and bathrooms columns.
 
-<p><img src="images/grouped_imp.svg" width="50%">
+<p><img src="images/grouped_imp.svg" width="45%">
+	
+<p>Bar thickness indicates the number of features in the group.</p>
 
 <p>Any features not mentioned get lumped together into a single "other" meta-feature, so that all features are considered.  Imagine a model with 10 features and we requested a feature importance graph with just two very unimportant features. He would look like one or the other were very important, which could be very confusing. So, the importance of the specified features is given only in comparison to all possible futures. <b>Figure 17</b> shows two different sets of features and how all others are lumped together as one meta-feature.	
 
 <table class=figure>
 <tr>
 <td style="vertical-align: bottom;">
-	<img src="images/subset_imp.svg" width="90%">
+	<img src="images/subset_imp.svg" width="100%">
 <td style="vertical-align: bottom;">
-	<img src="images/latlong_imp.svg" width="90%">
+	<img src="images/latlong_imp.svg" width="100%">
 <tr>
 <td>
 <b>Figure 17(a)</b>. features=['price',['latitude','longitude']]
@@ -686,7 +714,7 @@ plot_importances(I)
 <b>Figure 17(b)</b>. features=[['latitude','longitude']]
 </table>
 
-<p>Features can also appear in multiple  feature groups so that we can compare the relative importance of multiple meta-features that once. Remember that the permutation importance is just permuting all features associated with the meta-feature and comparing the drop in overall accuracy. There's no reason we can't do multiple overlapping sets of features in the same graph. For example, in the following, feature list, bedrooms appears in two meta-features as does beds_per_price.
+<p>Features can also appear in multiple  feature groups so that we can compare the relative importance of multiple meta-features that once. Remember that the permutation importance is just permuting all features associated with the meta-feature and comparing the drop in overall accuracy. There's no reason we can't do multiple overlapping sets of features in the same graph. For example, in the following, feature list, bedrooms appears in two meta-features as does <tt>beds_per_price</tt>.
 	
 <p>
 <div class="codeblk">features = [['latitude', 'longitude'],
@@ -696,10 +724,98 @@ plot_importances(I)
 
 <p><img src="images/grouped_dup_imp.svg" width="50%">
 
-<p>
-You can find all of these experiments trying to deal with collinearity in <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/rfpimp-collinear.ipynb">rfpimp-collinear.ipynb</a>
+<a name="cancer"></a><h4>Breast cancer data set multi-collinearities</h4>
 
-<p>Finally, a starting point for examining collinear features is to look at the correlation heat map and see which features are correlated and group those into meta-features for use in the importance plot.
+As another example, let's look at the techniques described in this article applied to the well-known <a href="http://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_breast_cancer.html">breast cancer data set</a>.  There are 569 observations each with 30 numerical features and a single binary malignant/benign target variable. A random forest makes short work of this problem, getting about 95% accuracy using the out-of-bag estimate and a holdout testing set.  The default feature importance computation from scikit-learn gives a beautiful graph and that biases us to consider it meaningful and accurate. On the other hand, if we look at the permutation importance and the drop column importance, no feature appears important. 
+
+<table>
+<tr>
+<td width="33%" style="vertical-align: bottom;">
+<a href="images/cancer_dflt_imp.svg"><img src="images/cancer_dflt_imp.svg" width="100%"></a>
+</td>
+<td width="33%" style="vertical-align: bottom;">
+<a href="images/cancer_imp.svg"><img src="images/cancer_imp.svg" width="100%"></a>
+</td>
+<td width="33%" style="vertical-align: bottom;">
+<a href="images/cancer_dropcol_imp.svg"><img src="images/cancer_dropcol_imp.svg" width="100%"></a>
+</td>
+</tr>
+<tr>
+<td>
+<b>Figure 18(a)</b>. Default sci-kit learn average gini drop feature importance
+</td>
+<td>
+<b>Figure 18(b)</b>.  Permutation feature importance
+</td>
+<td>
+<b>Figure 18(c)</b>.  Drop column feature importance
+</td>
+</tr>
+</table>
+
+<p>At first, using default bar charts, it looked like the permutation importance was giving a signal. We get so focused on the relative importance we don't look at the absolute magnitude of the importance. The magnitude indicates the drop in classification accuracy or R^2 (regressors) and so it is meaningful. For that reason, our <tt>plot_importances</tt> function sets a minimum bound of 0.15 so that users notice when the feature importance is near zero or very low. When feature importances are very low, it either means the feature is not important or it is highly collinear with one or more other features.
+
+<p>A way to identify if a feature, x, is dependent on other features is to train a model using x as a dependent variable and all other features as independent variables (this is called <a href="https://en.wikipedia.org/wiki/Multicollinearity">Multicollinearity</a>). Because random forests give us an easy out of bag error estimate, the feature dependence functions in <tt>rfpimp</tt> rely on random forest models. The R^2 prediction error from the model indicates how easy it is to predict feature x using the other features. The higher the score, the more dependent feature x is. The feature importance of non-x features predicting x give an indication of which features have predictive power for feature x. Compare the correlation and feature dependence heat maps (click to enlarge images):<br><br>
+
+<table class=figure>
+<tr>
+<td style="vertical-align: bottom;">
+	<a href="images/cancer_corr.svg"><img src="images/cancer_corr.svg" width="100%"></a>
+<td style="vertical-align: bottom;">
+	<a href="images/cancer_dep.svg"><img src="images/cancer_dep.svg" width="100%"></a>
+<tr>
+<td>
+<b>Figure 18(a)</b>. Spearman's correlation matrix between features i and j
+<td>
+
+<b>Figure 18(b)</b>. Feature dependence matrix computed by predicting feature i using all j!=i as predictor variables. Values of the matrix are the feature importances obtained from model predicting i.
+</table>
+
+<p>Here are the dependence measures for the various features (from the first column of the dependence matrix):
+
+<table style="font-size: 80%;">
+<tr>
+<th align=right>Feature</th><th align=right>Dependence</th>
+<tr> <td align=right>mean radius<td align=right>             0.995
+        <tr> <td align=right>worst radius<td align=right>            0.995
+        <tr> <td align=right>mean perimeter<td align=right>          0.994
+        <tr> <td align=right>mean area<td align=right>               0.984
+        <tr> <td align=right>worst perimeter<td align=right>         0.983
+        <tr> <td align=right>worst area<td align=right>              0.978
+        <tr> <td align=right>radius error<td align=right>            0.953
+        <tr> <td align=right>mean concave points<td align=right>     0.944
+        <tr> <td align=right>mean concavity<td align=right>          0.936
+        <tr> <td align=right>worst concave points<td align=right>    0.927
+        <tr> <td align=right>mean compactness<td align=right>        0.916
+        <tr> <td align=right>worst concavity<td align=right>         0.901
+        <tr> <td align=right>perimeter error<td align=right>         0.898
+        <tr> <td align=right>worst compactness<td align=right>       0.894
+        <tr> <td align=right>worst texture<td align=right>           0.889
+        <tr> <td align=right>compactness error<td align=right>       0.866
+        <tr> <td align=right>mean texture<td align=right>            0.856
+        <tr> <td align=right>worst fractal dimension<td align=right>  0.84
+        <tr> <td align=right>area error<td align=right>              0.835
+        <tr> <td align=right>mean fractal dimension<td align=right>  0.829
+        <tr> <td align=right>concave points error<td align=right>    0.786
+        <tr> <td align=right>worst smoothness<td align=right>        0.764
+        <tr> <td align=right>mean smoothness<td align=right>         0.754
+        <tr> <td align=right>fractal dimension error<td align=right> 0.741
+        <tr> <td align=right>worst symmetry<td align=right>          0.687
+        <tr> <td align=right>mean symmetry<td align=right>           0.659
+        <tr> <td align=right>concavity error<td align=right>         0.623
+        <tr> <td align=right>texture error<td align=right>           0.514
+        <tr> <td align=right>smoothness error<td align=right>        0.483
+        <tr> <td align=right>symmetry error<td align=right>          0.434
+</table>
+
+<p>Dependence numbers close to one indicate that the feature is completely predictable using the other features, which means it could be dropped without affecting accuracy. (Dropping features is a good idea because it makes it easier to explain models to consumers and also increases training and testing efficiency/speed.) For example, the mean radius is extremely important in predicting mean perimeter and mean area, so we can probably drop those two. It also looks like radius error is important to predicting perimeter error and area error, so we can drop those last two.  Mean and worst texture also appear to be dependent, so we can drop one of those too.  Similarly, let's drop concavity error and fractal dimension error because compactness error seems to predict them well. Worst radius also predicts worst perimeter and worst area well.  Essentially, we're looking for columns with multiple entries close to 1.0 as those are the features that predict multiple other features. Dropping those 9 features has little effect on the OOB and test accuracy when modeled using a 100-tree random forest.  Here's what the dependence matrix looks like without those features (click to enlarge):
+	
+<a href="images/cancer_dep_less4.svg"><img src="images/cancer_dep_less4.svg" width="80%"></a>
+	
+<p>Keep in mind that low feature dependence does not imply an important. It just means that the feature is not collinear in some way with other features.
+
+<p>
+You can find all of these experiments trying to deal with collinearity in <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/rfpimp-collinear.ipynb">rfpimp-collinear.ipynb</a> and <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/pimp_plots.ipynb">pimp_plots.ipynb</a>.
 
 <a name="7"></a><h3>Summary</h3>
 
@@ -741,10 +857,16 @@ The overall <a href="https://github.com/parrt/random-forest-importances">github 
 Here's an example using the <a href="https://pypi.org/project/rfpimp/">rfpimp package</a> to train a regressor, compute the permutation importances, and plot them in a horizontal bar chart:
 
 <p><div class="codeblk">from rfpimp import *
+from rfpimp import *
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
 
-df = pd.read_csv("rent.csv")
+df = pd.read_csv("/Users/parrt/github/random-forest-importances/notebooks/data/rent.csv")
+
+# attentuate affect of outliers in price
+df['price'] = np.log(df['price'])
+
 df_train, df_test = train_test_split(df, test_size=0.20)
 
 features = ['bathrooms','bedrooms','longitude','latitude',
@@ -752,16 +874,17 @@ features = ['bathrooms','bedrooms','longitude','latitude',
 df_train = df_train[features]
 df_test = df_test[features]
 
-rf = RandomForestRegressor(n_estimators=100, n_jobs=-1)
-
 X_train, y_train = df_train.drop('price',axis=1), df_train['price']
 X_test, y_test = df_test.drop('price',axis=1), df_test['price']
 X_train['random'] = np.random.random(size=len(X_train))
 X_test['random'] = np.random.random(size=len(X_test))
+
+rf = RandomForestRegressor(n_estimators=100, n_jobs=-1)
 rf.fit(X_train, y_train)
 
 imp = importances(rf, X_test, y_test) # permutation
-plot_importances(imp)
+viz = plot_importances(imp)
+viz.view()
 </div>
 
 <a name="8.2"></a><h4>R</h4>
