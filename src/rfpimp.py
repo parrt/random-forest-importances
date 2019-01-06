@@ -126,7 +126,7 @@ def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=Tru
                     all_features.add(item)
         return all_features
 
-    if not features:
+    if features is None:
         # each feature in its own group
         features = X_valid.columns.values
     else:
@@ -745,7 +745,7 @@ def plot_dependence_heatmap(D,
                fontsize=label_fontsize, color=GREY)
     plt.yticks(range(len(colnames[1:])), colnames[1:], verticalalignment='center',
                fontsize=label_fontsize, color=GREY)
-    if not cmap:
+    if cmap is None:
         cw = plt.get_cmap('coolwarm')
         cmap = ListedColormap([cw(x) for x in np.arange(color_threshold, .85, 0.01)])
     elif isinstance(cmap, str):
@@ -849,7 +849,7 @@ def plot_corr_heatmap(df,
     mask = np.ones_like(corr)
     filtered[np.tril_indices_from(mask)] = -9999
 
-    if not cmap:
+    if cmap is None:
         cw = plt.get_cmap('coolwarm')
         cmap = ListedColormap([cw(x) for x in np.arange(color_threshold, .85, 0.01)])
     elif isinstance(cmap, str):
