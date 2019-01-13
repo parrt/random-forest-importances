@@ -138,7 +138,7 @@ def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=Tru
             # if leftovers, we need group together as single new feature
             features.append(list(other_feature_set))
 
-    X_valid, y_valid = sample(X_valid, y_valid, n_samples)
+    X_valid, y_valid, sample_weights = sample(X_valid, y_valid, n_samples, sample_weights=sample_weights)
     X_valid = X_valid.copy(deep=False)  # we're modifying columns
 
     if callable(metric):
@@ -186,14 +186,15 @@ def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=Tru
     return I
 
 
-def sample(X_valid, y_valid, n_samples):
+def sample(X_valid, y_valid, n_samples, sample_weights=None):
     if n_samples < 0: n_samples = len(X_valid)
     n_samples = min(n_samples, len(X_valid))
     if n_samples < len(X_valid):
         ix = np.random.choice(len(X_valid), n_samples)
         X_valid = X_valid.iloc[ix].copy(deep=False)  # shallow copy
         y_valid = y_valid.iloc[ix].copy(deep=False)
-    return X_valid, y_valid
+        if sample_weights is not None: sample_weights = sample_weights.iloc[ix].copy(deep=False)
+    return X_valid, y_valid, sample_weights
 
 
 def sample_rows(X, n_samples):
@@ -286,7 +287,7 @@ def permutation_importances(rf, X_train, y_train, metric, n_samples=5000):
     return I
 
 
-def dropcol_importances(model, X_train, y_train, X_valid, y_valid, metric=None, sample_weights = None):
+def dropcol_importances(model, X_train, y_train, X_valid, y_valid, metric=None, sample_weights=None):
     """
     Compute drop-column feature importances for scikit-learn.
 
@@ -382,25 +383,25 @@ def importances_raw(rf, X_train, y_train, n_samples=5000):
     return None
 
 
-def permutation_importances_raw(rf, X_train, y_train, metric, n_samples=5000):
+def permutation_importances_raw(rf, X_train, y_train, metric, n_samples=5000, sample_weights=None):
     """
     Return array of importances from pre-fit rf; metric is function
     that measures accuracy or R^2 or similar. This function
     works for regressors and classifiers.
     """
-    X_sample, y_sample = sample(X_train, y_train, n_samples)
+    X_sample, y_sample, sample_weights = sample(X_train, y_train, n_samples, sample_weights)
 
     if not hasattr(rf, 'estimators_'):
         rf.fit(X_sample, y_sample)
 
-    baseline = metric(rf, X_sample, y_sample)
+    baseline = metric(rf, X_sample, y_sample, sample_weights)
     X_train = X_sample.copy(deep=False) # shallow copy
     y_train = y_sample
     imp = []
     for col in X_train.columns:
         save = X_train[col].copy()
         X_train[col] = np.random.permutation(X_train[col])
-        m = metric(rf, X_train, y_train)
+        m = metric(rf, X_train, y_train, sample_weights)
         X_train[col] = save
         drop_in_metric = baseline - m
         imp.append(drop_in_metric)
