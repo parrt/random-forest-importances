@@ -37,7 +37,7 @@ class PimpViz:
     """
     def __init__(self):
         tmp = tempfile.gettempdir()
-        self.svgfilename = tmp+"/PimpViz_"+getpid()+".svg"
+        self.svgfilename = tmp+"/PimpViz_"+str(getpid())+".svg"
         plt.savefig(self.svgfilename, bbox_inches='tight', pad_inches=0)
 
     def _repr_svg_(self):
@@ -287,7 +287,7 @@ def permutation_importances(rf, X_train, y_train, metric, n_samples=5000):
     return I
 
 
-def dropcol_importances(model, X_train, y_train, X_valid, y_valid, metric=None, sample_weights=None):
+def dropcol_importances(model, X_train, y_train, X_valid=None, y_valid=None, metric=None, sample_weights=None):
     """
     Compute drop-column feature importances for scikit-learn.
 
@@ -309,6 +309,8 @@ def dropcol_importances(model, X_train, y_train, X_valid, y_valid, metric=None, 
     rf.fit(X_train, y_train)
     imp = dropcol_importances(rf, X_train, y_train)
     """
+    if X_valid is None: X_valid = X_train
+    if y_valid is None: y_valid = y_train
     model_ = clone(model)
     model_.random_state = 999
     model_.fit(X_train, y_train)
