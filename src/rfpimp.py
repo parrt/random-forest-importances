@@ -37,7 +37,7 @@ class PimpViz:
     """
     def __init__(self):
         tmp = tempfile.gettempdir()
-        self.svgfilename = f"{tmp}/PimpViz_{getpid()}.svg"
+        self.svgfilename = tmp+"/PimpViz_"+getpid()+".svg"
         plt.savefig(self.svgfilename, bbox_inches='tight', pad_inches=0)
 
     def _repr_svg_(self):
@@ -741,7 +741,7 @@ def plot_dependence_heatmap(D,
     if figsize:
         fig = plt.figure(figsize=figsize)
     colnames = list(D.columns.values)
-    colnames[0] = f"$\\bf {colnames[0]}$" # bold Dependence word
+    colnames[0] = "$\\bf "+colnames[0]+"$" # bold Dependence word
     plt.xticks(range(len(colnames)), colnames, rotation=xrot, horizontalalignment='right',
                fontsize=label_fontsize, color=GREY)
     plt.yticks(range(len(colnames[1:])), colnames[1:], verticalalignment='center',
