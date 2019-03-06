@@ -37,7 +37,7 @@ class PimpViz:
     """
     def __init__(self):
         tmp = tempfile.gettempdir()
-        self.svgfilename = f"{tmp}/PimpViz_{getpid()}.svg"
+        self.svgfilename = tmp+"/PimpViz_"+str(getpid())+".svg"
         plt.savefig(self.svgfilename, bbox_inches='tight', pad_inches=0)
 
     def _repr_svg_(self):
@@ -126,7 +126,7 @@ def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=Tru
                     all_features.add(item)
         return all_features
 
-    if not features:
+    if features is None:
         # each feature in its own group
         features = X_valid.columns.values
     else:
@@ -138,7 +138,7 @@ def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=Tru
             # if leftovers, we need group together as single new feature
             features.append(list(other_feature_set))
 
-    X_valid, y_valid = sample(X_valid, y_valid, n_samples)
+    X_valid, y_valid, sample_weights = sample(X_valid, y_valid, n_samples, sample_weights=sample_weights)
     X_valid = X_valid.copy(deep=False)  # we're modifying columns
 
     if callable(metric):
@@ -186,14 +186,15 @@ def importances(model, X_valid, y_valid, features=None, n_samples=5000, sort=Tru
     return I
 
 
-def sample(X_valid, y_valid, n_samples):
+def sample(X_valid, y_valid, n_samples, sample_weights=None):
     if n_samples < 0: n_samples = len(X_valid)
     n_samples = min(n_samples, len(X_valid))
     if n_samples < len(X_valid):
         ix = np.random.choice(len(X_valid), n_samples)
         X_valid = X_valid.iloc[ix].copy(deep=False)  # shallow copy
         y_valid = y_valid.iloc[ix].copy(deep=False)
-    return X_valid, y_valid
+        if sample_weights is not None: sample_weights = sample_weights.iloc[ix].copy(deep=False)
+    return X_valid, y_valid, sample_weights
 
 
 def sample_rows(X, n_samples):
@@ -286,7 +287,7 @@ def permutation_importances(rf, X_train, y_train, metric, n_samples=5000):
     return I
 
 
-def dropcol_importances(model, X_train, y_train, X_valid, y_valid, metric=None, sample_weights = None):
+def dropcol_importances(model, X_train, y_train, X_valid=None, y_valid=None, metric=None, sample_weights=None):
     """
     Compute drop-column feature importances for scikit-learn.
 
@@ -308,6 +309,8 @@ def dropcol_importances(model, X_train, y_train, X_valid, y_valid, metric=None, 
     rf.fit(X_train, y_train)
     imp = dropcol_importances(rf, X_train, y_train)
     """
+    if X_valid is None: X_valid = X_train
+    if y_valid is None: y_valid = y_train
     model_ = clone(model)
     model_.random_state = 999
     model_.fit(X_train, y_train)
@@ -388,7 +391,7 @@ def permutation_importances_raw(rf, X_train, y_train, metric, n_samples=5000):
     that measures accuracy or R^2 or similar. This function
     works for regressors and classifiers.
     """
-    X_sample, y_sample = sample(X_train, y_train, n_samples)
+    X_sample, y_sample, _ = sample(X_train, y_train, n_samples)
 
     if not hasattr(rf, 'estimators_'):
         rf.fit(X_sample, y_sample)
@@ -740,12 +743,12 @@ def plot_dependence_heatmap(D,
     if figsize:
         fig = plt.figure(figsize=figsize)
     colnames = list(D.columns.values)
-    colnames[0] = f"$\\bf {colnames[0]}$" # bold Dependence word
+    colnames[0] = "$\\bf "+colnames[0]+"$" # bold Dependence word
     plt.xticks(range(len(colnames)), colnames, rotation=xrot, horizontalalignment='right',
                fontsize=label_fontsize, color=GREY)
     plt.yticks(range(len(colnames[1:])), colnames[1:], verticalalignment='center',
                fontsize=label_fontsize, color=GREY)
-    if not cmap:
+    if cmap is None:
         cw = plt.get_cmap('coolwarm')
         cmap = ListedColormap([cw(x) for x in np.arange(color_threshold, .85, 0.01)])
     elif isinstance(cmap, str):
@@ -849,7 +852,7 @@ def plot_corr_heatmap(df,
     mask = np.ones_like(corr)
     filtered[np.tril_indices_from(mask)] = -9999
 
-    if not cmap:
+    if cmap is None:
         cw = plt.get_cmap('coolwarm')
         cmap = ListedColormap([cw(x) for x in np.arange(color_threshold, .85, 0.01)])
     elif isinstance(cmap, str):
