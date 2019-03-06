@@ -15,6 +15,7 @@ setup(
     url='https://github.com/parrt/random-forest-importances',
     license='MIT',
     py_modules=['rfpimp'],
+    python_requires='>=3.6',
     author='Terence Parr, Kerem Turgutlu',
     author_email='parrt@antlr.org, kcturgutlu@dons.usfca.edu',
     install_requires=['numpy','pandas','sklearn','matplotlib'],
