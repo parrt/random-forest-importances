@@ -17,6 +17,8 @@ A more reliable method is <i>permutation importance</i>, which measures the impo
 
 ## Sample code
 
+See the [notebooks directory](https://github.com/parrt/random-forest-importances/blob/master/notebooks) for things like [Collinear features](https://github.com/parrt/random-forest-importances/blob/master/notebooks/collinear.ipynb) and [Plotting feature importances](https://github.com/parrt/random-forest-importances/blob/master/notebooks/pimp_plots.ipynb).
+
 Here's some sample Python code that uses the `rfpimp` package contained in the `src` directory.  The data can be found in <a href="https://github.com/parrt/random-forest-importances/blob/master/notebooks/data/rent.csv">rent.csv</a>, which is a subset of the data from Kaggle's <a href="https://www.kaggle.com/c/two-sigma-connect-rental-listing-inquiries">Two Sigma Connect: Rental Listing Inquiries</a> competition.
 
 
