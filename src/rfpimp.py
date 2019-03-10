@@ -896,6 +896,39 @@ def plot_corr_heatmap(df,
     return PimpViz()
 
 
+def rfnnodes(rf):
+    """Return the total number of decision and leaf nodes in all trees of the forest."""
+    return sum(t.tree_.node_count for t in rf.estimators_)
+
+
+def dectree_max_depth(tree):
+    """
+    Return the max depth of this tree in terms of how many nodes; a single
+    root node gives height 1.
+    """
+    children_left = tree.children_left
+    children_right = tree.children_right
+
+    def walk(node_id):
+        if (children_left[node_id] != children_right[node_id]): # decision node
+            left_max = 1 + walk(children_left[node_id])
+            right_max = 1 + walk(children_right[node_id])
+            return max(left_max, right_max)
+        else:  # leaf
+            return 1
+
+    root_node_id = 0
+    return walk(root_node_id)
+
+
+def rfmaxdepths(rf):
+    """
+    Return the max depth of all trees in rf forest in terms of how many nodes
+    (a single root node for a single tree gives height 1)
+    """
+    return [dectree_max_depth(t.tree_) for t in rf.estimators_]
+
+
 def jeremy_trick_RF_sample_size(n):
     # Jeremy's trick; hmm.. this won't work as a separate function?
     # def batch_size_for_node_splitting(rs, n_samples):
