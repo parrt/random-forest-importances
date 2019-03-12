@@ -846,6 +846,9 @@ def plot_corr_heatmap(df,
     viz.view() # or just viz in notebook
     """
     corr = spearmanr(df).correlation
+    if len(corr.shape) == 0:
+        corr = np.array([[1.0, corr],
+                         [corr, 1.0]])
 
     filtered = copy(corr)
     filtered = np.abs(filtered)  # work with abs but display negatives later
