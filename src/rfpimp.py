@@ -26,8 +26,6 @@ import warnings
 import tempfile
 from os import getpid, makedirs
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from multiprocessing import Pool
-from functools import partial
 
 GREY = '#444443'
 
@@ -208,7 +206,7 @@ def sample_rows(X, n_samples):
     return X
 
 
-def oob_importances(rf, X_train, y_train, n_samples=5000, n_jobs=1):
+def oob_importances(rf, X_train, y_train, n_samples=5000):
     """
     Compute permutation feature importances for scikit-learn
     RandomForestClassifier or RandomForestRegressor in arg rf.
@@ -231,9 +229,9 @@ def oob_importances(rf, X_train, y_train, n_samples=5000, n_jobs=1):
     imp = oob_importances(rf, X_train, y_train)
     """
     if isinstance(rf, RandomForestClassifier):
-        return permutation_importances(rf, X_train, y_train, oob_classifier_accuracy, n_samples, n_jobs)
+        return permutation_importances(rf, X_train, y_train, oob_classifier_accuracy, n_samples)
     elif isinstance(rf, RandomForestRegressor):
-        return permutation_importances(rf, X_train, y_train, oob_regression_r2_score, n_samples, n_jobs)
+        return permutation_importances(rf, X_train, y_train, oob_regression_r2_score, n_samples)
     return None
 
 
@@ -281,8 +279,8 @@ def cv_importances(model, X_train, y_train, k=3):
     return I
 
 
-def permutation_importances(rf, X_train, y_train, metric, n_samples=5000, n_jobs=1):
-    imp = permutation_importances_raw(rf, X_train, y_train, metric, n_samples, n_jobs)
+def permutation_importances(rf, X_train, y_train, metric, n_samples=5000):
+    imp = permutation_importances_raw(rf, X_train, y_train, metric, n_samples)
     I = pd.DataFrame(data={'Feature':X_train.columns, 'Importance':imp})
     I = I.set_index('Feature')
     I = I.sort_values('Importance', ascending=False)
@@ -387,7 +385,7 @@ def importances_raw(rf, X_train, y_train, n_samples=5000):
     return None
 
 
-def permutation_importances_raw(rf, X_train, y_train, metric, n_samples=5000, n_jobs=1):
+def permutation_importances_raw(rf, X_train, y_train, metric, n_samples=5000):
     """
     Return array of importances from pre-fit rf; metric is function
     that measures accuracy or R^2 or similar. This function
@@ -399,28 +397,17 @@ def permutation_importances_raw(rf, X_train, y_train, metric, n_samples=5000, n_
         rf.fit(X_sample, y_sample)
 
     baseline = metric(rf, X_sample, y_sample)
-
-    # Maintain sklearn/multiprocessing convention for using all cpu cores if n_jobs = -1/None
-    if n_jobs == -1 or n_jobs is None:
-        n_jobs = multiprocessing.cpu_count()
-
-    with Pool(processes=n_jobs) as pool:
-        imp = np.array(pool.map(partial(column_permutation, rf, X_sample, y_sample, metric), X_sample.columns))
-
-    imp = baseline - imp
-
-    return imp
-
-
-def column_permutation(rf, X_train, y_train, metric, column):
-    """
-    Permutes a column and returns a metric calculated with the permutated column.
-    """
-    X = X_train.copy(deep=False)  # shallow copy
-    X[column] = np.random.permutation(X[column])
-    permutated_metric = metric(rf, X, y_train)
-
-    return permutated_metric
+    X_train = X_sample.copy(deep=False) # shallow copy
+    y_train = y_sample
+    imp = []
+    for col in X_train.columns:
+        save = X_train[col].copy()
+        X_train[col] = np.random.permutation(X_train[col])
+        m = metric(rf, X_train, y_train)
+        X_train[col] = save
+        drop_in_metric = baseline - m
+        imp.append(drop_in_metric)
+    return np.array(imp)
 
 
 def oob_classifier_accuracy(rf, X_train, y_train):
