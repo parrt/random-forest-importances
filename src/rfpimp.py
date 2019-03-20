@@ -228,7 +228,7 @@ def oob_importances(rf, X_train, y_train, n_samples=5000, n_jobs=1):
     rf = RandomForestRegressor(n_estimators=100, n_jobs=-1, oob_score=True)
     X_train, y_train = ..., ...
     rf.fit(X_train, y_train)
-    imp = oob_importances(rf, X_train, y_train)
+    imp = oob_importances(rf, X_train, y_train, n_jobs=-1)
     """
     if isinstance(rf, RandomForestClassifier):
         return permutation_importances(rf, X_train, y_train, oob_classifier_accuracy, n_samples, n_jobs)
