@@ -43,6 +43,38 @@ def node_samples(tree_model, X) -> Mapping[int, list]:
     return node_to_samples
 
 
+def beta_wgt(X,y):
+    # Predict wgt using hp
+    print("\nRegression predicting y from residuals of hp predicting wgt")
+    r_hp_wgt = LinearRegression()
+    r_hp_wgt.fit(X[['ENG']], X['WGT'])
+    print(f"wgt = {r_hp_wgt.coef_}*hp + {r_hp_wgt.intercept_}")
+    # Residual of true wgt might prediction based upon hp
+    # res_wgt is the variation in wgt that can't be explained by hp
+    res_wgt = wgt - (r_hp_wgt.coef_ * hp + r_hp_wgt.intercept_)
+
+    # Predict mpg using wgt using hp
+    r_y_hp_res = LinearRegression()
+    r_y_hp_res.fit(res_wgt.values.reshape(-1,1), y)
+    return r_y_hp_res.coef_
+
+
+def beta_hp(X, y):
+    # Predict hp using wgt
+    print("\nRegression predicting y from residuals of wgt predicting hp")
+    r_wgt_hp = LinearRegression()
+    r_wgt_hp.fit(X[['WGT']], X['ENG'])
+    print(f"hp = {r_wgt_hp.coef_}*wgt + {r_wgt_hp.intercept_}")
+    # Residual of true wgt might prediction based upon hp
+    # res_hp is the variation in hp that can't be explained by wgt
+    res_hp  = hp - (r_wgt_hp.coef_ * wgt + r_wgt_hp.intercept_)
+
+    # Predict mpg using wgt using hp
+    r_y_wgt_res = LinearRegression()
+    r_y_wgt_res.fit(res_hp.values.reshape(-1,1), y)
+    return r_y_wgt_res.coef_
+
+
 if __name__ == '__main__':
     df_cars = pd.read_csv("/Users/parrt/github/dtreeviz/testing/data/cars.csv")
     X = df_cars[['ENG','WGT']]
@@ -66,33 +98,9 @@ if __name__ == '__main__':
     print("\nRegression on wgt predicting mpg")
     print(f"mpg_wgt = {r_wgt.coef_}*wgt + {r_wgt.intercept_}")
 
-    # Predict wgt using hp
-    print("\nRegression predicting y from residuals of hp predicting wgt")
-    r_hp_wgt = LinearRegression()
-    r_hp_wgt.fit(X[['ENG']], X['WGT'])
-    print(f"wgt = {r_hp_wgt.coef_}*hp + {r_hp_wgt.intercept_}")
-    # Residual of true wgt might prediction based upon hp
-    # res_wgt is the variation in wgt that can't be explained by hp
-    res_wgt = wgt - (r_hp_wgt.coef_ * hp + r_hp_wgt.intercept_)
+    print(f"Beta for hp is {beta_hp(X,y)} (see mpg coeff[1])")
 
-    # Predict mpg using wgt using hp
-    r_y_hp_res = LinearRegression()
-    r_y_hp_res.fit(res_wgt.values.reshape(-1,1), y)
-    print(f"Beta for wgt is {r_y_hp_res.coef_} + {r_y_hp_res.intercept_} (see mpg coeff[1])")
-
-    # Predict hp using wgt
-    print("\nRegression predicting y from residuals of wgt predicting hp")
-    r_wgt_hp = LinearRegression()
-    r_wgt_hp.fit(X[['WGT']], X['ENG'])
-    print(f"hp = {r_wgt_hp.coef_}*wgt + {r_wgt_hp.intercept_}")
-    # Residual of true wgt might prediction based upon hp
-    # res_hp is the variation in hp that can't be explained by wgt
-    res_hp  = hp  - (r_wgt_hp.coef_ * wgt + r_wgt_hp.intercept_)
-
-    # Predict mpg using wgt using hp
-    r_y_wgt_res = LinearRegression()
-    r_y_wgt_res.fit(res_hp.values.reshape(-1,1), y)
-    print(f"Beta for hp is {r_y_wgt_res.coef_} + {r_y_wgt_res.intercept_}(see mpg coeff[0])")
+    print(f"Beta for wgt is {beta_wgt(X,y)} (see mpg coeff[1])")
 
     fig,axes = plt.subplots(1,2,sharey=True)
     axes[0].scatter(X['ENG'],y,alpha=.25)
