@@ -72,6 +72,7 @@ if __name__ == '__main__':
     r_hp_wgt.fit(X[['ENG']], X['WGT'])
     print(f"wgt = {r_hp_wgt.coef_}*hp + {r_hp_wgt.intercept_}")
     # Residual of true wgt might prediction based upon hp
+    # res_wgt is the variation in wgt that can't be explained by hp
     res_wgt = wgt - (r_hp_wgt.coef_ * hp + r_hp_wgt.intercept_)
 
     # Predict mpg using wgt using hp
@@ -85,6 +86,7 @@ if __name__ == '__main__':
     r_wgt_hp.fit(X[['WGT']], X['ENG'])
     print(f"hp = {r_wgt_hp.coef_}*wgt + {r_wgt_hp.intercept_}")
     # Residual of true wgt might prediction based upon hp
+    # res_hp is the variation in hp that can't be explained by wgt
     res_hp  = hp  - (r_wgt_hp.coef_ * wgt + r_wgt_hp.intercept_)
 
     # Predict mpg using wgt using hp
