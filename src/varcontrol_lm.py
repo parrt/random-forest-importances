@@ -11,40 +11,6 @@ from sklearn.ensemble import RandomForestRegressor
 Play with controlling for other variables to see contribution of some x to y
 """
 
-def foo(tree_model, X, y):
-    if isinstance(X, pd.DataFrame):
-        X = X.values
-    if getattr(tree_model, 'tree_') is None:  # make sure model is fit
-        tree_model.fit(X, y)
-
-    nnodes = tree_model.tree_.node_count
-    left = tree_model.tree_.children_left
-    right = tree_model.tree_.children_right
-
-    for tree in tree_model.estimators_:
-        print(tree)
-
-
-# From dtreeviz
-def node_samples(tree_model, X) -> Mapping[int, list]:
-    """
-    Return dictionary mapping node id to list of sample indexes considered by
-    the feature/split decision.
-    """
-    # Doc say: "Return a node indicator matrix where non zero elements
-    #           indicates that the samples goes through the nodes."
-    dec_paths = tree_model.decision_path(X)
-
-    # each sample has path taken down tree
-    node_to_samples = defaultdict(list)
-    for sample_i, dec in enumerate(dec_paths):
-        _, nz_nodes = dec.nonzero()
-        for node_id in nz_nodes:
-            node_to_samples[node_id].append(sample_i)
-
-    return node_to_samples
-
-
 def beta_hp(X, y):
     # Predict hp using wgt
     print("\nRegression predicting y from residuals of wgt predicting hp")
