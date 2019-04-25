@@ -141,44 +141,6 @@ def curve_through_leaf_models(leaf_models, leaf_ranges, overall_axis):
     return avg_at_x
 
 
-def partial_plot(ax, X, y, colname, targetname):
-    ntrees = 20
-    rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=5, oob_score=True)
-    rf.fit(X.drop(colname, axis=1), y)
-    print(f"OOB R^2 {rf.oob_score_:.5f}")
-    leaf_models, leaf_ranges = piecewise_linear_leaves(rf, X, y, colname)
-    step = 1
-    minx = np.min(leaf_ranges[:, 0])
-    maxx = np.max(leaf_ranges[:, 1])
-    overall_range = np.array([minx, maxx])
-    overall_axis = np.arange(minx, maxx, step)
-    avg_at_x = curve_through_leaf_models(leaf_models, leaf_ranges, overall_axis)
-    min_y_at_left_edge_x = avg_at_x[0]
-
-    r_curve = LinearRegression()
-    r_curve.fit(overall_axis.reshape(-1,1), avg_at_x)
-
-    for r, lm in zip(leaf_ranges, leaf_models):
-        rx = np.arange(r[0], r[1], step, dtype=int)
-        ry = lm.predict(rx.reshape(-1, 1))
-        ax.plot(rx, ry, alpha=.1, c='#D9E6F5')
-    ax.scatter(overall_axis, avg_at_x, s=2, alpha=1, c='black', label="Avg piecewise linear")
-    # Use OLS to determine hp and wgt relationship with mpg
-    r = LinearRegression()
-    r.fit(X, y)
-    print("Regression on hp,wgt predicting mpg")
-    print(f"mpg = {r.coef_}*[hp wgt] + {r.intercept_}")
-    print(f"Compare to slope of avg curve {r_curve.coef_[0]}")
-    ax.plot(overall_range, overall_range * r.coef_[0] + r_curve.intercept_, linewidth=1, c='#fdae61', label="Beta_ENG")
-    ax.set_xlabel(colname)
-    ax.set_ylabel(targetname)
-    ax.set_title(f"Effect of {colname} on {targetname} in similar regions")
-    ax.legend()
-
-    plt.tight_layout()
-
-
-
 def lm_partial_plot(ax, X, y, colname, targetname):
     r_hp = LinearRegression()
     r_hp.fit(X[[colname]], y)
@@ -197,9 +159,50 @@ def lm_partial_plot(ax, X, y, colname, targetname):
     ax.plot(hp, y_pred_hp, ":", linewidth=1, c='red', label='OLS y ~ ENG')
     r = LinearRegression()
     r.fit(X, y)
-    xhp = np.arange(min(hp), max(hp), 1)
+    xhp = np.linspace(min(hp), max(hp), num=100)
     ax.plot(xhp, xhp * r.coef_[0] + r_hp.intercept_, linewidth=1, c='orange', label="Beta_ENG")
     ax.legend()
+
+
+def partial_plot(ax, X, y, colname, targetname, ntrees=20, min_samples_leaf=5, alpha=.05):
+    rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
+    rf.fit(X.drop(colname, axis=1), y)
+    print(f"OOB R^2 {rf.oob_score_:.5f}")
+    leaf_models, leaf_ranges = piecewise_linear_leaves(rf, X, y, colname)
+    numx = 100
+    minx = np.min(leaf_ranges[:, 0])
+    maxx = np.max(leaf_ranges[:, 1])
+    # print(f"range {minx:.3f}..{maxx:.3f}")
+    # print(f"X[{colname}] range {np.min(X[colname])}..{np.max(X[colname])}")
+    overall_range = np.array([minx, maxx])
+    overall_axis = np.linspace(minx, maxx, num=numx)
+    avg_at_x = curve_through_leaf_models(leaf_models, leaf_ranges, overall_axis)
+    min_y_at_left_edge_x = avg_at_x[0]
+
+    r_curve = LinearRegression()
+    r_curve.fit(overall_axis.reshape(-1,1), avg_at_x)
+
+    ax.scatter(overall_axis, avg_at_x, s=2, alpha=1, c='black', label="Avg piecewise linear")
+    for r, lm in zip(leaf_ranges, leaf_models):
+        rx = np.linspace(r[0], r[1], num=2) # just need endpoints for a line
+        ry = lm.predict(rx.reshape(-1, 1))
+        ax.plot(rx, ry, alpha=alpha, c='#9CD1E3')
+    #ax.set_xlim(minx, maxx)
+    # Use OLS to determine hp and wgt relationship with mpg
+    r = LinearRegression()
+    r.fit(X, y)
+    ci = X.columns.get_loc(colname)
+    print(f"Regression on y~{list(X.columns.values)} predicting {targetname}")
+    print(f"{targetname} = {r.coef_}*{list(X.columns.values)} + {r.intercept_}")
+    print(f"Compare beta_{ci} = {r.coef_[ci]} to slope of avg curve {r_curve.coef_[0]}")
+    # ax.plot(overall_range, overall_range * r.coef_[ci], linewidth=1, c='#fdae61',
+    #         label=f"Beta_{colname}={r.coef_[ci]}")
+    ax.set_xlabel(colname)
+    ax.set_ylabel(targetname)
+    ax.set_title(f"Effect of {colname} on {targetname} in similar regions")
+    ax.legend()
+
+    plt.tight_layout()
 
 
 def cars():
@@ -207,12 +210,31 @@ def cars():
     X = df_cars[['ENG', 'WGT']]
     y = df_cars['MPG']
 
-    fig, axes = plt.subplots(2, 1)
+    fig, axes = plt.subplots(2, 1, figsize=(5,6))
     lm_partial_plot(axes[0], X, y, 'ENG', 'MPG')
     partial_plot(axes[1], X, y, 'ENG', 'MPG')
+    plt.show()
 
+    fig, axes = plt.subplots(2, 1, figsize=(5,6))
+    lm_partial_plot(axes[0], X, y, 'WGT', 'MPG')
+    partial_plot(axes[1], X, y, 'WGT', 'MPG')
+    plt.show()
+
+
+def rent():
+    df_rent = pd.read_csv("/Users/parrt/github/mlbook-private/data/rent-ideal.csv")
+    df_rent = df_rent.sample(n=3_000)
+    X = df_rent.drop('price', axis=1)
+    y = df_rent['price']
+
+    fig, axes = plt.subplots(4, 1, figsize=(6,16))
+    partial_plot(axes[0], X, y, 'bedrooms', 'price')
+    partial_plot(axes[1], X, y, 'bathrooms', 'price')
+    partial_plot(axes[2], X, y, 'latitude', 'price')
+    partial_plot(axes[3], X, y, 'longitude', 'price')
     plt.show()
 
 
 if __name__ == '__main__':
-    cars()
+    # cars()
+    rent()
