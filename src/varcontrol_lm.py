@@ -131,8 +131,8 @@ if __name__ == '__main__':
     tr.plot(wgt, y_pred_wgt, linewidth=1, c='black', label='OLS y ~ wgt')
 
     # Show partial dependencies from regression coeff
-    # tl.plot(xhp,  xhp*r.coef_[0],  linewidth=1, c='orange')
-    # tr.plot(xwgt, xwgt*r.coef_[1], linewidth=1, c='orange')
+    tl.plot(xhp,  xhp*r.coef_[0],  linewidth=1, c='orange')
+    tr.plot(xwgt, xwgt*r.coef_[1], linewidth=1, c='orange')
 
     # Show residuals from OLS
     y_res_hp  = y - y_pred_hp
