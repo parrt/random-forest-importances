@@ -10,25 +10,42 @@ from sklearn.datasets import load_boston, load_iris, load_wine, load_digits, \
     load_breast_cancer, load_diabetes, fetch_mldata
 from  matplotlib.collections import LineCollection
 import time
+from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
+
+def df_string_to_cat(df:pd.DataFrame) -> dict:
+    catencoders = {}
+    for colname in df.columns:
+        if is_string_dtype(df[colname]) or is_object_dtype(df[colname]):
+            df[colname] = df[colname].astype('category').cat.as_ordered()
+            catencoders[colname] = df[colname].cat.categories
+    return catencoders
 
 
-"""
-Play with controlling for other variables to see contribution of some x to y
-"""
+def df_cat_to_catcode(df):
+    for col in df.columns:
+        if is_categorical_dtype(df[col]):
+            df[col] = df[col].cat.codes + 1
 
-def foo(rf, X, y):
-    if isinstance(X, pd.DataFrame):
-        X = X.values
-    if not hasattr(rf, 'estimators_'):  # make sure model is fit
-        rf.fit(X, y)
 
-    for t in rf.estimators_:
-        nnodes = t.tree_.node_count
-        left = t.tree_.children_left
-        right = t.tree_.children_right
-        print(nnodes)
-        for n in range(nnodes):
-            pass
+def toy_weight_data(n):
+    df = pd.DataFrame()
+    nmen = n//2
+    nwomen = n//2
+    df['ID'] = range(100,100+n)
+    df['sex'] = ['M']*nmen + ['F']*nwomen
+    df.loc[df['sex']=='F','pregnant'] = np.random.randint(0,2,size=(nwomen,))
+    df.loc[df['sex']=='M','pregnant'] = 0
+    df.loc[df['sex']=='M','height'] = 5*12+8 + np.random.uniform(-7, +8, size=(nmen,))
+    df.loc[df['sex']=='F','height'] = 5*12+5 + np.random.uniform(-4.5, +5, size=(nwomen,))
+    df.loc[df['sex']=='M','education'] = 10 + np.random.randint(0,8,size=nmen)
+    df.loc[df['sex']=='F','education'] = 12 + np.random.randint(0,8,size=nwomen)
+    df['weight'] = 120 \
+                   + (df['height']-df['height'].min()) * 10 \
+                   + df['pregnant']*10 \
+                   - df['education']*1.2
+    df['pregnant'] = df['pregnant'].astype(bool)
+    df['education'] = df['education'].astype(int)
+    return df
 
 
 def scramble(X : np.ndarray) -> np.ndarray:
@@ -96,7 +113,7 @@ def leaf_samples(tree_model, X):
                 node_to_leaves[node_id].append(sample_i)
 
     stop = time.time()
-    print(f"leaf_samples {stop - start:.3f}s")
+    # print(f"leaf_samples {stop - start:.3f}s")
     return node_to_leaves
 
 
@@ -190,20 +207,25 @@ def partial_plot(ax, X, y, colname, targetname, ntrees=20, min_samples_leaf=5, a
     avg_at_x = curve_through_leaf_models(leaf_models, leaf_ranges, overall_axis)
     min_y_at_left_edge_x = avg_at_x[0]
 
-    ax.scatter(overall_axis, avg_at_x, s=2, alpha=1, c='black', label="Avg piecewise linear")
-    print("after black curve")
+    ax.scatter(overall_axis, avg_at_x - min_y_at_left_edge_x, s=2, alpha=1, c='black', label="Avg piecewise linear")
     segments = []
+    miny = 9e10
+    maxy = -9e10
     for r, lm in zip(leaf_ranges, leaf_models):
         rx = np.linspace(r[0], r[1], num=2) # just need endpoints for a line
-        ry = lm.predict(rx.reshape(-1, 1))
+        ry = lm.predict(rx.reshape(-1, 1)) - min_y_at_left_edge_x
+        miny = min(miny, np.min(ry))
+        maxy = max(maxy, np.max(ry))
         one_line = [(rx[0],ry[0]), (rx[1],ry[1])]
         segments.append( one_line )
         # segments.append(np.column_stack([r,ry]))
-        #ax.plot(rx, ry, alpha=alpha, c='#9CD1E3')
+        # ax.plot(rx, ry, alpha=alpha, c='#9CD1E3')
 
-    lines = LineCollection(segments)
+    lines = LineCollection(segments, alpha=alpha, color='#9CD1E3')
+    ax.set_xlim(float(minx), float(maxx))
+    ax.set_ylim(miny, maxy)
     ax.add_collection(lines)
-    print("after all line segments")
+    # print("after all line segments")
 
     # Use OLS to determine hp and wgt relationship with mpg
     r = LinearRegression()
@@ -243,7 +265,7 @@ def cars():
 
 def rent():
     df_rent = pd.read_csv("/Users/parrt/github/mlbook-private/data/rent-ideal.csv")
-    df_rent = df_rent.sample(n=100)
+    df_rent = df_rent.sample(n=1000)
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
@@ -255,6 +277,21 @@ def rent():
     plt.show()
 
 
+def weight():
+    df = toy_weight_data(200)
+    df_string_to_cat(df)
+    df_cat_to_catcode(df)
+    X = df.drop('weight', axis=1)
+    y = df['weight']
+
+    fig, axes = plt.subplots(4, 1, figsize=(6,16))
+    partial_plot(axes[0], X, y, 'education', 'weight')
+    partial_plot(axes[1], X, y, 'height', 'weight')
+    partial_plot(axes[2], X, y, 'sex', 'weight')
+    partial_plot(axes[3], X, y, 'pregnant', 'weight')
+    plt.show()
+
 if __name__ == '__main__':
     # cars()
-    rent()
+    # rent()
+    weight()
