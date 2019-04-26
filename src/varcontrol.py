@@ -11,6 +11,9 @@ from sklearn.datasets import load_boston, load_iris, load_wine, load_digits, \
 from  matplotlib.collections import LineCollection
 import time
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
+from sklearn.ensemble.partial_dependence import partial_dependence, plot_partial_dependence
+from pdpbox import pdp
+from pycebox.ice import ice, ice_plot
 
 def df_string_to_cat(df:pd.DataFrame) -> dict:
     catencoders = {}
@@ -128,6 +131,8 @@ def conjure_twoclass(X):
 def wine():
     wine = load_wine()
 
+def ICE(X, model, colname):
+    pass
 
 def piecewise_linear_leaves(rf, X, y, colname):
     start = time.time()
@@ -192,7 +197,10 @@ def lm_partial_plot(ax, X, y, colname, targetname):
     ax.legend()
 
 
-def partial_plot(ax, X, y, colname, targetname, ntrees=20, min_samples_leaf=5, alpha=.05):
+def partial_plot(ax, X, y, colname, targetname,
+                 ntrees=20, min_samples_leaf=5,
+                 alpha=.05,
+                 xrange=None, yrange=None):
     rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     print(f"OOB R^2 {rf.oob_score_:.5f}")
@@ -222,8 +230,14 @@ def partial_plot(ax, X, y, colname, targetname, ntrees=20, min_samples_leaf=5, a
         # ax.plot(rx, ry, alpha=alpha, c='#9CD1E3')
 
     lines = LineCollection(segments, alpha=alpha, color='#9CD1E3')
-    ax.set_xlim(float(minx), float(maxx))
-    ax.set_ylim(miny, maxy)
+    if xrange is not None:
+        ax.set_xlim(*xrange)
+    else:
+        ax.set_xlim(float(minx), float(maxx))
+    if yrange is not None:
+        ax.set_ylim(*yrange)
+    else:
+        ax.set_ylim(miny, maxy)
     ax.add_collection(lines)
     # print("after all line segments")
 
@@ -278,17 +292,68 @@ def rent():
 
 
 def weight():
-    df = toy_weight_data(200)
+    df = toy_weight_data(100)
     df_string_to_cat(df)
     df_cat_to_catcode(df)
     X = df.drop('weight', axis=1)
     y = df['weight']
 
-    fig, axes = plt.subplots(4, 1, figsize=(6,16))
-    partial_plot(axes[0], X, y, 'education', 'weight')
-    partial_plot(axes[1], X, y, 'height', 'weight')
-    partial_plot(axes[2], X, y, 'sex', 'weight')
-    partial_plot(axes[3], X, y, 'pregnant', 'weight')
+    fig, axes = plt.subplots(4, 2, figsize=(8,16))
+    partial_plot(axes[0][0], X, y, 'education', 'weight')
+    partial_plot(axes[1][0], X, y, 'height', 'weight')
+    partial_plot(axes[2][0], X, y, 'sex', 'weight', yrange=(-40,40))
+    partial_plot(axes[3][0], X, y, 'pregnant', 'weight', xrange=(0,4), yrange=(-20,20))
+
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=3, oob_score=True)
+    rf.fit(X, y)
+
+    # pip install pycebox
+    I = ice(data=X, column='education', predict=rf.predict, num_grid_points=100)
+    ice_plot(I, ax=axes[0][1], plot_pdp=True, c='dimgray', linewidth=0.3)
+    I = ice(data=X, column='height', predict=rf.predict, num_grid_points=100)
+    ice_plot(I, ax=axes[1][1], plot_pdp=True, c='dimgray', linewidth=0.3)
+    I = ice(data=X, column='sex', predict=rf.predict, num_grid_points=2)
+    ice_plot(I, ax=axes[2][1], plot_pdp=True, c='dimgray', linewidth=0.3)
+    I = ice(data=X, column='pregnant', predict=rf.predict, num_grid_points=2)
+    ice_plot(I, ax=axes[3][1], plot_pdp=True, c='dimgray', linewidth=0.3)
+    # y0 = I.T.iloc[:,0].values
+    # y1 = I.T.iloc[:,1].values
+    # print(y0)
+    # print(y1)
+    # segments = []
+    # for y0_,y1_ in zip(y0,y1):
+    #     segments.append( [(0,y0_), (1,y1_)] )
+    # lines = LineCollection(segments, alpha=0.1, color='#9CD1E3')
+    # axes[3][1].set_xlim(0,1)
+    # axes[3][1].set_ylim(min(y0),max(y1))
+    # axes[3][1].add_collection(lines)
+
+    # pip install pdpbox
+    if False:
+        p = pdp.pdp_isolate(rf, X, model_features=X.columns, feature='education')
+        fig2, axes2 = \
+            pdp.pdp_plot(p, 'education', plot_lines=True,
+                         cluster=False,
+                         n_cluster_centers=None)
+
+        p = pdp.pdp_isolate(rf, X, model_features=X.columns, feature='height')
+        fig2, axes2 = \
+            pdp.pdp_plot(p, 'height', plot_lines=True,
+                         cluster=False,
+                         n_cluster_centers=None)
+
+        p = pdp.pdp_isolate(rf, X, model_features=X.columns, feature='sex')
+        fig2, axes2 = \
+            pdp.pdp_plot(p, 'sex', plot_lines=True,
+                         cluster=False,
+                         n_cluster_centers=None)
+
+        p = pdp.pdp_isolate(rf, X, model_features=X.columns, feature='pregnant')
+        fig2, axes2 = \
+            pdp.pdp_plot(p, 'pregnant', plot_lines=True,
+                         cluster=False,
+                         n_cluster_centers=None)
+
     plt.show()
 
 if __name__ == '__main__':
