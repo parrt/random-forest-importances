@@ -8,6 +8,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.datasets import load_boston, load_iris, load_wine, load_digits, \
     load_breast_cancer, load_diabetes, fetch_mldata
+from  matplotlib.collections import LineCollection
+import time
 
 
 """
@@ -75,6 +77,7 @@ def leaf_samples(tree_model, X):
     """
     Return dictionary mapping node id to list of sample indexes in leaf nodes.
     """
+    start = time.time()
     tree = tree_model.tree_
     children_left = tree.children_left
     children_right = tree.children_right
@@ -92,6 +95,8 @@ def leaf_samples(tree_model, X):
                children_right[node_id] == -1:  # is leaf?
                 node_to_leaves[node_id].append(sample_i)
 
+    stop = time.time()
+    print(f"leaf_samples {stop - start:.3f}s")
     return node_to_leaves
 
 
@@ -108,6 +113,7 @@ def wine():
 
 
 def piecewise_linear_leaves(rf, X, y, colname):
+    start = time.time()
     leaf_models = []
     leaf_ranges = []
     for tree in rf.estimators_:
@@ -122,10 +128,13 @@ def piecewise_linear_leaves(rf, X, y, colname):
             leaf_models.append(lm)
             leaf_ranges.append((min(leaf_hp), max(leaf_hp)))
     leaf_ranges = np.array(leaf_ranges)
+    stop = time.time()
+    print(f"piecewise_linear_leaves {stop - start:.3f}s")
     return leaf_models, leaf_ranges
 
 
 def curve_through_leaf_models(leaf_models, leaf_ranges, overall_axis):
+    start = time.time()
     curve = np.zeros(shape=(len(overall_axis), len(leaf_models)), dtype=np.float64)
     i = 0  # leaf index; we get a line for each
     for r, lm in zip(leaf_ranges, leaf_models):
@@ -138,6 +147,8 @@ def curve_through_leaf_models(leaf_models, leaf_ranges, overall_axis):
     sum_at_x = np.sum(curve, axis=1)
     count_at_x = np.count_nonzero(curve, axis=1)
     avg_at_x = sum_at_x / count_at_x
+    stop = time.time()
+    print(f"curve_through_leaf_models {stop - start:.3f}s")
     return avg_at_x
 
 
@@ -179,21 +190,30 @@ def partial_plot(ax, X, y, colname, targetname, ntrees=20, min_samples_leaf=5, a
     avg_at_x = curve_through_leaf_models(leaf_models, leaf_ranges, overall_axis)
     min_y_at_left_edge_x = avg_at_x[0]
 
-    r_curve = LinearRegression()
-    r_curve.fit(overall_axis.reshape(-1,1), avg_at_x)
-
     ax.scatter(overall_axis, avg_at_x, s=2, alpha=1, c='black', label="Avg piecewise linear")
+    print("after black curve")
+    segments = []
     for r, lm in zip(leaf_ranges, leaf_models):
         rx = np.linspace(r[0], r[1], num=2) # just need endpoints for a line
         ry = lm.predict(rx.reshape(-1, 1))
-        ax.plot(rx, ry, alpha=alpha, c='#9CD1E3')
-    #ax.set_xlim(minx, maxx)
+        one_line = [(rx[0],ry[0]), (rx[1],ry[1])]
+        segments.append( one_line )
+        # segments.append(np.column_stack([r,ry]))
+        #ax.plot(rx, ry, alpha=alpha, c='#9CD1E3')
+
+    lines = LineCollection(segments)
+    ax.add_collection(lines)
+    print("after all line segments")
+
     # Use OLS to determine hp and wgt relationship with mpg
     r = LinearRegression()
     r.fit(X, y)
     ci = X.columns.get_loc(colname)
     print(f"Regression on y~{list(X.columns.values)} predicting {targetname}")
     print(f"{targetname} = {r.coef_}*{list(X.columns.values)} + {r.intercept_}")
+
+    r_curve = LinearRegression()
+    r_curve.fit(overall_axis.reshape(-1,1), avg_at_x)
     print(f"Compare beta_{ci} = {r.coef_[ci]} to slope of avg curve {r_curve.coef_[0]}")
     # ax.plot(overall_range, overall_range * r.coef_[ci], linewidth=1, c='#fdae61',
     #         label=f"Beta_{colname}={r.coef_[ci]}")
@@ -223,7 +243,7 @@ def cars():
 
 def rent():
     df_rent = pd.read_csv("/Users/parrt/github/mlbook-private/data/rent-ideal.csv")
-    df_rent = df_rent.sample(n=3_000)
+    df_rent = df_rent.sample(n=100)
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
