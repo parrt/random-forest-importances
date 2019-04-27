@@ -38,6 +38,7 @@ class PimpViz:
     def __init__(self):
         tmp = tempfile.gettempdir()
         self.svgfilename = tmp+"/PimpViz_"+str(getpid())+".svg"
+        plt.tight_layout()
         plt.savefig(self.svgfilename, bbox_inches='tight', pad_inches=0)
 
     def _repr_svg_(self):
@@ -551,7 +552,8 @@ def plot_importances(df_importances,
                      color='#D9E6F5',
                      bgcolor=None,  # seaborn uses '#F1F8FE'
                      xtick_precision=2,
-                     title=None):
+                     title=None,
+                     ax=None):
     """
     Given an array or data frame of importances, plot a horizontal bar chart
     showing the importance values.
@@ -577,6 +579,7 @@ def plot_importances(df_importances,
     :type xtick_precision: int
     :param xtick_precision: Title of plot; set to None to avoid.
     :type xtick_precision: string
+    :param ax: Matplotlib "axis" to plot into
     :return: None
 
     SAMPLE CODE
@@ -606,9 +609,9 @@ def plot_importances(df_importances,
     # print(f"barcounts {barcounts}, N={N}, ymax={ymax}")
     height = max(minheight, ymax * .2 * vscale)
 
-    plt.close()
-    fig = plt.figure(figsize=(width,height))
-    ax = plt.gca()
+    if ax is None:
+        plt.close()
+        fig, ax = plt.subplots(1,1,figsize=(width,height))
     ax.set_xlim(*imp_range)
     ax.set_ylim(0,ymax)
     ax.spines['top'].set_linewidth(.3)
@@ -638,10 +641,10 @@ def plot_importances(df_importances,
     if title:
         ax.set_title(title, fontsize=label_fontsize+1, fontname="Arial", color=GREY)
 
-    barcontainer = plt.barh(y=yloc, width=imp,
-                            height=barcounts*unit,
-                            tick_label=I.index,
-                            color=color, align='center')
+    barcontainer = ax.barh(y=yloc, width=imp,
+                           height=barcounts*unit,
+                           tick_label=I.index,
+                           color=color, align='center')
 
     # Alter appearance of each bar
     for rect in barcontainer.patches:
@@ -650,9 +653,7 @@ def plot_importances(df_importances,
 
     # rotate y-ticks
     if yrot is not None:
-        plt.yticks(rotation=yrot)
-
-    plt.tight_layout()
+        ax.tick_params(labelrotation=yrot)
 
     return PimpViz()
 
