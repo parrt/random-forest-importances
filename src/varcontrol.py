@@ -12,8 +12,8 @@ from  matplotlib.collections import LineCollection
 import time
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
 from sklearn.ensemble.partial_dependence import partial_dependence, plot_partial_dependence
-from pdpbox import pdp
-from pycebox.ice import ice, ice_plot
+# from pdpbox import pdp
+# from pycebox.ice import ice, ice_plot
 
 def df_string_to_cat(df:pd.DataFrame) -> dict:
     catencoders = {}
@@ -92,6 +92,65 @@ def conjure_twoclass(X):
     return X_synth, y_synth
 
 
+def ICE_predict(model, X:pd.DataFrame, colname:str, targetname="target"):
+    """
+    Return dataframe with one row per observation in X and one column
+    per unique value of column identified by colname.
+    Row 0 is actually the unique X[colname] values used to get predictions.
+    It's handy to have so we don't have to pass X around to other methods.
+    Points in a single ICE line are the unique values of colname zipped
+    with one row of returned dataframe.
+    """
+    save = X[colname].copy()
+    lines = np.zeros(shape=(len(df)+1, len(df[colname].unique())))
+    uniq_values = sorted(X[colname].unique())
+    lines[0,:] = uniq_values
+    i = 0
+    for v in uniq_values:
+    #     print(f"{colname}.{v}")
+        X[colname] = v
+        y_pred = model.predict(X)
+    #     print(y_pred)
+        lines[1:,i] = y_pred
+        i += 1
+    X[colname] = save
+    columns = [f"predicted {targetname}\n{colname}={str(v)}"
+               for v in sorted(X[colname].unique())]
+    return pd.DataFrame(lines, columns=columns)
+
+
+def ICE_lines(ice:np.ndarray) -> np.ndarray:
+    """
+    Return a 3D array of 2D matrices holding X coordinates in col 0 and
+    Y coordinates in col 1. result[0] is first 2D matrix of [X,Y] points
+    in a single ICE line for single sample. Shape of result is:
+    (nsamples,nuniquevalues,2)
+    """
+    linex = ice.iloc[0,:] # get unique x values from first row
+    lines = []
+    for i in range(1,len(ice)): # ignore first row
+        liney = ice.iloc[i].values
+        line = np.array(list(zip(linex, liney)))
+        lines.append(line)
+    return np.array(lines)
+
+
+def plot_ICE(ax, ice, colname, targetname="target", linewidth=.7,
+             color='#9CD1E3', alpha=.1, title=None):
+    lines = ICE_lines(ice)
+    # lines[:,:,0] scans all lines, all points in a line, and gets x column
+    minx, maxx = np.min(lines[:,:,0]), np.max(lines[:,:,0])
+    miny, maxy = np.min(lines[:,:,1]), np.max(lines[:,:,1])
+    ax.set_xlim(minx, maxx)
+    ax.set_ylim(miny, maxy)
+    ax.set_xlabel(colname)
+    ax.set_ylabel(targetname)
+    if title is not None:
+        ax.set_title(title)
+    lines = LineCollection(lines, linewidth=linewidth, alpha=alpha, color=color)
+    ax.add_collection(lines)
+
+
 # Derived from dtreeviz
 def leaf_samples(tree_model, X):
     """
@@ -131,8 +190,6 @@ def conjure_twoclass(X):
 def wine():
     wine = load_wine()
 
-def ICE(X, model, colname):
-    pass
 
 def piecewise_linear_leaves(rf, X, y, colname):
     start = time.time()
@@ -308,14 +365,14 @@ def weight():
     rf.fit(X, y)
 
     # pip install pycebox
-    I = ice(data=X, column='education', predict=rf.predict, num_grid_points=100)
-    ice_plot(I, ax=axes[0][1], plot_pdp=True, c='dimgray', linewidth=0.3)
-    I = ice(data=X, column='height', predict=rf.predict, num_grid_points=100)
-    ice_plot(I, ax=axes[1][1], plot_pdp=True, c='dimgray', linewidth=0.3)
-    I = ice(data=X, column='sex', predict=rf.predict, num_grid_points=2)
-    ice_plot(I, ax=axes[2][1], plot_pdp=True, c='dimgray', linewidth=0.3)
-    I = ice(data=X, column='pregnant', predict=rf.predict, num_grid_points=2)
-    ice_plot(I, ax=axes[3][1], plot_pdp=True, c='dimgray', linewidth=0.3)
+    # I = ice(data=X, column='education', predict=rf.predict, num_grid_points=100)
+    # ice_plot(I, ax=axes[0][1], plot_pdp=True, c='dimgray', linewidth=0.3)
+    # I = ice(data=X, column='height', predict=rf.predict, num_grid_points=100)
+    # ice_plot(I, ax=axes[1][1], plot_pdp=True, c='dimgray', linewidth=0.3)
+    # I = ice(data=X, column='sex', predict=rf.predict, num_grid_points=2)
+    # ice_plot(I, ax=axes[2][1], plot_pdp=True, c='dimgray', linewidth=0.3)
+    # I = ice(data=X, column='pregnant', predict=rf.predict, num_grid_points=2)
+    # ice_plot(I, ax=axes[3][1], plot_pdp=True, c='dimgray', linewidth=0.3)
     # y0 = I.T.iloc[:,0].values
     # y1 = I.T.iloc[:,1].values
     # print(y0)
