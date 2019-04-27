@@ -12,7 +12,9 @@ from  matplotlib.collections import LineCollection
 import time
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
 from sklearn.ensemble.partial_dependence import partial_dependence, plot_partial_dependence
-# from pdpbox import pdp
+from pdpbox import pdp
+from rfpimp import *
+
 # from pycebox.ice import ice, ice_plot
 
 def df_string_to_cat(df:pd.DataFrame) -> dict:
@@ -102,7 +104,7 @@ def ICE_predict(model, X:pd.DataFrame, colname:str, targetname="target"):
     with one row of returned dataframe.
     """
     save = X[colname].copy()
-    lines = np.zeros(shape=(len(df)+1, len(df[colname].unique())))
+    lines = np.zeros(shape=(len(X)+1, len(X[colname].unique())))
     uniq_values = sorted(X[colname].unique())
     lines[0,:] = uniq_values
     i = 0
@@ -136,8 +138,12 @@ def ICE_lines(ice:np.ndarray) -> np.ndarray:
 
 
 def plot_ICE(ax, ice, colname, targetname="target", linewidth=.7,
-             color='#9CD1E3', alpha=.1, title=None):
+             color='#9CD1E3', alpha=.1, title=None,
+             pdp=True, pdp_linewidth=1, pdp_alpha=1, pdp_color='black'):
+    avg_y = np.mean(ice[1:], axis=0)
+    min_pdp_y = avg_y[0]
     lines = ICE_lines(ice)
+    lines[:,:,1] = lines[:,:,1] - min_pdp_y
     # lines[:,:,0] scans all lines, all points in a line, and gets x column
     minx, maxx = np.min(lines[:,:,0]), np.max(lines[:,:,0])
     miny, maxy = np.min(lines[:,:,1]), np.max(lines[:,:,1])
@@ -149,7 +155,10 @@ def plot_ICE(ax, ice, colname, targetname="target", linewidth=.7,
         ax.set_title(title)
     lines = LineCollection(lines, linewidth=linewidth, alpha=alpha, color=color)
     ax.add_collection(lines)
-
+    if pdp:
+        uniq_values = ice.iloc[0,:]
+        ax.plot(uniq_values, avg_y - min_pdp_y,
+                alpha=pdp_alpha, linewidth=pdp_linewidth, c=pdp_color)
 
 # Derived from dtreeviz
 def leaf_samples(tree_model, X):
@@ -255,14 +264,14 @@ def lm_partial_plot(ax, X, y, colname, targetname):
 
 
 def partial_plot(ax, X, y, colname, targetname,
-                 ntrees=20, min_samples_leaf=5,
+                 ntrees=30, min_samples_leaf=7,
+                 numx=150,
                  alpha=.05,
                  xrange=None, yrange=None):
     rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
-    print(f"OOB R^2 {rf.oob_score_:.5f}")
+    print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_models, leaf_ranges = piecewise_linear_leaves(rf, X, y, colname)
-    numx = 100
     minx = np.min(leaf_ranges[:, 0])
     maxx = np.max(leaf_ranges[:, 1])
     # print(f"range {minx:.3f}..{maxx:.3f}")
@@ -270,7 +279,22 @@ def partial_plot(ax, X, y, colname, targetname,
     overall_range = np.array([minx, maxx])
     overall_axis = np.linspace(minx, maxx, num=numx)
     avg_at_x = curve_through_leaf_models(leaf_models, leaf_ranges, overall_axis)
-    min_y_at_left_edge_x = avg_at_x[0]
+
+    # Use OLS to determine hp and wgt relationship with mpg
+    r = LinearRegression()
+    r.fit(X, y)
+    print(f"Regression on y~{list(X.columns.values)} predicting {targetname}")
+    print(f"{targetname} = {r.coef_}*{list(X.columns.values)} + {r.intercept_}")
+
+    # Use regr line to figure out how to get reliable left edge. RF edges are
+    # fuzzy and that makes it impossible to just use avg_at_x[0] as min_y_at_left_edge_x
+    # for centering
+    r_curve = LinearRegression()
+    r_curve.fit(overall_axis.reshape(-1,1), avg_at_x)
+    ci = X.columns.get_loc(colname)
+    print(f"Compare beta_{ci} = {r.coef_[ci]} to slope of avg curve {r_curve.coef_[0]}")
+
+    min_y_at_left_edge_x = r_curve.predict(np.array(minx).reshape(-1,1))
 
     ax.scatter(overall_axis, avg_at_x - min_y_at_left_edge_x, s=2, alpha=1, c='black', label="Avg piecewise linear")
     segments = []
@@ -298,16 +322,6 @@ def partial_plot(ax, X, y, colname, targetname,
     ax.add_collection(lines)
     # print("after all line segments")
 
-    # Use OLS to determine hp and wgt relationship with mpg
-    r = LinearRegression()
-    r.fit(X, y)
-    ci = X.columns.get_loc(colname)
-    print(f"Regression on y~{list(X.columns.values)} predicting {targetname}")
-    print(f"{targetname} = {r.coef_}*{list(X.columns.values)} + {r.intercept_}")
-
-    r_curve = LinearRegression()
-    r_curve.fit(overall_axis.reshape(-1,1), avg_at_x)
-    print(f"Compare beta_{ci} = {r.coef_[ci]} to slope of avg curve {r_curve.coef_[0]}")
     # ax.plot(overall_range, overall_range * r.coef_[ci], linewidth=1, c='#fdae61',
     #         label=f"Beta_{colname}={r.coef_[ci]}")
     ax.set_xlabel(colname)
@@ -349,7 +363,7 @@ def rent():
 
 
 def weight():
-    df = toy_weight_data(100)
+    df = toy_weight_data(200)
     df_string_to_cat(df)
     df_cat_to_catcode(df)
     X = df.drop('weight', axis=1)
@@ -361,8 +375,17 @@ def weight():
     partial_plot(axes[2][0], X, y, 'sex', 'weight', yrange=(-40,40))
     partial_plot(axes[3][0], X, y, 'pregnant', 'weight', xrange=(0,4), yrange=(-20,20))
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=3, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
+
+    ice = ICE_predict(rf, X, 'education', 'weight')
+    plot_ICE(axes[0,1], ice, 'education', 'weight')
+    ice = ICE_predict(rf, X, 'height', 'weight')
+    plot_ICE(axes[1,1], ice, 'height', 'weight')
+    ice = ICE_predict(rf, X, 'sex', 'weight')
+    plot_ICE(axes[2,1], ice, 'sex', 'weight')
+    ice = ICE_predict(rf, X, 'pregnant', 'weight')
+    plot_ICE(axes[3,1], ice, 'pregnant', 'weight')
 
     # pip install pycebox
     # I = ice(data=X, column='education', predict=rf.predict, num_grid_points=100)
@@ -385,14 +408,28 @@ def weight():
     # axes[3][1].set_ylim(min(y0),max(y1))
     # axes[3][1].add_collection(lines)
 
+    if False:
+        # show importance as RF-piecewise linear plot see it
+        rf = RandomForestRegressor(n_estimators=50, min_samples_leaf=5, oob_score=True)
+        rf.fit(X, y)
+
+        I = importances(rf, X, y)
+        plot_importances(I, ax=axes[4,0])
+        axes[4, 0].set_title("Permutation importance")
+
+        I = dropcol_importances(rf, X, y)
+        plot_importances(I, ax=axes[4,1])
+        axes[4, 1].set_title("Drop-column importance")
+
     # pip install pdpbox
+
+
     if False:
         p = pdp.pdp_isolate(rf, X, model_features=X.columns, feature='education')
         fig2, axes2 = \
             pdp.pdp_plot(p, 'education', plot_lines=True,
                          cluster=False,
                          n_cluster_centers=None)
-
         p = pdp.pdp_isolate(rf, X, model_features=X.columns, feature='height')
         fig2, axes2 = \
             pdp.pdp_plot(p, 'height', plot_lines=True,
