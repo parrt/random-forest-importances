@@ -25,7 +25,7 @@ rf = RandomForestRegressor(n_estimators=50,
 start = timer() # ------------
 
 D = oob_dependences(rf, X_train, 2000) # like 10 seconds
-DM = feature_dependence_matrix(rf, X_train, 2000) # like 15 minutes
+DM = feature_dependence_matrix(X_train, rf, 2000) # like 15 minutes
 
 end = timer() # ------------
 print(f"{end - start:.2f}s")
