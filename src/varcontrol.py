@@ -139,6 +139,7 @@ def ICE_lines(ice:np.ndarray) -> np.ndarray:
 
 def plot_ICE(ax, ice, colname, targetname="target", linewidth=.7,
              color='#9CD1E3', alpha=.1, title=None,
+             yrange=None,
              pdp=True, pdp_linewidth=1, pdp_alpha=1, pdp_color='black'):
     avg_y = np.mean(ice[1:], axis=0)
     min_pdp_y = avg_y[0]
@@ -148,7 +149,10 @@ def plot_ICE(ax, ice, colname, targetname="target", linewidth=.7,
     minx, maxx = np.min(lines[:,:,0]), np.max(lines[:,:,0])
     miny, maxy = np.min(lines[:,:,1]), np.max(lines[:,:,1])
     ax.set_xlim(minx, maxx)
-    ax.set_ylim(miny, maxy)
+    if yrange is not None:
+        ax.set_ylim(*yrange)
+    else:
+        ax.set_ylim(miny, maxy)
     ax.set_xlabel(colname)
     ax.set_ylabel(targetname)
     if title is not None:
@@ -209,16 +213,59 @@ def piecewise_linear_leaves(rf, X, y, colname):
         for leaf, samples in leaves.items():
             if len(samples) < 2:
                 print(f"ignoring len {len(samples)} leaf")
-            leaf_hp = X.iloc[samples][colname]
+            leaf_x = X.iloc[samples][colname]
             leaf_y = y.iloc[samples]
             lm = LinearRegression()
-            lm.fit(leaf_hp.values.reshape(-1, 1), leaf_y)
+            lm.fit(leaf_x.values.reshape(-1, 1), leaf_y)
             leaf_models.append(lm)
-            leaf_ranges.append((min(leaf_hp), max(leaf_hp)))
+            leaf_ranges.append((min(leaf_x), max(leaf_x)))
     leaf_ranges = np.array(leaf_ranges)
     stop = time.time()
     print(f"piecewise_linear_leaves {stop - start:.3f}s")
     return leaf_models, leaf_ranges
+
+
+def catwise_leaves(rf, X, y, colname):
+    """
+    Return a dataframe with the average y value for each category in each leaf.
+    The index has the complete category list. The columns are the y avg values
+    found in a single leaf. Each row represents a category level. E.g.,
+
+                       leaf0       leaf1
+        category
+        1         166.430176  186.796956
+        2         219.590349  176.448626
+    """
+    start = time.time()
+    catcol = X[colname].astype('category').cat.as_ordered()
+    cats = catcol.cat.categories
+    leaf_histos = pd.DataFrame(index=cats)
+    leaf_histos.index.name = 'category'
+    ci = 0
+    for tree in rf.estimators_:
+        leaves = leaf_samples(tree, X.drop(colname, axis=1))
+        for leaf, samples in leaves.items():
+            leaf_X = X.iloc[samples][colname]
+            leaf_y = y.iloc[samples]
+            combined = pd.concat([leaf_X, leaf_y], axis=1)
+            grouping = combined.groupby(colname)
+            # print(combined)
+            histo = grouping.mean()
+            avg_of_first_cat = histo.iloc[0]
+            # print(histo)
+            #             print(histo - min_of_first_cat)
+            if len(histo) < 2:
+                #                 print(f"ignoring len {len(histo)} cat leaf")
+                continue
+            delta_per_cat = histo - avg_of_first_cat
+            leaf_histos['leaf' + str(ci)] = delta_per_cat
+            ci += 1
+
+    # print(leaf_histos)
+    leaf_histos.fillna(0, inplace=True) # needed for |cats|>2
+    stop = time.time()
+    print(f"catwise_leaves {stop - start:.3f}s")
+    return leaf_histos
 
 
 def curve_through_leaf_models(leaf_models, leaf_ranges, overall_axis):
@@ -262,6 +309,18 @@ def lm_partial_plot(ax, X, y, colname, targetname):
     ax.plot(xhp, xhp * r.coef_[0] + r_hp.intercept_, linewidth=1, c='orange', label="Beta_ENG")
     ax.legend()
 
+"""
+piecewise-linear
+partial dependence plot
+
+PL PDP RF
+
+partial dependence
+
+piecewise partial dependence
+
+stratification via random-forest and aggregation via averaging of piecewise-linear models 
+"""
 
 def partial_plot(ax, X, y, colname, targetname,
                  ntrees=30, min_samples_leaf=7,
@@ -297,6 +356,7 @@ def partial_plot(ax, X, y, colname, targetname,
     min_y_at_left_edge_x = r_curve.predict(np.array(minx).reshape(-1,1))
 
     ax.scatter(overall_axis, avg_at_x - min_y_at_left_edge_x, s=2, alpha=1, c='black', label="Avg piecewise linear")
+
     segments = []
     miny = 9e10
     maxy = -9e10
@@ -307,8 +367,6 @@ def partial_plot(ax, X, y, colname, targetname,
         maxy = max(maxy, np.max(ry))
         one_line = [(rx[0],ry[0]), (rx[1],ry[1])]
         segments.append( one_line )
-        # segments.append(np.column_stack([r,ry]))
-        # ax.plot(rx, ry, alpha=alpha, c='#9CD1E3')
 
     lines = LineCollection(segments, alpha=alpha, color='#9CD1E3')
     if xrange is not None:
@@ -320,7 +378,6 @@ def partial_plot(ax, X, y, colname, targetname,
     else:
         ax.set_ylim(miny, maxy)
     ax.add_collection(lines)
-    # print("after all line segments")
 
     # ax.plot(overall_range, overall_range * r.coef_[ci], linewidth=1, c='#fdae61',
     #         label=f"Beta_{colname}={r.coef_[ci]}")
@@ -328,6 +385,40 @@ def partial_plot(ax, X, y, colname, targetname,
     ax.set_ylabel(targetname)
     ax.set_title(f"Effect of {colname} on {targetname} in similar regions")
     ax.legend()
+
+    plt.tight_layout()
+
+
+def cat_partial_plot(ax, X, y, colname, targetname,
+                     cats=None,
+                     ntrees=30, min_samples_leaf=7,
+                     numx=150,
+                     alpha=.05,
+                     xrange=None, yrange=None):
+    rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
+    rf.fit(X.drop(colname, axis=1), y)
+    print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
+    leaf_histos = catwise_leaves(rf, X, y, colname)
+    sum_per_cat = np.sum(leaf_histos, axis=1)
+    nonzero_count_per_cat = np.count_nonzero(leaf_histos, axis=1)
+    avg_per_cat = np.divide(sum_per_cat, nonzero_count_per_cat, where=nonzero_count_per_cat!=0)
+
+    print(avg_per_cat)
+
+    barcontainer = ax.bar(x=leaf_histos.index.values, height=avg_per_cat,
+                          tick_label=leaf_histos.index,
+                          align='center')
+
+    for rect in barcontainer.patches:
+        rect.set_linewidth(.5)
+        rect.set_edgecolor(GREY)
+
+    ax.set_xlabel(colname)
+    ax.set_ylabel(targetname)
+    ax.set_title(f"Effect of {colname} on {targetname} in similar regions")
+
+    if yrange is not None:
+        ax.set_ylim(*yrange)
 
     plt.tight_layout()
 
@@ -363,29 +454,32 @@ def rent():
 
 
 def weight():
-    df = toy_weight_data(200)
+    df_raw = toy_weight_data(500)
+    df = df_raw.copy()
     df_string_to_cat(df)
     df_cat_to_catcode(df)
     X = df.drop('weight', axis=1)
     y = df['weight']
 
-    fig, axes = plt.subplots(4, 2, figsize=(8,16))
-    partial_plot(axes[0][0], X, y, 'education', 'weight')
+    fig, axes = plt.subplots(4, 2, figsize=(8,15), constrained_layout=True)
+    partial_plot(axes[0][0], X, y, 'education', 'weight', ntrees=50, yrange=(-40,0))
     partial_plot(axes[1][0], X, y, 'height', 'weight')
-    partial_plot(axes[2][0], X, y, 'sex', 'weight', yrange=(-40,40))
-    partial_plot(axes[3][0], X, y, 'pregnant', 'weight', xrange=(0,4), yrange=(-20,20))
+    cat_partial_plot(axes[2][0], X, y, 'sex', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
+    cat_partial_plot(axes[3][0], X, y, 'pregnant', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
     ice = ICE_predict(rf, X, 'education', 'weight')
-    plot_ICE(axes[0,1], ice, 'education', 'weight')
+    plot_ICE(axes[0,1], ice, 'education', 'weight', yrange=(-40,0))
     ice = ICE_predict(rf, X, 'height', 'weight')
     plot_ICE(axes[1,1], ice, 'height', 'weight')
     ice = ICE_predict(rf, X, 'sex', 'weight')
-    plot_ICE(axes[2,1], ice, 'sex', 'weight')
+    plot_ICE(axes[2,1], ice, 'sex', 'weight', yrange=(0,2))
     ice = ICE_predict(rf, X, 'pregnant', 'weight')
-    plot_ICE(axes[3,1], ice, 'pregnant', 'weight')
+    plot_ICE(axes[3,1], ice, 'pregnant', 'weight', yrange=(0,10))
+
+    fig.suptitle("weight = 120 + 10*(height-min(height)) + 10*pregnant - 1.2*education", size=14)
 
     # pip install pycebox
     # I = ice(data=X, column='education', predict=rf.predict, num_grid_points=100)
@@ -447,6 +541,8 @@ def weight():
             pdp.pdp_plot(p, 'pregnant', plot_lines=True,
                          cluster=False,
                          n_cluster_centers=None)
+
+    # plt.tight_layout()
 
     plt.show()
 
