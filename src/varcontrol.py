@@ -441,7 +441,7 @@ def cars():
 
 def rent():
     df_rent = pd.read_csv("/Users/parrt/github/mlbook-private/data/rent-ideal.csv")
-    df_rent = df_rent.sample(n=1000)
+    df_rent = df_rent.sample(n=2000)
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
@@ -462,7 +462,7 @@ def weight():
     y = df['weight']
 
     fig, axes = plt.subplots(4, 2, figsize=(8,15), constrained_layout=True)
-    partial_plot(axes[0][0], X, y, 'education', 'weight', ntrees=50, yrange=(-40,0))
+    partial_plot(axes[0][0], X, y, 'education', 'weight', ntrees=50, min_samples_leaf=9, yrange=(-40,0))
     partial_plot(axes[1][0], X, y, 'height', 'weight')
     cat_partial_plot(axes[2][0], X, y, 'sex', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
     cat_partial_plot(axes[3][0], X, y, 'pregnant', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
@@ -544,6 +544,7 @@ def weight():
 
     # plt.tight_layout()
 
+    plt.savefig("/tmp/t.svg")
     plt.show()
 
 if __name__ == '__main__':
