@@ -14,6 +14,7 @@ from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dt
 from sklearn.ensemble.partial_dependence import partial_dependence, plot_partial_dependence
 from pdpbox import pdp
 from rfpimp import *
+from scipy.integrate import cumtrapz
 
 # from pycebox.ice import ice, ice_plot
 
@@ -213,12 +214,17 @@ def piecewise_linear_leaves(rf, X, y, colname):
         for leaf, samples in leaves.items():
             if len(samples) < 2:
                 print(f"ignoring len {len(samples)} leaf")
+                continue
             leaf_x = X.iloc[samples][colname]
             leaf_y = y.iloc[samples]
+            r = (min(leaf_x), max(leaf_x))
+            if r[0]==r[1]:
+                print(f"ignoring xleft=xright @ {r[0]}")
+                continue
             lm = LinearRegression()
             lm.fit(leaf_x.values.reshape(-1, 1), leaf_y)
             leaf_models.append(lm)
-            leaf_ranges.append((min(leaf_x), max(leaf_x)))
+            leaf_ranges.append(r)
     leaf_ranges = np.array(leaf_ranges)
     stop = time.time()
     print(f"piecewise_linear_leaves {stop - start:.3f}s")
@@ -268,8 +274,27 @@ def catwise_leaves(rf, X, y, colname):
     return leaf_histos
 
 
-def curve_through_leaf_models(leaf_models, leaf_ranges, overall_axis):
+def slopes_from_leaf_models(leaf_models, leaf_ranges):
+    uniq_x = set(leaf_ranges[:, 0]).union(set(leaf_ranges[:, 1]))
+    uniq_x = sorted(uniq_x)
+    slopes = np.zeros(shape=(len(uniq_x), len(leaf_models)))
+    i = 0  # leaf index; we get a line for each
+    for r, lm in zip(leaf_ranges, leaf_models):
+        x = np.full(len(uniq_x), lm.coef_[0])
+        x[np.where(uniq_x < r[0])] = 0
+        x[np.where(uniq_x > r[1])] = 0
+    #     print(f"{r} -> {x}")
+        slopes[:, i] = x
+        i += 1
+    sum_at_x = np.sum(slopes, axis=1)
+    count_at_x = np.count_nonzero(slopes, axis=1)
+    avg_slope_at_x = sum_at_x / count_at_x
+    return uniq_x, avg_slope_at_x
+
+
+def old_curve_through_leaf_models(leaf_models, leaf_ranges, overall_axis):
     start = time.time()
+    # TODO: should we create nan not zeroes? what about a valid 0 value?
     curve = np.zeros(shape=(len(overall_axis), len(leaf_models)), dtype=np.float64)
     i = 0  # leaf index; we get a line for each
     for r, lm in zip(leaf_ranges, leaf_models):
@@ -322,69 +347,47 @@ piecewise partial dependence
 stratification via random-forest and aggregation via averaging of piecewise-linear models 
 """
 
-def partial_plot(ax, X, y, colname, targetname,
+def partial_plot(X, y, colname, targetname=None,
+                 ax=None,
                  ntrees=30, min_samples_leaf=7,
-                 numx=150,
+                 numx=100,
                  alpha=.05,
                  xrange=None, yrange=None):
     rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_models, leaf_ranges = piecewise_linear_leaves(rf, X, y, colname)
-    minx = np.min(leaf_ranges[:, 0])
-    maxx = np.max(leaf_ranges[:, 1])
-    # print(f"range {minx:.3f}..{maxx:.3f}")
-    # print(f"X[{colname}] range {np.min(X[colname])}..{np.max(X[colname])}")
-    overall_range = np.array([minx, maxx])
-    overall_axis = np.linspace(minx, maxx, num=numx)
-    avg_at_x = curve_through_leaf_models(leaf_models, leaf_ranges, overall_axis)
+    uniq_x, avg_slope_at_x = \
+        slopes_from_leaf_models(leaf_models, leaf_ranges)
 
-    # Use OLS to determine hp and wgt relationship with mpg
-    r = LinearRegression()
-    r.fit(X, y)
-    print(f"Regression on y~{list(X.columns.values)} predicting {targetname}")
-    print(f"{targetname} = {r.coef_}*{list(X.columns.values)} + {r.intercept_}")
+    if ax is None:
+        fig, ax = plt.subplots(1,1)
 
-    # Use regr line to figure out how to get reliable left edge. RF edges are
-    # fuzzy and that makes it impossible to just use avg_at_x[0] as min_y_at_left_edge_x
-    # for centering
-    r_curve = LinearRegression()
-    r_curve.fit(overall_axis.reshape(-1,1), avg_at_x)
-    ci = X.columns.get_loc(colname)
-    print(f"Compare beta_{ci} = {r.coef_[ci]} to slope of avg curve {r_curve.coef_[0]}")
+    curve = cumtrapz(avg_slope_at_x, x=uniq_x)  # we lose one value here
+    curve = np.concatenate([np.array([0]), curve])  # make it 0
 
-    min_y_at_left_edge_x = r_curve.predict(np.array(minx).reshape(-1,1))
-
-    ax.scatter(overall_axis, avg_at_x - min_y_at_left_edge_x, s=2, alpha=1, c='black', label="Avg piecewise linear")
+    ax.scatter(uniq_x, curve,
+               s=2, alpha=1,
+               c='black', label="Avg piecewise linear")
 
     segments = []
-    miny = 9e10
-    maxy = -9e10
     for r, lm in zip(leaf_ranges, leaf_models):
-        rx = np.linspace(r[0], r[1], num=2) # just need endpoints for a line
-        ry = lm.predict(rx.reshape(-1, 1)) - min_y_at_left_edge_x
-        miny = min(miny, np.min(ry))
-        maxy = max(maxy, np.max(ry))
-        one_line = [(rx[0],ry[0]), (rx[1],ry[1])]
+        delta = lm.coef_[0] * (r[1] - r[0])
+        closest_x_i = np.abs(uniq_x - r[0]).argmin()
+        y_offset = curve[closest_x_i]
+        one_line = [(r[0],y_offset), (r[1], y_offset+delta)]
         segments.append( one_line )
 
-    lines = LineCollection(segments, alpha=alpha, color='#9CD1E3')
+    lines = LineCollection(segments, alpha=alpha, color='#9CD1E3', linewidth=1)
     if xrange is not None:
         ax.set_xlim(*xrange)
-    else:
-        ax.set_xlim(float(minx), float(maxx))
     if yrange is not None:
         ax.set_ylim(*yrange)
-    else:
-        ax.set_ylim(miny, maxy)
     ax.add_collection(lines)
 
-    # ax.plot(overall_range, overall_range * r.coef_[ci], linewidth=1, c='#fdae61',
-    #         label=f"Beta_{colname}={r.coef_[ci]}")
     ax.set_xlabel(colname)
     ax.set_ylabel(targetname)
     ax.set_title(f"Effect of {colname} on {targetname} in similar regions")
-    ax.legend()
 
     plt.tight_layout()
 
@@ -400,6 +403,7 @@ def cat_partial_plot(ax, X, y, colname, targetname,
     print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_histos = catwise_leaves(rf, X, y, colname)
     sum_per_cat = np.sum(leaf_histos, axis=1)
+    # TODO: should we create nan not zeroes? what about a valid 0 value?
     nonzero_count_per_cat = np.count_nonzero(leaf_histos, axis=1)
     avg_per_cat = np.divide(sum_per_cat, nonzero_count_per_cat, where=nonzero_count_per_cat!=0)
 
@@ -430,7 +434,7 @@ def cars():
 
     fig, axes = plt.subplots(2, 1, figsize=(5,6))
     lm_partial_plot(axes[0], X, y, 'ENG', 'MPG')
-    partial_plot(axes[1], X, y, 'ENG', 'MPG')
+    partial_plot(X, y, 'ENG', 'MPG', ax=axes[1])
     plt.show()
 
     fig, axes = plt.subplots(2, 1, figsize=(5,6))
@@ -446,38 +450,46 @@ def rent():
     y = df_rent['price']
 
     fig, axes = plt.subplots(4, 1, figsize=(6,16))
-    partial_plot(axes[0], X, y, 'bedrooms', 'price')
-    partial_plot(axes[1], X, y, 'bathrooms', 'price')
-    partial_plot(axes[2], X, y, 'latitude', 'price')
-    partial_plot(axes[3], X, y, 'longitude', 'price')
+    partial_plot(X, y, 'bedrooms', 'price', ax=axes[0])
+    partial_plot(X, y, 'bathrooms', 'price', ax=axes[1])
+    partial_plot(X, y, 'latitude', 'price', ax=axes[2])
+    partial_plot(X, y, 'longitude', 'price', ax=axes[3])
     plt.show()
 
 
 def weight():
-    df_raw = toy_weight_data(500)
+    df_raw = toy_weight_data(400)
     df = df_raw.copy()
     df_string_to_cat(df)
     df_cat_to_catcode(df)
     X = df.drop('weight', axis=1)
     y = df['weight']
 
-    fig, axes = plt.subplots(4, 2, figsize=(8,15), constrained_layout=True)
-    partial_plot(axes[0][0], X, y, 'education', 'weight', ntrees=50, min_samples_leaf=9, yrange=(-40,0))
-    partial_plot(axes[1][0], X, y, 'height', 'weight')
-    cat_partial_plot(axes[2][0], X, y, 'sex', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
-    cat_partial_plot(axes[3][0], X, y, 'pregnant', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
+    fig, axes = plt.subplots(3, 2, figsize=(8,8), gridspec_kw = {'height_ratios':[.2,3,3]})
+
+    axes[0,0].get_xaxis().set_visible(False)
+    axes[0,1].get_xaxis().set_visible(False)
+    axes[0,0].axis('off')
+    axes[0,1].axis('off')
+
+    partial_plot(X, y, 'education', 'weight', ax=axes[1][0],
+                 ntrees=30, min_samples_leaf=7, yrange=(-12,0))
+    # partial_plot(X, y, 'education', 'weight', ntrees=20, min_samples_leaf=7, alpha=.2)
+    partial_plot(X, y, 'height', 'weight', ax=axes[2][0], yrange=(0,160))
+    # cat_partial_plot(axes[2][0], X, y, 'sex', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
+    # cat_partial_plot(axes[3][0], X, y, 'pregnant', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
     ice = ICE_predict(rf, X, 'education', 'weight')
-    plot_ICE(axes[0,1], ice, 'education', 'weight', yrange=(-40,0))
+    plot_ICE(axes[1,1], ice, 'education', 'weight', yrange=(-12,0))
     ice = ICE_predict(rf, X, 'height', 'weight')
-    plot_ICE(axes[1,1], ice, 'height', 'weight')
+    plot_ICE(axes[2,1], ice, 'height', 'weight', yrange=(0,160))
     ice = ICE_predict(rf, X, 'sex', 'weight')
-    plot_ICE(axes[2,1], ice, 'sex', 'weight', yrange=(0,2))
-    ice = ICE_predict(rf, X, 'pregnant', 'weight')
-    plot_ICE(axes[3,1], ice, 'pregnant', 'weight', yrange=(0,10))
+    # plot_ICE(axes[2,1], ice, 'sex', 'weight', yrange=(0,2))
+    # ice = ICE_predict(rf, X, 'pregnant', 'weight')
+    # plot_ICE(axes[3,1], ice, 'pregnant', 'weight', yrange=(0,10))
 
     fig.suptitle("weight = 120 + 10*(height-min(height)) + 10*pregnant - 1.2*education", size=14)
 
@@ -542,7 +554,7 @@ def weight():
                          cluster=False,
                          n_cluster_centers=None)
 
-    # plt.tight_layout()
+    plt.tight_layout()
 
     plt.savefig("/tmp/t.svg")
     plt.show()
