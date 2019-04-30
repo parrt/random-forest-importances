@@ -54,6 +54,19 @@ def toy_weight_data(n):
     return df
 
 
+def toy_weather_data():
+    def temp(x): return np.sin((x+365/2)*(2*np.pi)/365)
+    df = pd.DataFrame()
+    df['dayofyear'] = range(1,365+1)
+    df['state'] = np.random.choice(['CA','CO','AZ','WA'], len(df))
+    df['temperature'] = temp(df['dayofyear'])
+    df.loc[df['state']=='CA','temperature'] = df.loc[df['state']=='CA','temperature'] * 70 #+ np.random.uniform(-20,40,sum(df['state']=='CA'))
+    df.loc[df['state']=='CO','temperature'] = df.loc[df['state']=='CO','temperature'] * 40 #+ np.random.uniform(-20,40,sum(df['state']=='CO'))
+    df.loc[df['state']=='AZ','temperature'] = df.loc[df['state']=='AZ','temperature'] * 90 #+ np.random.uniform(-20,40,sum(df['state']=='AZ'))
+    df.loc[df['state']=='WA','temperature'] = df.loc[df['state']=='WA','temperature'] * 60 #+ np.random.uniform(-20,40,sum(df['state']=='WA'))
+    return df
+
+
 def scramble(X : np.ndarray) -> np.ndarray:
     """
     From Breiman: https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm
@@ -399,7 +412,8 @@ def partial_plot(X, y, colname, targetname=None,
     plt.tight_layout()
 
 
-def cat_partial_plot(ax, X, y, colname, targetname,
+def cat_partial_plot(X, y, colname, targetname,
+                     ax=None,
                      cats=None,
                      ntrees=30, min_samples_leaf=7,
                      numx=150,
@@ -518,7 +532,43 @@ def weight():
     plt.savefig("/tmp/t.svg")
     plt.show()
 
+def weather():
+    df_raw = toy_weather_data()
+    df = df_raw.copy()
+    catencoders = df_string_to_cat(df)
+    print(catencoders)
+    df_cat_to_catcode(df)
+    X = df.drop('temperature', axis=1)
+    y = df['temperature']
+
+    fig, axes = plt.subplots(3, 2, figsize=(8,8), gridspec_kw = {'height_ratios':[.2,3,3]})
+
+    axes[0,0].get_xaxis().set_visible(False)
+    axes[0,1].get_xaxis().set_visible(False)
+    axes[0,0].axis('off')
+    axes[0,1].axis('off')
+
+    partial_plot(X, y, 'dayofyear', 'temperature', ax=axes[1][0],
+                 ntrees=50, min_samples_leaf=7)#, yrange=(-12,0))
+    # partial_plot(X, y, 'education', 'weight', ntrees=20, min_samples_leaf=7, alpha=.2)
+    cat_partial_plot(X, y, 'state', 'temperature', ax=axes[2][0])#, yrange=(0,160))
+    # cat_partial_plot(axes[2][0], X, y, 'sex', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
+    # cat_partial_plot(axes[3][0], X, y, 'pregnant', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
+
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf.fit(X, y)
+
+    ice = ICE_predict(rf, X, 'dayofyear', 'temperature')
+    plot_ICE(axes[1,1], ice, 'dayofyear', 'temperature')#, yrange=(-12,0))
+
+    # fig.suptitle("weight = 120 + 10*(height-min(height)) + 10*pregnant - 1.2*education", size=14)
+    plt.tight_layout()
+
+    plt.savefig("/tmp/weather.svg")
+    plt.show()
+
 if __name__ == '__main__':
     # cars()
     # rent()
-    weight()
+    # weight()
+    weather()
