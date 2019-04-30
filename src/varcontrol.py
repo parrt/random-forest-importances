@@ -349,10 +349,12 @@ stratification via random-forest and aggregation via averaging of piecewise-line
 
 def partial_plot(X, y, colname, targetname=None,
                  ax=None,
-                 ntrees=30, min_samples_leaf=7,
-                 numx=100,
+                 ntrees=30,
+                 min_samples_leaf=7,
                  alpha=.05,
-                 xrange=None, yrange=None):
+                 xrange=None,
+                 yrange=None,
+                 show_derivative=False):
     rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
@@ -388,6 +390,11 @@ def partial_plot(X, y, colname, targetname=None,
     ax.set_xlabel(colname)
     ax.set_ylabel(targetname)
     ax.set_title(f"Effect of {colname} on {targetname} in similar regions")
+
+    if show_derivative:
+        other = ax.twinx()
+        other.set_ylabel("Partial derivative", fontdict={"color":'#f46d43'})
+        other.plot(uniq_x, avg_slope_at_x, linewidth=1, c='#f46d43')
 
     plt.tight_layout()
 
@@ -458,7 +465,7 @@ def rent():
 
 
 def weight():
-    df_raw = toy_weight_data(400)
+    df_raw = toy_weight_data(1000)
     df = df_raw.copy()
     df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -493,27 +500,6 @@ def weight():
 
     fig.suptitle("weight = 120 + 10*(height-min(height)) + 10*pregnant - 1.2*education", size=14)
 
-    # pip install pycebox
-    # I = ice(data=X, column='education', predict=rf.predict, num_grid_points=100)
-    # ice_plot(I, ax=axes[0][1], plot_pdp=True, c='dimgray', linewidth=0.3)
-    # I = ice(data=X, column='height', predict=rf.predict, num_grid_points=100)
-    # ice_plot(I, ax=axes[1][1], plot_pdp=True, c='dimgray', linewidth=0.3)
-    # I = ice(data=X, column='sex', predict=rf.predict, num_grid_points=2)
-    # ice_plot(I, ax=axes[2][1], plot_pdp=True, c='dimgray', linewidth=0.3)
-    # I = ice(data=X, column='pregnant', predict=rf.predict, num_grid_points=2)
-    # ice_plot(I, ax=axes[3][1], plot_pdp=True, c='dimgray', linewidth=0.3)
-    # y0 = I.T.iloc[:,0].values
-    # y1 = I.T.iloc[:,1].values
-    # print(y0)
-    # print(y1)
-    # segments = []
-    # for y0_,y1_ in zip(y0,y1):
-    #     segments.append( [(0,y0_), (1,y1_)] )
-    # lines = LineCollection(segments, alpha=0.1, color='#9CD1E3')
-    # axes[3][1].set_xlim(0,1)
-    # axes[3][1].set_ylim(min(y0),max(y1))
-    # axes[3][1].add_collection(lines)
-
     if False:
         # show importance as RF-piecewise linear plot see it
         rf = RandomForestRegressor(n_estimators=50, min_samples_leaf=5, oob_score=True)
@@ -526,33 +512,6 @@ def weight():
         I = dropcol_importances(rf, X, y)
         plot_importances(I, ax=axes[4,1])
         axes[4, 1].set_title("Drop-column importance")
-
-    # pip install pdpbox
-
-
-    if False:
-        p = pdp.pdp_isolate(rf, X, model_features=X.columns, feature='education')
-        fig2, axes2 = \
-            pdp.pdp_plot(p, 'education', plot_lines=True,
-                         cluster=False,
-                         n_cluster_centers=None)
-        p = pdp.pdp_isolate(rf, X, model_features=X.columns, feature='height')
-        fig2, axes2 = \
-            pdp.pdp_plot(p, 'height', plot_lines=True,
-                         cluster=False,
-                         n_cluster_centers=None)
-
-        p = pdp.pdp_isolate(rf, X, model_features=X.columns, feature='sex')
-        fig2, axes2 = \
-            pdp.pdp_plot(p, 'sex', plot_lines=True,
-                         cluster=False,
-                         n_cluster_centers=None)
-
-        p = pdp.pdp_isolate(rf, X, model_features=X.columns, feature='pregnant')
-        fig2, axes2 = \
-            pdp.pdp_plot(p, 'pregnant', plot_lines=True,
-                         cluster=False,
-                         n_cluster_centers=None)
 
     plt.tight_layout()
 
