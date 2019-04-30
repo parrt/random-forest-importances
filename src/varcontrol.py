@@ -16,26 +16,6 @@ from pdpbox import pdp
 from rfpimp import *
 from scipy.integrate import cumtrapz
 
-"""
-Weakness: if model is bad minus feature x then plot for x is meaningless as RF
-can't do a grouping into similar buckets. in contrast, PDP uses all x to make
-predictions.
-
-Good:
-
-* Only considers points where we have data; then we use linear model to
-  approximate the partial derivate. plot is then the integration. 
-  
-* We aren't using model to compute points, only locally to get slopes.
-
-* No nonsensical samples; not touching data
-
-* LM works great if all numeric data; this works with categorical
-
-* Seems to isolate partial dependencies better
-  
-"""
-
 # from pycebox.ice import ice, ice_plot
 
 def df_string_to_cat(df:pd.DataFrame) -> dict:
@@ -53,9 +33,9 @@ def df_cat_to_catcode(df):
             df[col] = df[col].cat.codes + 1
 
 
-def toy_crisscross_data():
+def toy_crisscross_data(n=50):
     df = pd.DataFrame()
-    x = np.linspace(0, 10, num=50)
+    x = np.linspace(0, 10, num=n)
     df['x1'] = x * 1.2
     df['x2'] = -x * 1.2 + 12
     df['y'] = df['x1'] * df['x2']
@@ -180,10 +160,9 @@ def ICE_lines(ice:np.ndarray) -> np.ndarray:
     return np.array(lines)
 
 
-def plot_ICE(ax, ice, colname, targetname="target", linewidth=.7,
-             color='#9CD1E3', alpha=.1, title=None,
-             yrange=None,
-             pdp=True, pdp_linewidth=1, pdp_alpha=1, pdp_color='black'):
+def plot_ICE(ice, colname, targetname="target", ax=None, linewidth=.7, color='#9CD1E3',
+             alpha=.1, title=None, yrange=None, pdp=True, pdp_linewidth=1, pdp_alpha=1,
+             pdp_color='black'):
     avg_y = np.mean(ice[1:], axis=0)
     min_pdp_y = avg_y[0]
     lines = ICE_lines(ice)
@@ -202,6 +181,9 @@ def plot_ICE(ax, ice, colname, targetname="target", linewidth=.7,
         ax.set_title(title)
     lines = LineCollection(lines, linewidth=linewidth, alpha=alpha, color=color)
     ax.add_collection(lines)
+
+    ax.set_title(f"Partial dependence of {colname} on {targetname}")
+
     if pdp:
         uniq_values = ice.iloc[0,:]
         ax.plot(uniq_values, avg_y - min_pdp_y,
@@ -255,13 +237,13 @@ def piecewise_linear_leaves(rf, X, y, colname):
         leaves = leaf_samples(tree, X.drop(colname, axis=1))
         for leaf, samples in leaves.items():
             if len(samples) < 2:
-                print(f"ignoring len {len(samples)} leaf")
+                # print(f"ignoring len {len(samples)} leaf")
                 continue
             leaf_x = X.iloc[samples][colname]
             leaf_y = y.iloc[samples]
             r = (min(leaf_x), max(leaf_x))
             if r[0]==r[1]:
-                print(f"ignoring xleft=xright @ {r[0]}")
+                # print(f"ignoring xleft=xright @ {r[0]}")
                 continue
             lm = LinearRegression()
             lm.fit(leaf_x.values.reshape(-1, 1), leaf_y)
@@ -310,6 +292,7 @@ def catwise_leaves(rf, X, y, colname):
             ci += 1
 
     # print(leaf_histos)
+    # TODO: shouldn't this be worried about 0 being a valid value?
     leaf_histos.fillna(0, inplace=True) # needed for |cats|>2
     stop = time.time()
     print(f"catwise_leaves {stop - start:.3f}s")
@@ -354,26 +337,23 @@ def old_curve_through_leaf_models(leaf_models, leaf_ranges, overall_axis):
     return avg_at_x
 
 
-def lm_partial_plot(ax, X, y, colname, targetname):
-    r_hp = LinearRegression()
-    r_hp.fit(X[[colname]], y)
-    print("\nRegression on hp predicting mpg")
-    print(f"mpg_hp = {r_hp.coef_}*hp + {r_hp.intercept_}")
-    r_wgt = LinearRegression()
-    r_wgt.fit(X.drop(colname, axis=1), y)
-    print("\nRegression on wgt predicting mpg")
-    print(f"mpg_wgt = {r_wgt.coef_}*wgt + {r_wgt.intercept_}")
+def lm_partial_plot(X, y, colname, targetname,ax=None):
+    r_col = LinearRegression()
+    r_col.fit(X[[colname]], y)
     ax.scatter(X[colname], y, alpha=.12)
     ax.set_xlabel(colname)
     ax.set_ylabel(targetname)
     ax.set_title(targetname+" vs "+colname)
-    hp = X[colname]
-    y_pred_hp = r_hp.predict(hp.values.reshape(-1, 1))
-    ax.plot(hp, y_pred_hp, ":", linewidth=1, c='red', label='OLS y ~ ENG')
+    col = X[colname]
+    y_pred_hp = r_col.predict(col.values.reshape(-1, 1))
+    ax.plot(col, y_pred_hp, ":", linewidth=1, c='red', label='OLS y ~ ENG')
     r = LinearRegression()
     r.fit(X, y)
-    xhp = np.linspace(min(hp), max(hp), num=100)
-    ax.plot(xhp, xhp * r.coef_[0] + r_hp.intercept_, linewidth=1, c='orange', label="Beta_ENG")
+    xhp = np.linspace(min(col), max(col), num=100)
+    ci = X.columns.get_loc(colname)
+    ax.plot(xhp, xhp * r.coef_[ci] + r_col.intercept_, linewidth=1, c='orange', label="Beta_ENG")
+    left30 = xhp[int(len(xhp) * .3)]
+    ax.text(left30, left30*r.coef_[ci] + r_col.intercept_, f"slope={r.coef_[ci]:.3f}")
     ax.legend()
 
 """
@@ -482,28 +462,47 @@ def cars():
     X = df_cars[['ENG', 'WGT']]
     y = df_cars['MPG']
 
-    fig, axes = plt.subplots(2, 1, figsize=(5,6))
-    lm_partial_plot(axes[0], X, y, 'ENG', 'MPG')
-    partial_plot(X, y, 'ENG', 'MPG', ax=axes[1])
-    plt.show()
+    fig, axes = plt.subplots(2, 3, figsize=(12,8))
+    lm_partial_plot(X, y, 'ENG', 'MPG', ax=axes[0,0])
+    partial_plot(X, y, 'ENG', 'MPG', ax=axes[0,1])
 
-    fig, axes = plt.subplots(2, 1, figsize=(5,6))
-    lm_partial_plot(axes[0], X, y, 'WGT', 'MPG')
-    partial_plot(axes[1], X, y, 'WGT', 'MPG')
+    lm_partial_plot(X, y, 'WGT', 'MPG', ax=axes[1,0])
+    partial_plot(X, y, 'WGT', 'MPG', ax=axes[1,1])
+
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf.fit(X, y)
+    ice = ICE_predict(rf, X, 'ENG', 'MPG')
+    plot_ICE(ice, 'ENG', 'MPG', ax=axes[0, 2])
+    ice = ICE_predict(rf, X, 'WGT', 'MPG')
+    plot_ICE(ice, 'WGT', 'MPG', ax=axes[1, 2])
+
     plt.show()
 
 
 def rent():
     df_rent = pd.read_csv("/Users/parrt/github/mlbook-private/data/rent-ideal.csv")
-    df_rent = df_rent.sample(n=2000)
+    df_rent = df_rent.sample(n=1500)
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
-    fig, axes = plt.subplots(4, 1, figsize=(6,16))
-    partial_plot(X, y, 'bedrooms', 'price', ax=axes[0])
-    partial_plot(X, y, 'bathrooms', 'price', ax=axes[1])
-    partial_plot(X, y, 'latitude', 'price', ax=axes[2])
-    partial_plot(X, y, 'longitude', 'price', ax=axes[3])
+    fig, axes = plt.subplots(4, 2, figsize=(8,16))
+    partial_plot(X, y, 'bedrooms', 'price', ax=axes[0,0], yrange=(0,3000))
+    partial_plot(X, y, 'bathrooms', 'price', ax=axes[1,0], yrange=(0,5000))
+    partial_plot(X, y, 'latitude', 'price', ax=axes[2,0], yrange=(0,1300))
+    partial_plot(X, y, 'longitude', 'price', ax=axes[3,0], yrange=(-3000,250))
+
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf.fit(X, y)
+
+    ice = ICE_predict(rf, X, 'bedrooms', 'price')
+    plot_ICE(ice, 'bedrooms', 'price', axes[0, 1], yrange=(0,3000))
+    ice = ICE_predict(rf, X, 'bathrooms', 'price')
+    plot_ICE(ice, 'bathrooms', 'price', axes[1, 1])
+    ice = ICE_predict(rf, X, 'latitude', 'price')
+    plot_ICE(ice, 'latitude', 'price', axes[2, 1], yrange=(0,1300))
+    ice = ICE_predict(rf, X, 'longitude', 'price')
+    plot_ICE(ice, 'longitude', 'price', axes[3, 1], yrange=(-3000,250))
+
     plt.show()
 
 
@@ -515,7 +514,7 @@ def weight():
     X = df.drop('weight', axis=1)
     y = df['weight']
 
-    fig, axes = plt.subplots(3, 2, figsize=(8,8), gridspec_kw = {'height_ratios':[.2,3,3]})
+    fig, axes = plt.subplots(5, 2, figsize=(8,16), gridspec_kw = {'height_ratios':[.2,3,3,3,3]})
 
     axes[0,0].get_xaxis().set_visible(False)
     axes[0,1].get_xaxis().set_visible(False)
@@ -526,20 +525,20 @@ def weight():
                  ntrees=30, min_samples_leaf=7, yrange=(-12,0))
     # partial_plot(X, y, 'education', 'weight', ntrees=20, min_samples_leaf=7, alpha=.2)
     partial_plot(X, y, 'height', 'weight', ax=axes[2][0], yrange=(0,160))
-    # cat_partial_plot(axes[2][0], X, y, 'sex', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
-    # cat_partial_plot(axes[3][0], X, y, 'pregnant', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
+    cat_partial_plot(X, y, 'sex', 'weight', ax=axes[3][0], ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
+    cat_partial_plot(X, y, 'pregnant', 'weight', ax=axes[4][0], ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
     ice = ICE_predict(rf, X, 'education', 'weight')
-    plot_ICE(axes[1,1], ice, 'education', 'weight', yrange=(-12,0))
+    plot_ICE(ice, 'education', 'weight', axes[1, 1], yrange=(-12, 0))
     ice = ICE_predict(rf, X, 'height', 'weight')
-    plot_ICE(axes[2,1], ice, 'height', 'weight', yrange=(0,160))
+    plot_ICE(ice, 'height', 'weight', axes[2, 1], yrange=(0, 160))
     ice = ICE_predict(rf, X, 'sex', 'weight')
-    # plot_ICE(axes[2,1], ice, 'sex', 'weight', yrange=(0,2))
-    # ice = ICE_predict(rf, X, 'pregnant', 'weight')
-    # plot_ICE(axes[3,1], ice, 'pregnant', 'weight', yrange=(0,10))
+    plot_ICE(ice, 'sex', 'weight', axes[3,1], yrange=(0,2))
+    ice = ICE_predict(rf, X, 'pregnant', 'weight')
+    plot_ICE(ice, 'pregnant', 'weight', axes[4,1], yrange=(0,10))
 
     fig.suptitle("weight = 120 + 10*(height-min(height)) + 10*pregnant - 1.2*education", size=14)
 
@@ -588,9 +587,9 @@ def weather():
     rf.fit(X, y)
 
     ice = ICE_predict(rf, X, 'dayofyear', 'temperature')
-    plot_ICE(axes[1,1], ice, 'dayofyear', 'temperature')#, yrange=(-12,0))
+    plot_ICE(ice, 'dayofyear', 'temperature', axes[1, 1])  #, yrange=(-12,0))
     ice = ICE_predict(rf, X, 'state', 'temperature')
-    plot_ICE(axes[2,1], ice, 'state', 'temperature')#, yrange=(-12,0))
+    plot_ICE(ice, 'state', 'temperature', axes[2, 1])  #, yrange=(-12,0))
 
     # fig.suptitle("weight = 120 + 10*(height-min(height)) + 10*pregnant - 1.2*education", size=14)
     plt.tight_layout()
@@ -599,7 +598,7 @@ def weather():
     plt.show()
 
 def interaction():
-    df = toy_crisscross_data()
+    df = toy_crisscross_data(n=50)
     X = df.drop('y', axis=1)
     y = df['y']
 
@@ -626,10 +625,10 @@ def interaction():
     rf.fit(X, y)
 
     ice = ICE_predict(rf, X, 'x1', 'y')
-    plot_ICE(axes[1,1], ice, 'x1', 'y', yrange=(0,40))
+    plot_ICE(ice, 'x1', 'y', axes[1, 1], yrange=(0, 40))
     axes[1, 1].set_title("Partial dependence plot")
     ice = ICE_predict(rf, X, 'x2', 'y')
-    plot_ICE(axes[2,1], ice, 'x2', 'y', yrange=(0,40))
+    plot_ICE(ice, 'x2', 'y', axes[2, 1], yrange=(0, 40))
 
     plt.tight_layout()
 
