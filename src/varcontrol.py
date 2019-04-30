@@ -53,6 +53,15 @@ def df_cat_to_catcode(df):
             df[col] = df[col].cat.codes + 1
 
 
+def toy_crisscross_data():
+    df = pd.DataFrame()
+    x = np.linspace(0, 10, num=50)
+    df['x1'] = x * 1.2
+    df['x2'] = -x * 1.2 + 12
+    df['y'] = df['x1'] * df['x2']
+    return df
+
+
 def toy_weight_data(n):
     df = pd.DataFrame()
     nmen = n//2
@@ -589,8 +598,49 @@ def weather():
     plt.savefig("/tmp/weather.svg")
     plt.show()
 
+def interaction():
+    df = toy_crisscross_data()
+    X = df.drop('y', axis=1)
+    y = df['y']
+
+    fig, axes = plt.subplots(3, 2, figsize=(8,8))
+
+    axes[0,0].plot(range(len(df)), df['x1'], label="x1")
+    axes[0,0].plot(range(len(df)), df['x2'], label="x2")
+    axes[0,0].plot(range(len(df)), df['y'], label="y")
+    axes[0, 0].set_xlabel("df row index")
+    axes[0, 0].set_ylabel("df value")
+    axes[0, 0].legend()
+    axes[0, 0].set_title("Raw data; y = x1 * x2\nx1 = 1.2i; x2 = -1.2i + 12 for i=range(0..10,n=50)")
+    axes[0,1].get_xaxis().set_visible(False)
+    axes[0,1].axis('off')
+
+    partial_plot(X, y, 'x1', 'y', ax=axes[1][0],
+                 ntrees=50, min_samples_leaf=7, yrange=(0,40))
+    # partial_plot(X, y, 'education', 'weight', ntrees=20, min_samples_leaf=7, alpha=.2)
+    partial_plot(X, y, 'x2', 'y', ax=axes[2][0], yrange=(0,40))
+    # cat_partial_plot(axes[2][0], X, y, 'sex', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
+    # cat_partial_plot(axes[3][0], X, y, 'pregnant', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
+
+    rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=1, oob_score=True)
+    rf.fit(X, y)
+
+    ice = ICE_predict(rf, X, 'x1', 'y')
+    plot_ICE(axes[1,1], ice, 'x1', 'y', yrange=(0,40))
+    axes[1, 1].set_title("Partial dependence plot")
+    ice = ICE_predict(rf, X, 'x2', 'y')
+    plot_ICE(axes[2,1], ice, 'x2', 'y', yrange=(0,40))
+
+    plt.tight_layout()
+
+    plt.savefig("/tmp/weather.svg")
+    plt.show()
+
+
+
 if __name__ == '__main__':
     # cars()
     # rent()
     # weight()
-    weather()
+    # weather()
+    interaction()
