@@ -16,6 +16,26 @@ from pdpbox import pdp
 from rfpimp import *
 from scipy.integrate import cumtrapz
 
+"""
+Weakness: if model is bad minus feature x then plot for x is meaningless as RF
+can't do a grouping into similar buckets. in contrast, PDP uses all x to make
+predictions.
+
+Good:
+
+* Only considers points where we have data; then we use linear model to
+  approximate the partial derivate. plot is then the integration. 
+  
+* We aren't using model to compute points, only locally to get slopes.
+
+* No nonsensical samples; not touching data
+
+* LM works great if all numeric data; this works with categorical
+
+* Seems to isolate partial dependencies better
+  
+"""
+
 # from pycebox.ice import ice, ice_plot
 
 def df_string_to_cat(df:pd.DataFrame) -> dict:
@@ -555,11 +575,13 @@ def weather():
     # cat_partial_plot(axes[2][0], X, y, 'sex', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
     # cat_partial_plot(axes[3][0], X, y, 'pregnant', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
     ice = ICE_predict(rf, X, 'dayofyear', 'temperature')
     plot_ICE(axes[1,1], ice, 'dayofyear', 'temperature')#, yrange=(-12,0))
+    ice = ICE_predict(rf, X, 'state', 'temperature')
+    plot_ICE(axes[2,1], ice, 'state', 'temperature')#, yrange=(-12,0))
 
     # fig.suptitle("weight = 120 + 10*(height-min(height)) + 10*pregnant - 1.2*education", size=14)
     plt.tight_layout()
