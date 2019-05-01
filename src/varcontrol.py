@@ -233,6 +233,7 @@ def piecewise_linear_leaves(rf, X, y, colname):
     start = time.time()
     leaf_models = []
     leaf_ranges = []
+    leaf_sizes = []
     for tree in rf.estimators_:
         leaves = leaf_samples(tree, X.drop(colname, axis=1))
         for leaf, samples in leaves.items():
@@ -249,10 +250,11 @@ def piecewise_linear_leaves(rf, X, y, colname):
             lm.fit(leaf_x.values.reshape(-1, 1), leaf_y)
             leaf_models.append(lm)
             leaf_ranges.append(r)
+            leaf_sizes.append(len(samples))
     leaf_ranges = np.array(leaf_ranges)
     stop = time.time()
     print(f"piecewise_linear_leaves {stop - start:.3f}s")
-    return leaf_models, leaf_ranges
+    return leaf_models, leaf_ranges, leaf_sizes
 
 
 def catwise_leaves(rf, X, y, colname):
@@ -299,7 +301,7 @@ def catwise_leaves(rf, X, y, colname):
     return leaf_histos
 
 
-def slopes_from_leaf_models(leaf_models, leaf_ranges):
+def slopes_from_leaf_models(leaf_models, leaf_ranges, leaf_sizes):
     uniq_x = set(leaf_ranges[:, 0]).union(set(leaf_ranges[:, 1]))
     uniq_x = sorted(uniq_x)
     slopes = np.zeros(shape=(len(uniq_x), len(leaf_models)))
@@ -311,6 +313,7 @@ def slopes_from_leaf_models(leaf_models, leaf_ranges):
     #     print(f"{r} -> {x}")
         slopes[:, i] = x
         i += 1
+    # avg_slope_at_x = slopes.dot(leaf_sizes) / sum(leaf_sizes)
     sum_at_x = np.sum(slopes, axis=1)
     count_at_x = np.count_nonzero(slopes, axis=1)
     avg_slope_at_x = sum_at_x / count_at_x
@@ -380,9 +383,9 @@ def partial_plot(X, y, colname, targetname=None,
     rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_models, leaf_ranges = piecewise_linear_leaves(rf, X, y, colname)
+    leaf_models, leaf_ranges, leaf_sizes = piecewise_linear_leaves(rf, X, y, colname)
     uniq_x, avg_slope_at_x = \
-        slopes_from_leaf_models(leaf_models, leaf_ranges)
+        slopes_from_leaf_models(leaf_models, leaf_ranges, leaf_sizes)
 
     if ax is None:
         fig, ax = plt.subplots(1,1)
@@ -507,7 +510,7 @@ def rent():
 
 
 def weight():
-    df_raw = toy_weight_data(1000)
+    df_raw = toy_weight_data(300)
     df = df_raw.copy()
     df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -640,6 +643,6 @@ def interaction():
 if __name__ == '__main__':
     # cars()
     # rent()
-    # weight()
+    weight()
     # weather()
-    interaction()
+    # interaction()
