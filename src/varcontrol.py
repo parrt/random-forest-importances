@@ -69,10 +69,10 @@ def toy_weather_data():
     df['dayofyear'] = range(1,365+1)
     df['state'] = np.random.choice(['CA','CO','AZ','WA'], len(df))
     df['temperature'] = temp(df['dayofyear'])
-    df.loc[df['state']=='CA','temperature'] = df.loc[df['state']=='CA','temperature'] * 70 #+ np.random.uniform(-20,40,sum(df['state']=='CA'))
-    df.loc[df['state']=='CO','temperature'] = df.loc[df['state']=='CO','temperature'] * 40 #+ np.random.uniform(-20,40,sum(df['state']=='CO'))
-    df.loc[df['state']=='AZ','temperature'] = df.loc[df['state']=='AZ','temperature'] * 90 #+ np.random.uniform(-20,40,sum(df['state']=='AZ'))
-    df.loc[df['state']=='WA','temperature'] = df.loc[df['state']=='WA','temperature'] * 60 #+ np.random.uniform(-20,40,sum(df['state']=='WA'))
+    df.loc[df['state']=='CA','temperature'] = 70 + df.loc[df['state']=='CA','temperature'] * np.random.uniform(-20,40,sum(df['state']=='CA'))
+    df.loc[df['state']=='CO','temperature'] = 40 + df.loc[df['state']=='CO','temperature'] * np.random.uniform(-20,40,sum(df['state']=='CO'))
+    df.loc[df['state']=='AZ','temperature'] = 90 + df.loc[df['state']=='AZ','temperature'] * np.random.uniform(-20,40,sum(df['state']=='AZ'))
+    df.loc[df['state']=='WA','temperature'] = 60 + df.loc[df['state']=='WA','temperature'] * np.random.uniform(-20,40,sum(df['state']=='WA'))
     return df
 
 
@@ -160,11 +160,14 @@ def ICE_lines(ice:np.ndarray) -> np.ndarray:
     return np.array(lines)
 
 
-def plot_ICE(ice, colname, targetname="target", ax=None, linewidth=.7, color='#9CD1E3',
+def plot_ICE(ice, colname, targetname="target", cats=None, ax=None, linewidth=.7, color='#9CD1E3',
              alpha=.1, title=None, yrange=None, pdp=True, pdp_linewidth=1, pdp_alpha=1,
              pdp_color='black'):
+    if ax is None:
+        fig, ax = plt.subplots(1,1)
+
     avg_y = np.mean(ice[1:], axis=0)
-    min_pdp_y = avg_y[0]
+    min_pdp_y = np.min(avg_y)
     lines = ICE_lines(ice)
     lines[:,:,1] = lines[:,:,1] - min_pdp_y
     # lines[:,:,0] scans all lines, all points in a line, and gets x column
@@ -181,6 +184,11 @@ def plot_ICE(ice, colname, targetname="target", ax=None, linewidth=.7, color='#9
         ax.set_title(title)
     lines = LineCollection(lines, linewidth=linewidth, alpha=alpha, color=color)
     ax.add_collection(lines)
+
+    if cats is not None:
+        ncats = len(cats)
+        ax.set_xticks(range(1, ncats + 1))
+        ax.set_xticklabels(cats)
 
     ax.set_title(f"Partial dependence of {colname} on {targetname}")
 
@@ -273,6 +281,8 @@ def catwise_leaves(rf, X, y, colname):
     cats = catcol.cat.categories
     leaf_histos = pd.DataFrame(index=cats)
     leaf_histos.index.name = 'category'
+    leaf_counts = pd.DataFrame(index=cats)
+    leaf_counts.index.name = 'category'
     ci = 0
     for tree in rf.estimators_:
         leaves = leaf_samples(tree, X.drop(colname, axis=1))
@@ -281,24 +291,24 @@ def catwise_leaves(rf, X, y, colname):
             leaf_y = y.iloc[samples]
             combined = pd.concat([leaf_X, leaf_y], axis=1)
             grouping = combined.groupby(colname)
-            # print(combined)
+#             print("\n", combined)
             histo = grouping.mean()
+#             print(grouping.count())
             avg_of_first_cat = histo.iloc[0]
-            # print(histo)
+#             print(histo)
             #             print(histo - min_of_first_cat)
             if len(histo) < 2:
                 #                 print(f"ignoring len {len(histo)} cat leaf")
                 continue
-            delta_per_cat = histo - avg_of_first_cat
-            leaf_histos['leaf' + str(ci)] = delta_per_cat
+#             delta_per_cat = histo - avg_of_first_cat
+            leaf_histos['leaf' + str(ci)] = histo
+            leaf_counts['leaf' + str(ci)] = grouping.count()
             ci += 1
 
     # print(leaf_histos)
-    # TODO: shouldn't this be worried about 0 being a valid value?
-    leaf_histos.fillna(0, inplace=True) # needed for |cats|>2
     stop = time.time()
     print(f"catwise_leaves {stop - start:.3f}s")
-    return leaf_histos
+    return leaf_histos, leaf_counts
 
 
 def slopes_from_leaf_models(leaf_models, leaf_ranges, leaf_sizes):
@@ -421,34 +431,51 @@ def partial_plot(X, y, colname, targetname=None,
         other.set_ylabel("Partial derivative", fontdict={"color":'#f46d43'})
         other.plot(uniq_x, avg_slope_at_x, linewidth=1, c='#f46d43')
 
-    plt.tight_layout()
-
 
 def cat_partial_plot(X, y, colname, targetname,
-                     ax=None,
                      cats=None,
+                     ax=None,
+                     sort='ascending',
                      ntrees=30, min_samples_leaf=7,
-                     numx=150,
-                     alpha=.05,
-                     xrange=None, yrange=None):
+                     alpha=.03,
+                     yrange=None):
     rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_histos = catwise_leaves(rf, X, y, colname)
+    leaf_histos, leaf_counts = catwise_leaves(rf, X, y, colname)
     sum_per_cat = np.sum(leaf_histos, axis=1)
-    # TODO: should we create nan not zeroes? what about a valid 0 value?
-    nonzero_count_per_cat = np.count_nonzero(leaf_histos, axis=1)
-    avg_per_cat = np.divide(sum_per_cat, nonzero_count_per_cat, where=nonzero_count_per_cat!=0)
+    nonmissing_count_per_cat = len(leaf_histos.columns) - np.isnan(leaf_histos).sum(axis=1)
+    avg_per_cat = sum_per_cat / nonmissing_count_per_cat
 
-    print(avg_per_cat)
+    if ax is None:
+        fig, ax = plt.subplots(1, 1)
 
-    barcontainer = ax.bar(x=leaf_histos.index.values, height=avg_per_cat,
-                          tick_label=leaf_histos.index,
-                          align='center')
+    ncats = len(cats)
+    nleaves = len(leaf_histos.columns)
 
-    for rect in barcontainer.patches:
-        rect.set_linewidth(.5)
-        rect.set_edgecolor(GREY)
+    sort_indexes = range(ncats)
+    if sort == 'ascending':
+        sort_indexes = avg_per_cat.argsort()
+        cats = cats[sort_indexes]
+    elif sort == 'descending':
+        sort_indexes = avg_per_cat.argsort()[::-1]  # reversed
+        cats = cats[sort_indexes]
+
+    min_value = np.min(avg_per_cat)
+
+    xloc = 1
+    sigma = .02
+    mu = 0
+    x_noise = np.random.normal(mu, sigma, size=nleaves)
+    for i in sort_indexes:
+        ax.scatter(x_noise + xloc, leaf_histos.iloc[i]-min_value,
+                   alpha=alpha, marker='o', s=10,
+                   c='#9CD1E3')
+        ax.plot([xloc - .1, xloc + .1], [avg_per_cat.iloc[i]-min_value] * 2,
+                c='black', linewidth=2)
+        xloc += 1
+    ax.set_xticks(range(1, ncats + 1))
+    ax.set_xticklabels(cats)
 
     ax.set_xlabel(colname)
     ax.set_ylabel(targetname)
@@ -456,8 +483,6 @@ def cat_partial_plot(X, y, colname, targetname,
 
     if yrange is not None:
         ax.set_ylim(*yrange)
-
-    plt.tight_layout()
 
 
 def cars():
@@ -514,6 +539,7 @@ def weight():
     df = df_raw.copy()
     df_string_to_cat(df)
     df_cat_to_catcode(df)
+    df['pregnant'] = df['pregnant'].astype(int)
     X = df.drop('weight', axis=1)
     y = df['weight']
 
@@ -529,7 +555,9 @@ def weight():
     # partial_plot(X, y, 'education', 'weight', ntrees=20, min_samples_leaf=7, alpha=.2)
     partial_plot(X, y, 'height', 'weight', ax=axes[2][0], yrange=(0,160))
     cat_partial_plot(X, y, 'sex', 'weight', ax=axes[3][0], ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
+    # partial_plot(X, y, 'sex', 'weight', ax=axes[3][0], ntrees=50, min_samples_leaf=7)
     cat_partial_plot(X, y, 'pregnant', 'weight', ax=axes[4][0], ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
+    # partial_plot(X, y, 'pregnant', 'weight', ax=axes[4][0], ntrees=50, min_samples_leaf=7, yrange=(0,10))
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
@@ -572,7 +600,7 @@ def weather():
     X = df.drop('temperature', axis=1)
     y = df['temperature']
 
-    fig, axes = plt.subplots(3, 2, figsize=(8,8), gridspec_kw = {'height_ratios':[.2,3,3]})
+    fig, axes = plt.subplots(4, 2, figsize=(8,8), gridspec_kw = {'height_ratios':[.2,3,3,3]})
 
     axes[0,0].get_xaxis().set_visible(False)
     axes[0,1].get_xaxis().set_visible(False)
@@ -582,7 +610,7 @@ def weather():
     partial_plot(X, y, 'dayofyear', 'temperature', ax=axes[1][0],
                  ntrees=50, min_samples_leaf=7)#, yrange=(-12,0))
     # partial_plot(X, y, 'education', 'weight', ntrees=20, min_samples_leaf=7, alpha=.2)
-    cat_partial_plot(X, y, 'state', 'temperature', ax=axes[2][0])#, yrange=(0,160))
+    cat_partial_plot(X, y, 'state', 'temperature', cats=catencoders['state'], ax=axes[2][0])#, yrange=(0,160))
     # cat_partial_plot(axes[2][0], X, y, 'sex', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
     # cat_partial_plot(axes[3][0], X, y, 'pregnant', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
 
@@ -590,11 +618,24 @@ def weather():
     rf.fit(X, y)
 
     ice = ICE_predict(rf, X, 'dayofyear', 'temperature')
-    plot_ICE(ice, 'dayofyear', 'temperature', axes[1, 1])  #, yrange=(-12,0))
+    plot_ICE(ice, 'dayofyear', 'temperature', ax=axes[1, 1])  #, yrange=(-12,0))
     ice = ICE_predict(rf, X, 'state', 'temperature')
-    plot_ICE(ice, 'state', 'temperature', axes[2, 1])  #, yrange=(-12,0))
+    plot_ICE(ice, 'state', 'temperature', cats=catencoders['state'], ax=axes[2, 1])  #, yrange=(-12,0))
 
-    # fig.suptitle("weight = 120 + 10*(height-min(height)) + 10*pregnant - 1.2*education", size=14)
+    df = df_raw.copy()
+    axes[3, 0].plot(df.loc[df['state'] == 'CA', 'dayofyear'],
+             df.loc[df['state'] == 'CA', 'temperature'], label="CA")
+    axes[3, 0].plot(df.loc[df['state'] == 'CO', 'dayofyear'],
+             df.loc[df['state'] == 'CO', 'temperature'], label="CO")
+    axes[3, 0].plot(df.loc[df['state'] == 'AZ', 'dayofyear'],
+             df.loc[df['state'] == 'AZ', 'temperature'], label="AZ")
+    axes[3, 0].plot(df.loc[df['state'] == 'WA', 'dayofyear'],
+             df.loc[df['state'] == 'WA', 'temperature'], label="WA")
+    axes[3, 0].legend()
+    axes[3,0].set_title('Raw data')
+    axes[3, 0].set_ylabel('Temperature')
+    axes[3, 0].set_xlabel('Dataframe row index')
+
     plt.tight_layout()
 
     plt.savefig("/tmp/weather.svg")
@@ -643,6 +684,6 @@ def interaction():
 if __name__ == '__main__':
     # cars()
     # rent()
-    weight()
-    # weather()
+    # weight()
+    weather()
     # interaction()
