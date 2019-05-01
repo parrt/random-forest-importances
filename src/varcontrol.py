@@ -15,6 +15,8 @@ from sklearn.ensemble.partial_dependence import partial_dependence, plot_partial
 from pdpbox import pdp
 from rfpimp import *
 from scipy.integrate import cumtrapz
+from dtreeviz.trees import *
+
 
 # from pycebox.ice import ice, ice_plot
 
@@ -38,7 +40,7 @@ def toy_crisscross_data(n=50):
     x = np.linspace(0, 10, num=n)
     df['x1'] = x * 1.2
     df['x2'] = -x * 1.2 + 12
-    df['y'] = df['x1'] * df['x2'] + df['x1'] + df['x2']
+    df['y'] = df['x1'] * df['x2']# + df['x1'] + df['x2']
     return df
 
 
@@ -117,30 +119,37 @@ def conjure_twoclass(X):
     return X_synth, y_synth
 
 
-def ICE_predict(model, X:pd.DataFrame, colname:str, targetname="target"):
+def ICE_predict(model, X:pd.DataFrame, colname:str, targetname="target", numx=None):
     """
     Return dataframe with one row per observation in X and one column
     per unique value of column identified by colname.
-    Row 0 is actually the unique X[colname] values used to get predictions.
+    Row 0 is actually the sorted unique X[colname] values used to get predictions.
     It's handy to have so we don't have to pass X around to other methods.
     Points in a single ICE line are the unique values of colname zipped
-    with one row of returned dataframe.
+    with one row of returned dataframe. E.g.,
+
+    	predicted weight          predicted weight         ...
+    	height=62.3638789416112	  height=62.78667197542318 ...
+    0	62.786672	              70.595222                ... unique X[colname] values
+    1	109.270644	              161.270843               ...
     """
     save = X[colname].copy()
-    lines = np.zeros(shape=(len(X)+1, len(X[colname].unique())))
-    uniq_values = sorted(X[colname].unique())
-    lines[0,:] = uniq_values
+    if numx is not None:
+        linex = np.linspace(np.min(X[colname]), np.max(X[colname]), numx)
+    else:
+        linex = sorted(X[colname].unique())
+    lines = np.zeros(shape=(len(X) + 1, len(linex)))
+    lines[0, :] = linex
     i = 0
-    for v in uniq_values:
-    #     print(f"{colname}.{v}")
+    for v in linex:
+        #         print(f"{colname}.{v}")
         X[colname] = v
         y_pred = model.predict(X)
-    #     print(y_pred)
-        lines[1:,i] = y_pred
+        lines[1:, i] = y_pred
         i += 1
     X[colname] = save
     columns = [f"predicted {targetname}\n{colname}={str(v)}"
-               for v in sorted(X[colname].unique())]
+               for v in linex]
     return pd.DataFrame(lines, columns=columns)
 
 
@@ -309,6 +318,7 @@ def catwise_leaves(rf, X, y, colname):
 def slopes_from_leaf_models(leaf_models, leaf_ranges):
     uniq_x = set(leaf_ranges[:, 0]).union(set(leaf_ranges[:, 1]))
     uniq_x = sorted(uniq_x)
+    # uniq_x = list(uniq_x)
     slopes = np.zeros(shape=(len(uniq_x), len(leaf_models)))
     i = 0  # leaf index; we get a line for each
     for r, lm in zip(leaf_ranges, leaf_models):
@@ -318,7 +328,6 @@ def slopes_from_leaf_models(leaf_models, leaf_ranges):
     #     print(f"{r} -> {x}")
         slopes[:, i] = x
         i += 1
-    # avg_slope_at_x = slopes.dot(leaf_sizes) / sum(leaf_sizes)
     sum_at_x = np.sum(slopes, axis=1)
     count_at_x = np.count_nonzero(slopes, axis=1)
     avg_slope_at_x = sum_at_x / count_at_x
@@ -384,7 +393,7 @@ def partial_plot(X, y, colname, targetname=None,
                  alpha=.05,
                  xrange=None,
                  yrange=None,
-                 show_derivative=False):
+                 show_derivative=True):
     rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
@@ -395,8 +404,8 @@ def partial_plot(X, y, colname, targetname=None,
     if ax is None:
         fig, ax = plt.subplots(1,1)
 
-    curve = cumtrapz(avg_slope_at_x, x=uniq_x)  # we lose one value here
-    curve = np.concatenate([np.array([0]), curve])  # make it 0
+    curve = cumtrapz(avg_slope_at_x, x=uniq_x)      # we lose one value here
+    curve = np.concatenate([np.array([0]), curve])  # add back the 0 we lost
 
     ax.scatter(uniq_x, curve,
                s=2, alpha=1,
@@ -419,12 +428,13 @@ def partial_plot(X, y, colname, targetname=None,
 
     ax.set_xlabel(colname)
     ax.set_ylabel(targetname)
-    ax.set_title(f"Effect of {colname} on {targetname} in similar regions")
+    ax.set_title(f"Effect of {colname} on {targetname} in similar regions\nOOB R^2 {rf.oob_score_:.3f}")
 
     if show_derivative:
         other = ax.twinx()
         other.set_ylabel("Partial derivative", fontdict={"color":'#f46d43'})
         other.plot(uniq_x, avg_slope_at_x, linewidth=1, c='#f46d43')
+        other.tick_params(axis='y', colors='#f46d43')
 
 
 def cat_partial_plot(X, y, colname, targetname,
@@ -638,12 +648,13 @@ def weather():
     plt.show()
 
 def interaction():
-    n = 50
+    n = 20
     df = toy_crisscross_data(n=n)
     X = df.drop('y', axis=1)
     y = df['y']
+    min_samples_leaf = 3
 
-    fig, axes = plt.subplots(3, 2, figsize=(8,8))
+    fig, axes = plt.subplots(3, 2, figsize=(9,8))
 
     axes[0,0].plot(range(len(df)), df['x1'], label="x1")
     axes[0,0].plot(range(len(df)), df['x2'], label="x2")
@@ -651,14 +662,26 @@ def interaction():
     axes[0, 0].set_xlabel("df row index")
     axes[0, 0].set_ylabel("df value")
     axes[0, 0].legend()
-    axes[0, 0].set_title(f"Raw data; y = x1x2 + x1 + x2\nx1 = 1.2i; x2 = -1.2i + 12 for i=range(0..10,n={n})")
-    axes[0,1].get_xaxis().set_visible(False)
-    axes[0,1].axis('off')
+    axes[0, 0].set_title(f"Raw data; y = x1x2\nx1 = 1.2i; x2 = -1.2i + 12 for i=range(0..10,n={n})")
+
+    # axes[0,1].get_xaxis().set_visible(False)
+    # axes[0,1].axis('off')
+
+    rtreeviz_univar(axes[0,1],
+                    df['x1'], y,
+                    feature_name='x1',
+                    target_name='y',
+                    min_samples_leaf=min_samples_leaf,
+                    fontsize=10)
+    axes[0,1].set_title(f'x1 space partition with min_samples_leaf={min_samples_leaf}')
+    axes[0,1].set_xlabel("x1")
+    axes[0,1].set_ylabel("y")
+
 
     partial_plot(X, y, 'x1', 'y', ax=axes[1][0],
-                 ntrees=100, min_samples_leaf=7, yrange=(-5,40))
+                 ntrees=100, min_samples_leaf=min_samples_leaf, yrange=(-5,40))
     # partial_plot(X, y, 'education', 'weight', ntrees=20, min_samples_leaf=7, alpha=.2)
-    partial_plot(X, y, 'x2', 'y', ax=axes[2][0],
+    partial_plot(X, y, 'x2', 'y', ax=axes[2][0], min_samples_leaf=min_samples_leaf,
                  ntrees=100, yrange=(-5,40))
     # cat_partial_plot(axes[2][0], X, y, 'sex', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
     # cat_partial_plot(axes[3][0], X, y, 'pregnant', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
@@ -678,10 +701,66 @@ def interaction():
     plt.show()
 
 
+def bigX():
+    def bigX_data(n):
+        x1 = np.random.uniform(-1, 1, size=n)
+        x2 = np.random.uniform(-1, 1, size=n)
+        x3 = np.random.uniform(-1, 1, size=n)
+
+        y = 0.2 * x1 - 5 * x2 + np.random.normal(0, 1, size=n)
+        y[np.where(x3 >= 0)] += 10 * x2[np.where(x3 >= 0)]
+        df = pd.DataFrame()
+        df['x1'] = x1
+        df['x2'] = x2
+        df['x3'] = x3
+        df['y'] = y
+        return df
+
+    n = 1000
+    df = bigX_data(n=n)
+    X = df.drop('y', axis=1)
+    y = df['y']
+
+    fig, axes = plt.subplots(5, 2, figsize=(8, 10), gridspec_kw = {'height_ratios':[.1,4,4,4,4]})
+
+    axes[0, 0].get_xaxis().set_visible(False)
+    axes[0, 1].get_xaxis().set_visible(False)
+    axes[0, 0].axis('off')
+    axes[0, 1].axis('off')
+
+    axes[1,0].scatter(df['x1'], df['y'], s=5, alpha=.7)
+    axes[1,0].set_ylabel('y')
+    axes[1,0].set_xlabel('x1')
+
+    axes[1,1].scatter(df['x2'], df['y'], s=5, alpha=.7)
+    axes[1,1].set_ylabel('y')
+    axes[1,1].set_xlabel('x2')
+
+    partial_plot(X, y, 'x1', 'y', ax=axes[2,0])
+    partial_plot(X, y, 'x2', 'y', ax=axes[3,0])
+    partial_plot(X, y, 'x3', 'y', ax=axes[4,0])
+
+    rf = RandomForestRegressor(n_estimators=500, min_samples_leaf=1, oob_score=True)
+    rf.fit(X, y)
+    print(f"RF OOB {rf.oob_score_}")
+
+    ice = ICE_predict(rf, X, 'x1', 'y', numx=100)
+    plot_ICE(ice, 'x1', 'y', ax=axes[2, 1])
+
+    ice = ICE_predict(rf, X, 'x2', 'y', numx=100)
+    plot_ICE(ice, 'x2', 'y', ax=axes[3, 1])
+
+    ice = ICE_predict(rf, X, 'x3', 'y', numx=100)
+    plot_ICE(ice, 'x3', 'y', ax=axes[4, 1])
+
+    fig.suptitle("$y = 0.2x_1 - 5x_2 + 10x_2\mathbb{1}_{x_3 \geq 0} + \epsilon$\n$x_1, x_2, x_3$ are U(-1,1)\nSample size "+str(n))
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == '__main__':
-    cars()
+    # cars()
     # rent()
     # weight()
     # weather()
     # interaction()
+    bigX()
