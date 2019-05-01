@@ -29,6 +29,8 @@ Random forests provide another important advantage beyond grouping similar obser
 
 Categorical (and boolean) variables are handled differently than numeric variables. Instead of the slope, the algorithm tracks the average $y$ value for each category of $x_i$ and then subtracts the average value of the first category... something's not right here...
 
+We don't want weighted average in either num or cat case. it messes up.
+
 ## Weaknesses
 
 * if model minus feature x is bad then plot for x is meaningless as RF

@@ -38,7 +38,7 @@ def toy_crisscross_data(n=50):
     x = np.linspace(0, 10, num=n)
     df['x1'] = x * 1.2
     df['x2'] = -x * 1.2 + 12
-    df['y'] = df['x1'] * df['x2']
+    df['y'] = df['x1'] * df['x2'] + df['x1'] + df['x2']
     return df
 
 
@@ -167,13 +167,12 @@ def plot_ICE(ice, colname, targetname="target", cats=None, ax=None, linewidth=.7
         fig, ax = plt.subplots(1,1)
 
     avg_y = np.mean(ice[1:], axis=0)
-    min_pdp_y = np.min(avg_y)
+    min_pdp_y = avg_y[0] if cats is None else np.min(avg_y)
     lines = ICE_lines(ice)
     lines[:,:,1] = lines[:,:,1] - min_pdp_y
     # lines[:,:,0] scans all lines, all points in a line, and gets x column
     minx, maxx = np.min(lines[:,:,0]), np.max(lines[:,:,0])
     miny, maxy = np.min(lines[:,:,1]), np.max(lines[:,:,1])
-    ax.set_xlim(minx, maxx)
     if yrange is not None:
         ax.set_ylim(*yrange)
     else:
@@ -187,8 +186,11 @@ def plot_ICE(ice, colname, targetname="target", cats=None, ax=None, linewidth=.7
 
     if cats is not None:
         ncats = len(cats)
-        ax.set_xticks(range(1, ncats + 1))
+        ax.set_xticks(range(0, ncats))
         ax.set_xticklabels(cats)
+        ax.set_xlim(range(0, ncats))
+    else:
+        ax.set_xlim(minx, maxx)
 
     ax.set_title(f"Partial dependence of {colname} on {targetname}")
 
@@ -241,7 +243,6 @@ def piecewise_linear_leaves(rf, X, y, colname):
     start = time.time()
     leaf_models = []
     leaf_ranges = []
-    leaf_sizes = []
     for tree in rf.estimators_:
         leaves = leaf_samples(tree, X.drop(colname, axis=1))
         for leaf, samples in leaves.items():
@@ -258,11 +259,10 @@ def piecewise_linear_leaves(rf, X, y, colname):
             lm.fit(leaf_x.values.reshape(-1, 1), leaf_y)
             leaf_models.append(lm)
             leaf_ranges.append(r)
-            leaf_sizes.append(len(samples))
     leaf_ranges = np.array(leaf_ranges)
     stop = time.time()
     print(f"piecewise_linear_leaves {stop - start:.3f}s")
-    return leaf_models, leaf_ranges, leaf_sizes
+    return leaf_models, leaf_ranges
 
 
 def catwise_leaves(rf, X, y, colname):
@@ -281,8 +281,6 @@ def catwise_leaves(rf, X, y, colname):
     cats = catcol.cat.categories
     leaf_histos = pd.DataFrame(index=cats)
     leaf_histos.index.name = 'category'
-    leaf_counts = pd.DataFrame(index=cats)
-    leaf_counts.index.name = 'category'
     ci = 0
     for tree in rf.estimators_:
         leaves = leaf_samples(tree, X.drop(colname, axis=1))
@@ -294,24 +292,21 @@ def catwise_leaves(rf, X, y, colname):
 #             print("\n", combined)
             histo = grouping.mean()
 #             print(grouping.count())
-            avg_of_first_cat = histo.iloc[0]
 #             print(histo)
             #             print(histo - min_of_first_cat)
             if len(histo) < 2:
                 #                 print(f"ignoring len {len(histo)} cat leaf")
                 continue
-#             delta_per_cat = histo - avg_of_first_cat
             leaf_histos['leaf' + str(ci)] = histo
-            leaf_counts['leaf' + str(ci)] = grouping.count()
             ci += 1
 
     # print(leaf_histos)
     stop = time.time()
     print(f"catwise_leaves {stop - start:.3f}s")
-    return leaf_histos, leaf_counts
+    return leaf_histos
 
 
-def slopes_from_leaf_models(leaf_models, leaf_ranges, leaf_sizes):
+def slopes_from_leaf_models(leaf_models, leaf_ranges):
     uniq_x = set(leaf_ranges[:, 0]).union(set(leaf_ranges[:, 1]))
     uniq_x = sorted(uniq_x)
     slopes = np.zeros(shape=(len(uniq_x), len(leaf_models)))
@@ -393,9 +388,9 @@ def partial_plot(X, y, colname, targetname=None,
     rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_models, leaf_ranges, leaf_sizes = piecewise_linear_leaves(rf, X, y, colname)
+    leaf_models, leaf_ranges = piecewise_linear_leaves(rf, X, y, colname)
     uniq_x, avg_slope_at_x = \
-        slopes_from_leaf_models(leaf_models, leaf_ranges, leaf_sizes)
+        slopes_from_leaf_models(leaf_models, leaf_ranges)
 
     if ax is None:
         fig, ax = plt.subplots(1,1)
@@ -442,7 +437,7 @@ def cat_partial_plot(X, y, colname, targetname,
     rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_histos, leaf_counts = catwise_leaves(rf, X, y, colname)
+    leaf_histos = catwise_leaves(rf, X, y, colname)
     sum_per_cat = np.sum(leaf_histos, axis=1)
     nonmissing_count_per_cat = len(leaf_histos.columns) - np.isnan(leaf_histos).sum(axis=1)
     avg_per_cat = sum_per_cat / nonmissing_count_per_cat
@@ -523,21 +518,21 @@ def rent():
     rf.fit(X, y)
 
     ice = ICE_predict(rf, X, 'bedrooms', 'price')
-    plot_ICE(ice, 'bedrooms', 'price', axes[0, 1], yrange=(0,3000))
+    plot_ICE(ice, 'bedrooms', 'price', ax=axes[0, 1], yrange=(0,3000))
     ice = ICE_predict(rf, X, 'bathrooms', 'price')
-    plot_ICE(ice, 'bathrooms', 'price', axes[1, 1])
+    plot_ICE(ice, 'bathrooms', 'price', ax=axes[1, 1])
     ice = ICE_predict(rf, X, 'latitude', 'price')
-    plot_ICE(ice, 'latitude', 'price', axes[2, 1], yrange=(0,1300))
+    plot_ICE(ice, 'latitude', 'price', ax=axes[2, 1], yrange=(0,1300))
     ice = ICE_predict(rf, X, 'longitude', 'price')
-    plot_ICE(ice, 'longitude', 'price', axes[3, 1], yrange=(-3000,250))
+    plot_ICE(ice, 'longitude', 'price', ax=axes[3, 1], yrange=(-3000,250))
 
     plt.show()
 
 
 def weight():
-    df_raw = toy_weight_data(300)
+    df_raw = toy_weight_data(200)
     df = df_raw.copy()
-    df_string_to_cat(df)
+    catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
     df['pregnant'] = df['pregnant'].astype(int)
     X = df.drop('weight', axis=1)
@@ -552,24 +547,25 @@ def weight():
 
     partial_plot(X, y, 'education', 'weight', ax=axes[1][0],
                  ntrees=30, min_samples_leaf=7, yrange=(-12,0))
-    # partial_plot(X, y, 'education', 'weight', ntrees=20, min_samples_leaf=7, alpha=.2)
     partial_plot(X, y, 'height', 'weight', ax=axes[2][0], yrange=(0,160))
-    cat_partial_plot(X, y, 'sex', 'weight', ax=axes[3][0], ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
-    # partial_plot(X, y, 'sex', 'weight', ax=axes[3][0], ntrees=50, min_samples_leaf=7)
-    cat_partial_plot(X, y, 'pregnant', 'weight', ax=axes[4][0], ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
-    # partial_plot(X, y, 'pregnant', 'weight', ax=axes[4][0], ntrees=50, min_samples_leaf=7, yrange=(0,10))
+    cat_partial_plot(X, y, 'sex', 'weight', ax=axes[3][0], ntrees=50,
+                     alpha=.2,
+                     min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
+    cat_partial_plot(X, y, 'pregnant', 'weight', ax=axes[4][0], ntrees=50,
+                     alpha=.2,
+                     min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
     ice = ICE_predict(rf, X, 'education', 'weight')
-    plot_ICE(ice, 'education', 'weight', axes[1, 1], yrange=(-12, 0))
+    plot_ICE(ice, 'education', 'weight', ax=axes[1, 1], yrange=(-12, 0))
     ice = ICE_predict(rf, X, 'height', 'weight')
-    plot_ICE(ice, 'height', 'weight', axes[2, 1], yrange=(0, 160))
+    plot_ICE(ice, 'height', 'weight', ax=axes[2, 1], yrange=(0, 160))
     ice = ICE_predict(rf, X, 'sex', 'weight')
-    plot_ICE(ice, 'sex', 'weight', axes[3,1], yrange=(0,2))
+    plot_ICE(ice, 'sex', 'weight', ax=axes[3,1], yrange=(0,2), cats=df_raw['sex'].unique())
     ice = ICE_predict(rf, X, 'pregnant', 'weight')
-    plot_ICE(ice, 'pregnant', 'weight', axes[4,1], yrange=(0,10))
+    plot_ICE(ice, 'pregnant', 'weight', ax=axes[4,1], yrange=(0,10), cats=df_raw['pregnant'].unique())
 
     fig.suptitle("weight = 120 + 10*(height-min(height)) + 10*pregnant - 1.2*education", size=14)
 
@@ -642,7 +638,8 @@ def weather():
     plt.show()
 
 def interaction():
-    df = toy_crisscross_data(n=50)
+    n = 50
+    df = toy_crisscross_data(n=n)
     X = df.drop('y', axis=1)
     y = df['y']
 
@@ -654,25 +651,26 @@ def interaction():
     axes[0, 0].set_xlabel("df row index")
     axes[0, 0].set_ylabel("df value")
     axes[0, 0].legend()
-    axes[0, 0].set_title("Raw data; y = x1 * x2\nx1 = 1.2i; x2 = -1.2i + 12 for i=range(0..10,n=50)")
+    axes[0, 0].set_title(f"Raw data; y = x1x2 + x1 + x2\nx1 = 1.2i; x2 = -1.2i + 12 for i=range(0..10,n={n})")
     axes[0,1].get_xaxis().set_visible(False)
     axes[0,1].axis('off')
 
     partial_plot(X, y, 'x1', 'y', ax=axes[1][0],
-                 ntrees=50, min_samples_leaf=7, yrange=(0,40))
+                 ntrees=100, min_samples_leaf=7, yrange=(-5,40))
     # partial_plot(X, y, 'education', 'weight', ntrees=20, min_samples_leaf=7, alpha=.2)
-    partial_plot(X, y, 'x2', 'y', ax=axes[2][0], yrange=(0,40))
+    partial_plot(X, y, 'x2', 'y', ax=axes[2][0],
+                 ntrees=100, yrange=(-5,40))
     # cat_partial_plot(axes[2][0], X, y, 'sex', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
     # cat_partial_plot(axes[3][0], X, y, 'pregnant', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
 
-    rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=1, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
     ice = ICE_predict(rf, X, 'x1', 'y')
-    plot_ICE(ice, 'x1', 'y', axes[1, 1], yrange=(0, 40))
+    plot_ICE(ice, 'x1', 'y', ax=axes[1, 1], yrange=(-5, 40))
     axes[1, 1].set_title("Partial dependence plot")
     ice = ICE_predict(rf, X, 'x2', 'y')
-    plot_ICE(ice, 'x2', 'y', axes[2, 1], yrange=(0, 40))
+    plot_ICE(ice, 'x2', 'y', ax=axes[2, 1], yrange=(-5, 40))
 
     plt.tight_layout()
 
@@ -682,8 +680,8 @@ def interaction():
 
 
 if __name__ == '__main__':
-    # cars()
+    cars()
     # rent()
     # weight()
-    weather()
+    # weather()
     # interaction()
