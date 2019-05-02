@@ -244,10 +244,6 @@ def conjure_twoclass(X):
     return X_synth, y_synth
 
 
-def wine():
-    wine = load_wine()
-
-
 def collect_leaf_slopes(rf, X, y, colname):
     """
     For each leaf of each tree of the random forest rf (trained on all features
@@ -324,43 +320,29 @@ def catwise_leaves(rf, X, y, colname):
     return leaf_histos
 
 
-def slope_curve(leaf_ranges, leaf_slopes):
+def avg_slope_at_x(leaf_ranges, leaf_slopes):
     uniq_x = set(leaf_ranges[:, 0]).union(set(leaf_ranges[:, 1]))
     uniq_x = sorted(uniq_x)
-    slopes = np.zeros(shape=(len(uniq_x), len(leaf_slopes)))
-    i = 0  # leaf index; we get a line for each
+    nx = len(uniq_x)
+    nslopes = len(leaf_slopes)
+    slopes = np.zeros(shape=(nx, nslopes))
+    i = 0  # leaf index; we get a line for each leaf
+    # collect the slope for each range (taken from a leaf) as collection of
+    # flat lines across the same x range
     for r, slope in zip(leaf_ranges, leaf_slopes):
-        x = np.full(len(uniq_x), slope)
-        x[np.where(uniq_x < r[0])] = 0
-        x[np.where(uniq_x > r[1])] = 0
-    #     print(f"{r} -> {x}")
-        slopes[:, i] = x
+        s = np.full(nx, slope) # s has value scope at all locations (flat line)
+        # now trim line so it's only valid in range r
+        s[np.where(uniq_x < r[0])] = np.nan
+        s[np.where(uniq_x > r[1])] = np.nan
+        slopes[:, i] = s
         i += 1
-    sum_at_x = np.sum(slopes, axis=1)
-    count_at_x = np.count_nonzero(slopes, axis=1)
-    # TODO: what if the value is genuinely zero rather than missing?
+    # Now average horiz across the matrix, averaging within each range
+    sum_at_x = np.nansum(slopes, axis=1)
+    missing_values_at_x = np.isnan(slopes).sum(axis=1)
+    count_at_x = nslopes - missing_values_at_x
+    # The value could be genuinely zero so we use nan not 0 for out-of-range
     avg_slope_at_x = sum_at_x / count_at_x
     return uniq_x, avg_slope_at_x
-
-
-def old_curve_through_leaf_models(leaf_models, leaf_ranges, overall_axis):
-    start = time.time()
-    # TODO: should we create nan not zeroes? what about a valid 0 value?
-    curve = np.zeros(shape=(len(overall_axis), len(leaf_models)), dtype=np.float64)
-    i = 0  # leaf index; we get a line for each
-    for r, lm in zip(leaf_ranges, leaf_models):
-        # save full range with 0s outside or r range
-        ry = lm.predict(overall_axis.reshape(-1, 1))
-        ry[np.where(overall_axis < r[0])] = 0
-        ry[np.where(overall_axis > r[1])] = 0
-        curve[:, i] = ry
-        i += 1
-    sum_at_x = np.sum(curve, axis=1)
-    count_at_x = np.count_nonzero(curve, axis=1)
-    avg_at_x = sum_at_x / count_at_x
-    stop = time.time()
-    print(f"curve_through_leaf_models {stop - start:.3f}s")
-    return avg_at_x
 
 
 def lm_partial_plot(X, y, colname, targetname,ax=None):
@@ -382,19 +364,6 @@ def lm_partial_plot(X, y, colname, targetname,ax=None):
     ax.text(left30, left30*r.coef_[ci] + r_col.intercept_, f"slope={r.coef_[ci]:.3f}")
     ax.legend()
 
-"""
-piecewise-linear
-partial dependence plot
-
-PL PDP RF
-
-partial dependence
-
-piecewise partial dependence
-
-stratification via random-forest and aggregation via averaging of piecewise-linear models 
-"""
-
 def partial_plot(X, y, colname, targetname=None,
                  ax=None,
                  ntrees=30,
@@ -407,13 +376,12 @@ def partial_plot(X, y, colname, targetname=None,
     rf.fit(X.drop(colname, axis=1), y)
     print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_ranges, leaf_slopes = collect_leaf_slopes(rf, X, y, colname)
-    uniq_x, avg_slope_at_x = \
-        slope_curve(leaf_ranges, leaf_slopes)
+    uniq_x, slope_at_x = avg_slope_at_x(leaf_ranges, leaf_slopes)
 
     if ax is None:
         fig, ax = plt.subplots(1,1)
 
-    curve = cumtrapz(avg_slope_at_x, x=uniq_x)      # we lose one value here
+    curve = cumtrapz(slope_at_x, x=uniq_x)      # we lose one value here
     curve = np.concatenate([np.array([0]), curve])  # add back the 0 we lost
 
     ax.scatter(uniq_x, curve,
@@ -442,7 +410,7 @@ def partial_plot(X, y, colname, targetname=None,
     if show_derivative:
         other = ax.twinx()
         other.set_ylabel("Partial derivative", fontdict={"color":'#f46d43'})
-        other.plot(uniq_x, avg_slope_at_x, linewidth=1, c='#f46d43')
+        other.plot(uniq_x, slope_at_x, linewidth=1, c='#f46d43', alpha=.5)
         other.tick_params(axis='y', colors='#f46d43')
 
 
@@ -506,17 +474,17 @@ def cars():
 
     fig, axes = plt.subplots(2, 3, figsize=(12,8))
     lm_partial_plot(X, y, 'ENG', 'MPG', ax=axes[0,0])
-    partial_plot(X, y, 'ENG', 'MPG', ax=axes[0,1])
+    partial_plot(X, y, 'ENG', 'MPG', ax=axes[0,1], yrange=(-20,20))
 
     lm_partial_plot(X, y, 'WGT', 'MPG', ax=axes[1,0])
-    partial_plot(X, y, 'WGT', 'MPG', ax=axes[1,1])
+    partial_plot(X, y, 'WGT', 'MPG', ax=axes[1,1], yrange=(-20,20))
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
     ice = ICE_predict(rf, X, 'ENG', 'MPG')
-    plot_ICE(ice, 'ENG', 'MPG', ax=axes[0, 2])
+    plot_ICE(ice, 'ENG', 'MPG', ax=axes[0, 2], yrange=(-20,20))
     ice = ICE_predict(rf, X, 'WGT', 'MPG')
-    plot_ICE(ice, 'WGT', 'MPG', ax=axes[1, 2])
+    plot_ICE(ice, 'WGT', 'MPG', ax=axes[1, 2], yrange=(-20,20))
 
     plt.show()
 
@@ -710,6 +678,10 @@ def interaction():
     plt.show()
 
 
+def wine():
+    wine = load_wine()
+
+
 def bigX():
     def bigX_data(n):
         x1 = np.random.uniform(-1, 1, size=n)
@@ -767,9 +739,9 @@ def bigX():
     plt.show()
 
 if __name__ == '__main__':
-    # cars()
+    cars()
     # rent()
     # weight()
     # weather()
     # interaction()
-    bigX()
+    # bigX()
