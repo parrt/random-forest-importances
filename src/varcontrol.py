@@ -37,11 +37,20 @@ def df_cat_to_catcode(df):
 
 def toy_crisscross_data(n=50):
     df = pd.DataFrame()
-    x = np.linspace(0, 10, num=n)
-    df['x1'] = x * 1.2
-    df['x2'] = -x * 1.2 + 12
+    i = np.linspace(0, 10, num=n)
+    df['x1'] = i * 1.2
+    df['x2'] = -i * 1.2 + 12
     df['y'] = df['x1'] * df['x2']# + df['x1'] + df['x2']
-    return df
+    return df, f"y = x1x2\nx1 = 1.2i; x2 = -1.2i + 12 for i=range(0..10,n={n})"
+
+
+def toy_twolines_data(n=50):
+    df = pd.DataFrame()
+    i = np.linspace(0, 10, num=n)
+    df['x1'] = i * 1
+    df['x2'] = i * 4
+    df['y'] = df['x1'] * df['x2']# + df['x1'] + df['x2']
+    return df, f"y = x1x2\nx1 = i; x2 = 2i for i=range(0..10,n={n})"
 
 
 def toy_weight_data(n):
@@ -266,7 +275,7 @@ def collect_leaf_slopes(rf, X, y, colname):
             leaf_x = X.iloc[samples][colname]
             leaf_y = y.iloc[samples]
             r = (min(leaf_x), max(leaf_x))
-            if r[0]==r[1]:
+            if np.isclose(r[0], r[1]):
                 # print(f"ignoring xleft=xright @ {r[0]}")
                 continue
             lm = LinearRegression()
@@ -276,7 +285,7 @@ def collect_leaf_slopes(rf, X, y, colname):
     leaf_ranges = np.array(leaf_ranges)
     stop = time.time()
     print(f"piecewise_linear_leaves {stop - start:.3f}s")
-    return leaf_ranges, leaf_slopes
+    return leaf_ranges, np.array(leaf_slopes)
 
 
 def catwise_leaves(rf, X, y, colname):
@@ -322,7 +331,7 @@ def catwise_leaves(rf, X, y, colname):
 
 def avg_slope_at_x(leaf_ranges, leaf_slopes):
     uniq_x = set(leaf_ranges[:, 0]).union(set(leaf_ranges[:, 1]))
-    uniq_x = sorted(uniq_x)
+    uniq_x = np.array(sorted(uniq_x))
     nx = len(uniq_x)
     nslopes = len(leaf_slopes)
     slopes = np.zeros(shape=(nx, nslopes))
@@ -381,7 +390,7 @@ def partial_plot(X, y, colname, targetname=None,
     if ax is None:
         fig, ax = plt.subplots(1,1)
 
-    curve = cumtrapz(slope_at_x, x=uniq_x)      # we lose one value here
+    curve = cumtrapz(slope_at_x, x=uniq_x)          # we lose one value here
     curve = np.concatenate([np.array([0]), curve])  # add back the 0 we lost
 
     ax.scatter(uniq_x, curve,
@@ -411,6 +420,7 @@ def partial_plot(X, y, colname, targetname=None,
         other = ax.twinx()
         other.set_ylabel("Partial derivative", fontdict={"color":'#f46d43'})
         other.plot(uniq_x, slope_at_x, linewidth=1, c='#f46d43', alpha=.5)
+        other.set_ylim(min(slope_at_x),max(slope_at_x))
         other.tick_params(axis='y', colors='#f46d43')
 
 
@@ -486,6 +496,8 @@ def cars():
     ice = ICE_predict(rf, X, 'WGT', 'MPG')
     plot_ICE(ice, 'WGT', 'MPG', ax=axes[1, 2], yrange=(-20,20))
 
+    plt.tight_layout()
+
     plt.show()
 
 
@@ -512,6 +524,8 @@ def rent():
     plot_ICE(ice, 'latitude', 'price', ax=axes[2, 1], yrange=(0,1300))
     ice = ICE_predict(rf, X, 'longitude', 'price')
     plot_ICE(ice, 'longitude', 'price', ax=axes[3, 1], yrange=(-3000,250))
+
+    plt.tight_layout()
 
     plt.show()
 
@@ -624,14 +638,17 @@ def weather():
     plt.savefig("/tmp/weather.svg")
     plt.show()
 
-def interaction():
-    n = 20
-    df = toy_crisscross_data(n=n)
+def interaction(n=50, crisscross=True):
+    if crisscross:
+        df,eqn = toy_crisscross_data(n=n)
+    else:
+        df,eqn = toy_twolines_data(n=n)
+
     X = df.drop('y', axis=1)
     y = df['y']
-    min_samples_leaf = 3
+    min_samples_leaf = 5
 
-    fig, axes = plt.subplots(3, 2, figsize=(9,8))
+    fig, axes = plt.subplots(4, 2, figsize=(10,13))
 
     axes[0,0].plot(range(len(df)), df['x1'], label="x1")
     axes[0,0].plot(range(len(df)), df['x2'], label="x2")
@@ -639,7 +656,7 @@ def interaction():
     axes[0, 0].set_xlabel("df row index")
     axes[0, 0].set_ylabel("df value")
     axes[0, 0].legend()
-    axes[0, 0].set_title(f"Raw data; y = x1x2\nx1 = 1.2i; x2 = -1.2i + 12 for i=range(0..10,n={n})")
+    axes[0, 0].set_title(f"Raw data; {eqn}")
 
     # axes[0,1].get_xaxis().set_visible(False)
     # axes[0,1].axis('off')
@@ -654,12 +671,19 @@ def interaction():
     axes[0,1].set_xlabel("x1")
     axes[0,1].set_ylabel("y")
 
+    print(df)
+    axes[1,0].plot(df['x1'], y)
+    axes[1,0].set_xlabel("x1")
+    axes[1,0].set_ylabel("y")
+    axes[1,1].plot(df['x2'], y)
+    axes[1,1].set_xlabel("x2")
+    axes[1,1].set_ylabel("y")
 
-    partial_plot(X, y, 'x1', 'y', ax=axes[1][0],
-                 ntrees=100, min_samples_leaf=min_samples_leaf, yrange=(-5,40))
+    partial_plot(X, y, 'x1', 'y', ax=axes[2][0],
+                 ntrees=30, min_samples_leaf=min_samples_leaf)#, yrange=(0,40))
     # partial_plot(X, y, 'education', 'weight', ntrees=20, min_samples_leaf=7, alpha=.2)
-    partial_plot(X, y, 'x2', 'y', ax=axes[2][0], min_samples_leaf=min_samples_leaf,
-                 ntrees=100, yrange=(-5,40))
+    partial_plot(X, y, 'x2', 'y', ax=axes[3][0], min_samples_leaf=min_samples_leaf,
+                 ntrees=30)#, yrange=(0,40))
     # cat_partial_plot(axes[2][0], X, y, 'sex', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
     # cat_partial_plot(axes[3][0], X, y, 'pregnant', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
 
@@ -667,10 +691,9 @@ def interaction():
     rf.fit(X, y)
 
     ice = ICE_predict(rf, X, 'x1', 'y')
-    plot_ICE(ice, 'x1', 'y', ax=axes[1, 1], yrange=(-5, 40))
-    axes[1, 1].set_title("Partial dependence plot")
+    plot_ICE(ice, 'x1', 'y', ax=axes[2, 1], yrange=(0, 40))
     ice = ICE_predict(rf, X, 'x2', 'y')
-    plot_ICE(ice, 'x2', 'y', ax=axes[2, 1], yrange=(-5, 40))
+    plot_ICE(ice, 'x2', 'y', ax=axes[3, 1], yrange=(0, 40))
 
     plt.tight_layout()
 
@@ -688,8 +711,7 @@ def bigX():
         x2 = np.random.uniform(-1, 1, size=n)
         x3 = np.random.uniform(-1, 1, size=n)
 
-        y = 0.2 * x1 - 5 * x2 + np.random.normal(0, 1, size=n)
-        y[np.where(x3 >= 0)] += 10 * x2[np.where(x3 >= 0)]
+        y = 0.2 * x1 - 5 * x2 + 10 * x2 * np.where(x3 >= 0, 1, 0)# + np.random.normal(0, 1, size=n)
         df = pd.DataFrame()
         df['x1'] = x1
         df['x2'] = x2
@@ -697,21 +719,21 @@ def bigX():
         df['y'] = y
         return df
 
-    n = 200
+    n = 400
     df = bigX_data(n=n)
     X = df.drop('y', axis=1)
     y = df['y']
 
-    fig, axes = plt.subplots(5, 2, figsize=(8, 10), gridspec_kw = {'height_ratios':[.1,4,4,4,4]})
+    fig, axes = plt.subplots(5, 2, figsize=(11, 14), gridspec_kw = {'height_ratios':[.1,4,4,4,4]})
 
     axes[0, 0].get_xaxis().set_visible(False)
     axes[0, 1].get_xaxis().set_visible(False)
     axes[0, 0].axis('off')
     axes[0, 1].axis('off')
 
-    axes[1,0].scatter(df['x1'], df['y'], s=5, alpha=.7)
+    axes[1,0].scatter(df['x3'], df['y'], s=5, alpha=.7)
     axes[1,0].set_ylabel('y')
-    axes[1,0].set_xlabel('x1')
+    axes[1,0].set_xlabel('x3')
 
     axes[1,1].scatter(df['x2'], df['y'], s=5, alpha=.7)
     axes[1,1].set_ylabel('y')
@@ -739,9 +761,10 @@ def bigX():
     plt.show()
 
 if __name__ == '__main__':
-    cars()
+    # cars()
     # rent()
     # weight()
     # weather()
-    # interaction()
+    # interaction(crisscross=True)
+    interaction(n=100, crisscross=False)
     # bigX()
