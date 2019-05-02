@@ -248,9 +248,18 @@ def wine():
     wine = load_wine()
 
 
-def piecewise_linear_leaves(rf, X, y, colname):
+def collect_leaf_slopes(rf, X, y, colname):
+    """
+    For each leaf of each tree of the random forest rf (trained on all features
+    except colname), get the samples then isolate the column of interest X values
+    and the target y values. Perform a regression to get the slope of X[colname] vs y.
+    We don't need to subtract the minimum y value before regressing because
+    the slope won't be different. (We are ignoring the intercept of the regression line).
+
+    Return for each leaf, the range of X[colname] and associated slope.
+    """
     start = time.time()
-    leaf_models = []
+    leaf_slopes = []
     leaf_ranges = []
     for tree in rf.estimators_:
         leaves = leaf_samples(tree, X.drop(colname, axis=1))
@@ -266,12 +275,12 @@ def piecewise_linear_leaves(rf, X, y, colname):
                 continue
             lm = LinearRegression()
             lm.fit(leaf_x.values.reshape(-1, 1), leaf_y)
-            leaf_models.append(lm)
+            leaf_slopes.append(lm.coef_[0])
             leaf_ranges.append(r)
     leaf_ranges = np.array(leaf_ranges)
     stop = time.time()
     print(f"piecewise_linear_leaves {stop - start:.3f}s")
-    return leaf_models, leaf_ranges
+    return leaf_ranges, leaf_slopes
 
 
 def catwise_leaves(rf, X, y, colname):
@@ -315,14 +324,13 @@ def catwise_leaves(rf, X, y, colname):
     return leaf_histos
 
 
-def slopes_from_leaf_models(leaf_models, leaf_ranges):
+def slope_curve(leaf_ranges, leaf_slopes):
     uniq_x = set(leaf_ranges[:, 0]).union(set(leaf_ranges[:, 1]))
     uniq_x = sorted(uniq_x)
-    # uniq_x = list(uniq_x)
-    slopes = np.zeros(shape=(len(uniq_x), len(leaf_models)))
+    slopes = np.zeros(shape=(len(uniq_x), len(leaf_slopes)))
     i = 0  # leaf index; we get a line for each
-    for r, lm in zip(leaf_ranges, leaf_models):
-        x = np.full(len(uniq_x), lm.coef_[0])
+    for r, slope in zip(leaf_ranges, leaf_slopes):
+        x = np.full(len(uniq_x), slope)
         x[np.where(uniq_x < r[0])] = 0
         x[np.where(uniq_x > r[1])] = 0
     #     print(f"{r} -> {x}")
@@ -330,6 +338,7 @@ def slopes_from_leaf_models(leaf_models, leaf_ranges):
         i += 1
     sum_at_x = np.sum(slopes, axis=1)
     count_at_x = np.count_nonzero(slopes, axis=1)
+    # TODO: what if the value is genuinely zero rather than missing?
     avg_slope_at_x = sum_at_x / count_at_x
     return uniq_x, avg_slope_at_x
 
@@ -397,9 +406,9 @@ def partial_plot(X, y, colname, targetname=None,
     rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_models, leaf_ranges = piecewise_linear_leaves(rf, X, y, colname)
+    leaf_ranges, leaf_slopes = collect_leaf_slopes(rf, X, y, colname)
     uniq_x, avg_slope_at_x = \
-        slopes_from_leaf_models(leaf_models, leaf_ranges)
+        slope_curve(leaf_ranges, leaf_slopes)
 
     if ax is None:
         fig, ax = plt.subplots(1,1)
@@ -412,8 +421,8 @@ def partial_plot(X, y, colname, targetname=None,
                c='black', label="Avg piecewise linear")
 
     segments = []
-    for r, lm in zip(leaf_ranges, leaf_models):
-        delta = lm.coef_[0] * (r[1] - r[0])
+    for r, slope in zip(leaf_ranges, leaf_slopes):
+        delta = slope * (r[1] - r[0])
         closest_x_i = np.abs(uniq_x - r[0]).argmin()
         y_offset = curve[closest_x_i]
         one_line = [(r[0],y_offset), (r[1], y_offset+delta)]
@@ -716,7 +725,7 @@ def bigX():
         df['y'] = y
         return df
 
-    n = 1000
+    n = 200
     df = bigX_data(n=n)
     X = df.drop('y', axis=1)
     y = df['y']
