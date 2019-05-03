@@ -48,7 +48,7 @@ def toy_twolines_data(n=50):
     df = pd.DataFrame()
     i = np.linspace(0, 10, num=n)
     df['x1'] = i * 1
-    df['x2'] = i * 4
+    df['x2'] = i * 2
     df['y'] = df['x1'] * df['x2']# + df['x1'] + df['x2']
     return df, f"y = x1x2\nx1 = i; x2 = 2i for i=range(0..10,n={n})"
 
@@ -284,7 +284,7 @@ def collect_leaf_slopes(rf, X, y, colname):
             leaf_ranges.append(r)
     leaf_ranges = np.array(leaf_ranges)
     stop = time.time()
-    print(f"piecewise_linear_leaves {stop - start:.3f}s")
+    # print(f"collect_leaf_slopes {stop - start:.3f}s")
     return leaf_ranges, np.array(leaf_slopes)
 
 
@@ -383,9 +383,11 @@ def partial_plot(X, y, colname, targetname=None,
                  show_derivative=True):
     rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
-    print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
+    print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_ranges, leaf_slopes = collect_leaf_slopes(rf, X, y, colname)
     uniq_x, slope_at_x = avg_slope_at_x(leaf_ranges, leaf_slopes)
+    print(f'uniq_x = [{", ".join([f"{x:4.1f}" for x in uniq_x])}]')
+    print(f'slopes = [{", ".join([f"{s:4.1f}" for s in slope_at_x])}]')
 
     if ax is None:
         fig, ax = plt.subplots(1,1)
@@ -408,6 +410,8 @@ def partial_plot(X, y, colname, targetname=None,
     lines = LineCollection(segments, alpha=alpha, color='#9CD1E3', linewidth=1)
     if xrange is not None:
         ax.set_xlim(*xrange)
+    else:
+        ax.set_xlim(min(uniq_x),max(uniq_x))
     if yrange is not None:
         ax.set_ylim(*yrange)
     ax.add_collection(lines)
@@ -421,7 +425,11 @@ def partial_plot(X, y, colname, targetname=None,
         other.set_ylabel("Partial derivative", fontdict={"color":'#f46d43'})
         other.plot(uniq_x, slope_at_x, linewidth=1, c='#f46d43', alpha=.5)
         other.set_ylim(min(slope_at_x),max(slope_at_x))
+        other.set_xlim(min(uniq_x),max(uniq_x))
         other.tick_params(axis='y', colors='#f46d43')
+        m = np.mean(slope_at_x)
+        mx =max(uniq_x)
+        other.plot(mx-mx*0.03, m, marker='>', c='#f46d43')
 
 
 def cat_partial_plot(X, y, colname, targetname,
@@ -431,7 +439,7 @@ def cat_partial_plot(X, y, colname, targetname,
                      ntrees=30, min_samples_leaf=7,
                      alpha=.03,
                      yrange=None):
-    rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True, n_jobs=-1)
     rf.fit(X.drop(colname, axis=1), y)
     print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_histos = catwise_leaves(rf, X, y, colname)
@@ -489,7 +497,7 @@ def cars():
     lm_partial_plot(X, y, 'WGT', 'MPG', ax=axes[1,0])
     partial_plot(X, y, 'WGT', 'MPG', ax=axes[1,1], yrange=(-20,20))
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
     ice = ICE_predict(rf, X, 'ENG', 'MPG')
     plot_ICE(ice, 'ENG', 'MPG', ax=axes[0, 2], yrange=(-20,20))
@@ -513,7 +521,7 @@ def rent():
     partial_plot(X, y, 'latitude', 'price', ax=axes[2,0], yrange=(0,1300))
     partial_plot(X, y, 'longitude', 'price', ax=axes[3,0], yrange=(-3000,250))
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
 
     ice = ICE_predict(rf, X, 'bedrooms', 'price')
@@ -556,7 +564,7 @@ def weight():
                      alpha=.2,
                      min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
 
     ice = ICE_predict(rf, X, 'education', 'weight')
@@ -572,7 +580,7 @@ def weight():
 
     if False:
         # show importance as RF-piecewise linear plot see it
-        rf = RandomForestRegressor(n_estimators=50, min_samples_leaf=5, oob_score=True)
+        rf = RandomForestRegressor(n_estimators=50, min_samples_leaf=5, oob_score=True, n_jobs=-1)
         rf.fit(X, y)
 
         I = importances(rf, X, y)
@@ -611,7 +619,7 @@ def weather():
     # cat_partial_plot(axes[2][0], X, y, 'sex', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
     # cat_partial_plot(axes[3][0], X, y, 'pregnant', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
 
-    rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=1, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=1, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
 
     ice = ICE_predict(rf, X, 'dayofyear', 'temperature')
@@ -638,15 +646,12 @@ def weather():
     plt.savefig("/tmp/weather.svg")
     plt.show()
 
-def interaction(n=50, crisscross=True):
-    if crisscross:
-        df,eqn = toy_crisscross_data(n=n)
-    else:
-        df,eqn = toy_twolines_data(n=n)
+def interaction(f, n=50):
+    df,eqn = f(n=n)
 
     X = df.drop('y', axis=1)
     y = df['y']
-    min_samples_leaf = 5
+    min_samples_leaf = 2
 
     fig, axes = plt.subplots(4, 2, figsize=(10,13))
 
@@ -672,6 +677,9 @@ def interaction(n=50, crisscross=True):
     axes[0,1].set_ylabel("y")
 
     print(df)
+    print(f"x1 = {df['x1'].values.tolist()}")
+    print(f"x2 = {df['x2'].values.tolist()}")
+    print(f"y = {df['y'].values.tolist()}")
     axes[1,0].plot(df['x1'], y)
     axes[1,0].set_xlabel("x1")
     axes[1,0].set_ylabel("y")
@@ -687,7 +695,7 @@ def interaction(n=50, crisscross=True):
     # cat_partial_plot(axes[2][0], X, y, 'sex', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
     # cat_partial_plot(axes[3][0], X, y, 'pregnant', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
 
     ice = ICE_predict(rf, X, 'x1', 'y')
@@ -697,7 +705,7 @@ def interaction(n=50, crisscross=True):
 
     plt.tight_layout()
 
-    plt.savefig("/tmp/weather.svg")
+    plt.savefig(f"/tmp/interaction-{n}.png")
     plt.show()
 
 
@@ -711,7 +719,7 @@ def bigX():
         x2 = np.random.uniform(-1, 1, size=n)
         x3 = np.random.uniform(-1, 1, size=n)
 
-        y = 0.2 * x1 - 5 * x2 + 10 * x2 * np.where(x3 >= 0, 1, 0)# + np.random.normal(0, 1, size=n)
+        y = 0.2 * x1 - 5 * x2 + 10 * x2 * np.where(x3 >= 0, 1, 0) + np.random.normal(0, 1, size=n)
         df = pd.DataFrame()
         df['x1'] = x1
         df['x2'] = x2
@@ -719,7 +727,7 @@ def bigX():
         df['y'] = y
         return df
 
-    n = 400
+    n = 1000
     df = bigX_data(n=n)
     X = df.drop('y', axis=1)
     y = df['y']
@@ -731,29 +739,40 @@ def bigX():
     axes[0, 0].axis('off')
     axes[0, 1].axis('off')
 
-    axes[1,0].scatter(df['x3'], df['y'], s=5, alpha=.7)
+    axes[1,0].scatter(df['x3'], y, s=5, alpha=.7)
+    axes[1,0].set_xlabel('x2')
     axes[1,0].set_ylabel('y')
-    axes[1,0].set_xlabel('x3')
 
     axes[1,1].scatter(df['x2'], df['y'], s=5, alpha=.7)
     axes[1,1].set_ylabel('y')
     axes[1,1].set_xlabel('x2')
 
+    # Partial deriv is just 0.2 so this is correct. flat deriv curve, net effect line at slope .2
+    # ICE is way too shallow and not line at n=1000 even
     partial_plot(X, y, 'x1', 'y', ax=axes[2,0])
-    partial_plot(X, y, 'x2', 'y', ax=axes[3,0])
-    partial_plot(X, y, 'x3', 'y', ax=axes[4,0])
+    # Partial deriv wrt x2 is -5 plus 10 about half the time so about 0
+    # Should not expect a criss-cross like ICE since deriv of 1_x3>=0 is 0 everywhere
+    # wrt to any x, even x3. x2 *is* affecting y BUT the net effect at any spot
+    # is what we care about and that's 0. Just because marginal x2 vs y shows non-
+    # random plot doesn't mean that x2's net effect is nonzero. We are trying to
+    # strip away x1/x3's effect upon y. When we do, x2 has no effect on y.
+    # Key is asking right question. Don't look at marginal plot and say obvious.
+    # Ask what is net effect at every x2? 0.
+    partial_plot(X, y, 'x2', 'y', ax=axes[3,0], yrange=(-4,4))
+    # Partial deriv wrt x3 of 1_x3>=0 is 0 everywhere so result must be 0
+    partial_plot(X, y, 'x3', 'y', ax=axes[4,0], yrange=(-4,4))
 
-    rf = RandomForestRegressor(n_estimators=500, min_samples_leaf=1, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
     print(f"RF OOB {rf.oob_score_}")
 
-    ice = ICE_predict(rf, X, 'x1', 'y', numx=100)
-    plot_ICE(ice, 'x1', 'y', ax=axes[2, 1])
+    ice = ICE_predict(rf, X, 'x1', 'y', numx=10)
+    plot_ICE(ice, 'x1', 'y', ax=axes[2, 1], yrange=(-.05,.5))
 
-    ice = ICE_predict(rf, X, 'x2', 'y', numx=100)
+    ice = ICE_predict(rf, X, 'x2', 'y', numx=10)
     plot_ICE(ice, 'x2', 'y', ax=axes[3, 1])
 
-    ice = ICE_predict(rf, X, 'x3', 'y', numx=100)
+    ice = ICE_predict(rf, X, 'x3', 'y', numx=10)
     plot_ICE(ice, 'x3', 'y', ax=axes[4, 1])
 
     fig.suptitle("$y = 0.2x_1 - 5x_2 + 10x_2\mathbb{1}_{x_3 \geq 0} + \epsilon$\n$x_1, x_2, x_3$ are U(-1,1)\nSample size "+str(n))
@@ -766,5 +785,5 @@ if __name__ == '__main__':
     # weight()
     # weather()
     # interaction(crisscross=True)
-    interaction(n=100, crisscross=False)
-    # bigX()
+    # interaction(n=200, crisscross=False)
+    bigX()
