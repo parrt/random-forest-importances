@@ -386,8 +386,8 @@ def partial_plot(X, y, colname, targetname=None,
     print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_ranges, leaf_slopes = collect_leaf_slopes(rf, X, y, colname)
     uniq_x, slope_at_x = avg_slope_at_x(leaf_ranges, leaf_slopes)
-    print(f'uniq_x = [{", ".join([f"{x:4.1f}" for x in uniq_x])}]')
-    print(f'slopes = [{", ".join([f"{s:4.1f}" for s in slope_at_x])}]')
+    # print(f'uniq_x = [{", ".join([f"{x:4.1f}" for x in uniq_x])}]')
+    # print(f'slopes = [{", ".join([f"{s:4.1f}" for s in slope_at_x])}]')
 
     if ax is None:
         fig, ax = plt.subplots(1,1)
@@ -779,6 +779,41 @@ def bigX():
     plt.tight_layout()
     plt.show()
 
+
+def boston():
+    df = pd.read_csv('/Users/parrt/github/random-forest-importances/notebooks/data/boston.csv')
+    X = df.drop('medv', axis=1)
+    y = df['medv']
+
+    """
+    Wow. My net effect plots look kinda like the centered ICE c-ICE plots
+    from paper: https://arxiv.org/pdf/1309.6392.pdf
+    Mine are way smoother.
+    """
+    fig, axes = plt.subplots(3, 2, figsize=(8, 10), gridspec_kw = {'height_ratios':[.05,4,4]})
+
+    axes[0, 0].get_xaxis().set_visible(False)
+    axes[0, 1].get_xaxis().set_visible(False)
+    axes[0, 0].axis('off')
+    axes[0, 1].axis('off')
+
+    axes[1,0].scatter(df['age'], y, s=5, alpha=.7)
+    axes[1,0].set_xlabel('age')
+    axes[1,0].set_ylabel('median home value')
+
+    partial_plot(X, y, 'age', 'medv', ax=axes[2,0], yrange=(-20,20))
+
+    rf = RandomForestRegressor(n_estimators=100, oob_score=True, n_jobs=-1)
+    rf.fit(X, y)
+    print(f"RF OOB {rf.oob_score_}")
+
+    ice = ICE_predict(rf, X, 'age', 'medv', numx=10)
+    plot_ICE(ice, 'age', 'medv', ax=axes[2, 1], yrange=(-20,20))
+
+    fig.suptitle(f"Boston housing data {len(X)} training samples\nRandom Forest ntrees=100")
+    plt.tight_layout()
+    plt.show()
+
 if __name__ == '__main__':
     # cars()
     # rent()
@@ -786,4 +821,5 @@ if __name__ == '__main__':
     # weather()
     # interaction(crisscross=True)
     # interaction(n=200, crisscross=False)
-    bigX()
+    # bigX()
+    boston()
