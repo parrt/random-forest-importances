@@ -250,13 +250,13 @@ def leaf_samples(rf, X:np.ndarray):
     """
     ntrees = len(rf.estimators_)
     leaf_ids = rf.apply(X) # which leaf does each X_i go to for each tree?
-    d = pd.DataFrame(leaf_ids, columns=[f"leafids_tree{i}" for i in range(ntrees)])
+    d = pd.DataFrame(leaf_ids, columns=[f"tree{i}" for i in range(ntrees)])
     d = d.reset_index() # get 0..n-1 as column called index so we can do groupby
     """
     d looks like:
-    index	leafids_tree0	leafids_tree1	leafids_tree2	leafids_tree3	leafids_tree4
-    0	0	8	3	4	4	3
-    1	1	8	3	4	4	3
+        index	tree0	tree1	tree2	tree3	tree4
+    0	0	    8	    3	    4	    4	    3
+    1	1	    8	    3	    4	    4	    3
     """
     leaf_samples = []
     for i in range(ntrees):
@@ -267,7 +267,8 @@ def leaf_samples(rf, X:np.ndarray):
                array([10, 11, 12, 13, 14, 15]), array([16, 17, 18, 19, 20]),
                array([21, 22, 23, 24, 25, 26, 27, 28, 29]), ... )
         """
-        leaf_samples.extend(d.groupby('leafids_tree0')['index'].apply(lambda x:x.values))
+        sample_idxs_in_leaf = d.groupby(f'tree{i}')['index'].apply(lambda x: x.values)
+        leaf_samples.extend(sample_idxs_in_leaf)
     return leaf_samples
 
 
