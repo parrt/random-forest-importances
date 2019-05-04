@@ -35,22 +35,22 @@ def df_cat_to_catcode(df):
             df[col] = df[col].cat.codes + 1
 
 
-def toy_crisscross_data(n=50):
+def toy_x1_times_x2_data(n=100):
     df = pd.DataFrame()
     i = np.linspace(0, 10, num=n)
-    df['x1'] = i * 1.2
-    df['x2'] = -i * 1.2 + 12
+    df['x1'] = np.random.uniform(0, 1, size=n)
+    df['x2'] = np.random.uniform(0, 1, size=n)
     df['y'] = df['x1'] * df['x2']# + df['x1'] + df['x2']
-    return df, f"y = x1x2\nx1 = 1.2i; x2 = -1.2i + 12 for i=range(0..10,n={n})"
+    return df, f"y = x1x2\nx1, x2 in U(0,1)", (0,.6)
 
 
-def toy_twolines_data(n=50):
+def toy_2x1_times_3x2_data(n=100):
     df = pd.DataFrame()
     i = np.linspace(0, 10, num=n)
-    df['x1'] = i * 1
-    df['x2'] = i * 2
-    df['y'] = df['x1'] * df['x2']# + df['x1'] + df['x2']
-    return df, f"y = x1x2\nx1 = i; x2 = 2i for i=range(0..10,n={n})"
+    df['x1'] = np.random.uniform(0, 1, size=n)
+    df['x2'] = np.random.uniform(0, 1, size=n)
+    df['y'] = 2*df['x1'] * 3*df['x2']# + df['x1'] + df['x2']
+    return df, f"y = 2x1 * 3x2\nx1, x2 in U(0,1)", (0,4)
 
 
 def toy_weight_data(n):
@@ -286,31 +286,38 @@ def collect_leaf_slopes(rf, X, y, colname):
     We don't need to subtract the minimum y value before regressing because
     the slope won't be different. (We are ignoring the intercept of the regression line).
 
-    Return for each leaf, the range of X[colname] and associated slope.
+    Return for each leaf, the range of X[colname], y at left/right of leaf range,
+    and associated slope for that range.
+
+    Currently, leaf_yranges is unused.
     """
     start = time.time()
     leaf_slopes = []
-    leaf_ranges = []
+    leaf_xranges = []
+    leaf_yranges = []
     for tree in rf.estimators_:
         leaves = leaf_samples(tree, X.drop(colname, axis=1))
         for leaf, samples in leaves.items():
             if len(samples) < 2:
                 # print(f"ignoring len {len(samples)} leaf")
                 continue
-            leaf_x = X.iloc[samples][colname]
-            leaf_y = y.iloc[samples]
-            r = (min(leaf_x), max(leaf_x))
+            leaf_x = X.iloc[samples][colname].values
+            leaf_y = y.iloc[samples].values
+            r = (np.min(leaf_x), np.max(leaf_x))
             if np.isclose(r[0], r[1]):
                 # print(f"ignoring xleft=xright @ {r[0]}")
                 continue
             lm = LinearRegression()
-            lm.fit(leaf_x.values.reshape(-1, 1), leaf_y)
+            lm.fit(leaf_x.reshape(-1, 1), leaf_y)
             leaf_slopes.append(lm.coef_[0])
-            leaf_ranges.append(r)
-    leaf_ranges = np.array(leaf_ranges)
+            leaf_xranges.append(r)
+            leaf_yranges.append((leaf_y[0], leaf_y[-1]))
+    leaf_slopes = np.array(leaf_slopes)
+    leaf_xranges = np.array(leaf_xranges)
+    leaf_yranges = np.array(leaf_yranges)
     stop = time.time()
-    # print(f"collect_leaf_slopes {stop - start:.3f}s")
-    return leaf_ranges, np.array(leaf_slopes)
+    print(f"collect_leaf_slopes {stop - start:.3f}s")
+    return leaf_xranges, leaf_yranges, leaf_slopes
 
 
 def catwise_leaves(rf, X, y, colname):
@@ -355,6 +362,7 @@ def catwise_leaves(rf, X, y, colname):
 
 
 def avg_slope_at_x(leaf_ranges, leaf_slopes):
+    start = time.time()
     uniq_x = set(leaf_ranges[:, 0]).union(set(leaf_ranges[:, 1]))
     uniq_x = np.array(sorted(uniq_x))
     nx = len(uniq_x)
@@ -376,6 +384,9 @@ def avg_slope_at_x(leaf_ranges, leaf_slopes):
     count_at_x = nslopes - missing_values_at_x
     # The value could be genuinely zero so we use nan not 0 for out-of-range
     avg_slope_at_x = sum_at_x / count_at_x
+
+    stop = time.time()
+    # print(f"avg_slope_at_x {stop - start:.3f}s")
     return uniq_x, avg_slope_at_x
 
 
@@ -398,14 +409,15 @@ def lm_partial_plot(X, y, colname, targetname,ax=None):
     ax.text(left30, left30*r.coef_[ci] + r_col.intercept_, f"slope={r.coef_[ci]:.3f}")
     ax.legend()
 
+
 def partial_plot(X, y, colname, targetname=None,
                  ax=None,
                  ntrees=30,
-                 min_samples_leaf=7,
+                 min_samples_leaf=2,
                  alpha=.05,
                  xrange=None,
                  yrange=None,
-                 show_derivative=True):
+                 show_derivative=False):
     rf = RandomForestRegressor(n_estimators=ntrees,
                                min_samples_leaf=min_samples_leaf,
                                # max_features=1.0,
@@ -413,10 +425,10 @@ def partial_plot(X, y, colname, targetname=None,
                                oob_score=False)
     rf.fit(X.drop(colname, axis=1), y)
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_ranges, leaf_slopes = collect_leaf_slopes(rf, X, y, colname)
-    uniq_x, slope_at_x = avg_slope_at_x(leaf_ranges, leaf_slopes)
-    print(f'uniq_x = [{", ".join([f"{x:4.1f}" for x in uniq_x])}]')
-    print(f'slopes = [{", ".join([f"{s:4.1f}" for s in slope_at_x])}]')
+    leaf_xranges, leaf_yranges, leaf_slopes = collect_leaf_slopes(rf, X, y, colname)
+    uniq_x, slope_at_x = avg_slope_at_x(leaf_xranges, leaf_slopes)
+    # print(f'uniq_x = [{", ".join([f"{x:4.1f}" for x in uniq_x])}]')
+    # print(f'slopes = [{", ".join([f"{s:4.1f}" for s in slope_at_x])}]')
 
     if ax is None:
         fig, ax = plt.subplots(1,1)
@@ -433,15 +445,16 @@ def partial_plot(X, y, colname, targetname=None,
         curve -= y_offset  # shift
 
     ax.scatter(uniq_x, curve,
-               s=2, alpha=1,
+               s=3, alpha=1,
                c='black', label="Avg piecewise linear")
 
     segments = []
-    for r, slope in zip(leaf_ranges, leaf_slopes):
-        delta = slope * (r[1] - r[0])
-        closest_x_i = np.abs(uniq_x - r[0]).argmin()
+    for xr, yr, slope in zip(leaf_xranges, leaf_yranges, leaf_slopes):
+        delta = slope * (xr[1] - xr[0])
+        closest_x_i = np.abs(uniq_x - xr[0]).argmin() # find curve point for xr[0]
         y_offset = curve[closest_x_i]
-        one_line = [(r[0],y_offset), (r[1], y_offset+delta)]
+        # one_line = [(xr[0],y_offset+yr[0]), (xr[1], y_offset+delta+yr[0])]
+        one_line = [(xr[0],y_offset), (xr[1], y_offset+delta)]
         segments.append( one_line )
 
     lines = LineCollection(segments, alpha=alpha, color='#9CD1E3', linewidth=1)
@@ -465,11 +478,11 @@ def partial_plot(X, y, colname, targetname=None,
         other.set_ylabel("Partial derivative", fontdict={"color":'#f46d43'})
         other.plot(uniq_x, slope_at_x, linewidth=1, c='#f46d43', alpha=.5)
         other.set_ylim(min(slope_at_x),max(slope_at_x))
-        other.set_xlim(min(uniq_x),max(uniq_x))
         other.tick_params(axis='y', colors='#f46d43')
         m = np.mean(slope_at_x)
-        mx =max(uniq_x)
-        other.plot(mx-mx*0.03, m, marker='>', c='#f46d43')
+        mx = np.max(uniq_x)
+        mnx = np.min(uniq_x)
+        other.plot(mx-(mx-mnx)*0.02, m, marker='>', c='#f46d43')
 
 
 def cat_partial_plot(X, y, colname, targetname,
@@ -539,7 +552,7 @@ def cars():
 
     rf = RandomForestRegressor(n_estimators=50, min_samples_leaf=1, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
-    ice = ICE_predict(rf, X, 'ENG', 'MPG', nlines=50, numx=100)
+    ice = ICE_predict(rf, X, 'ENG', 'MPG', nlines=50, numx=None)
     plot_ICE(ice, 'ENG', 'MPG', ax=axes[0, 2], yrange=(-20,20))
     ice = ICE_predict(rf, X, 'WGT', 'MPG', nlines=50, numx=100)
     plot_ICE(ice, 'WGT', 'MPG', ax=axes[1, 2], yrange=(-20,20))
@@ -579,7 +592,7 @@ def rent():
 
 
 def weight():
-    df_raw = toy_weight_data(200)
+    df_raw = toy_weight_data(50)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -595,41 +608,34 @@ def weight():
     axes[0,1].axis('off')
 
     partial_plot(X, y, 'education', 'weight', ax=axes[1][0],
-                 ntrees=30, min_samples_leaf=7, yrange=(-12,0))
-    partial_plot(X, y, 'height', 'weight', ax=axes[2][0], yrange=(0,160))
-    cat_partial_plot(X, y, 'sex', 'weight', ax=axes[3][0], ntrees=50,
-                     alpha=.2,
-                     min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
-    cat_partial_plot(X, y, 'pregnant', 'weight', ax=axes[4][0], ntrees=50,
-                     alpha=.2,
-                     min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
+                 ntrees=30, min_samples_leaf=2
+                 # yrange=(-12,0)
+                 )
+    partial_plot(X, y, 'height', 'weight', ax=axes[2][0],
+                 # yrange=(0,160)
+                 )
+    if False:
+        cat_partial_plot(X, y, 'sex', 'weight', ax=axes[3][0], ntrees=50,
+                         alpha=.2,
+                         min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
+        cat_partial_plot(X, y, 'pregnant', 'weight', ax=axes[4][0], ntrees=50,
+                         alpha=.2,
+                         min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
 
-    ice = ICE_predict(rf, X, 'education', 'weight')
-    plot_ICE(ice, 'education', 'weight', ax=axes[1, 1], yrange=(-12, 0))
-    ice = ICE_predict(rf, X, 'height', 'weight')
-    plot_ICE(ice, 'height', 'weight', ax=axes[2, 1], yrange=(0, 160))
-    ice = ICE_predict(rf, X, 'sex', 'weight')
-    plot_ICE(ice, 'sex', 'weight', ax=axes[3,1], yrange=(0,2), cats=df_raw['sex'].unique())
-    ice = ICE_predict(rf, X, 'pregnant', 'weight')
-    plot_ICE(ice, 'pregnant', 'weight', ax=axes[4,1], yrange=(0,10), cats=df_raw['pregnant'].unique())
+    if False:
+        ice = ICE_predict(rf, X, 'education', 'weight')
+        plot_ICE(ice, 'education', 'weight', ax=axes[1, 1], yrange=(-12, 0))
+        ice = ICE_predict(rf, X, 'height', 'weight')
+        plot_ICE(ice, 'height', 'weight', ax=axes[2, 1], yrange=(0, 160))
+        ice = ICE_predict(rf, X, 'sex', 'weight')
+        plot_ICE(ice, 'sex', 'weight', ax=axes[3,1], yrange=(0,2), cats=df_raw['sex'].unique())
+        ice = ICE_predict(rf, X, 'pregnant', 'weight')
+        plot_ICE(ice, 'pregnant', 'weight', ax=axes[4,1], yrange=(0,10), cats=df_raw['pregnant'].unique())
 
     fig.suptitle("weight = 120 + 10*(height-min(height)) + 10*pregnant - 1.2*education", size=14)
-
-    if False:
-        # show importance as RF-piecewise linear plot see it
-        rf = RandomForestRegressor(n_estimators=50, min_samples_leaf=5, oob_score=True, n_jobs=-1)
-        rf.fit(X, y)
-
-        I = importances(rf, X, y)
-        plot_importances(I, ax=axes[4,0])
-        axes[4, 0].set_title("Permutation importance")
-
-        I = dropcol_importances(rf, X, y)
-        plot_importances(I, ax=axes[4,1])
-        axes[4, 1].set_title("Drop-column importance")
 
     plt.tight_layout()
 
@@ -686,8 +692,8 @@ def weather():
     plt.savefig("/tmp/weather.svg")
     plt.show()
 
-def interaction(f, n=50):
-    df,eqn = f(n=n)
+def interaction(f, n=100):
+    df,eqn,yrange = f(n=n)
 
     X = df.drop('y', axis=1)
     y = df['y']
@@ -716,32 +722,34 @@ def interaction(f, n=50):
     axes[0,1].set_xlabel("x1")
     axes[0,1].set_ylabel("y")
 
-    print(df)
-    print(f"x1 = {df['x1'].values.tolist()}")
-    print(f"x2 = {df['x2'].values.tolist()}")
-    print(f"y = {df['y'].values.tolist()}")
-    axes[1,0].plot(df['x1'], y)
+    # print(df)
+    # print(f"x1 = {df['x1'].values.tolist()}")
+    # print(f"x2 = {df['x2'].values.tolist()}")
+    # print(f"y = {df['y'].values.tolist()}")
+    axes[1,0].scatter(df['x1'], y)
     axes[1,0].set_xlabel("x1")
     axes[1,0].set_ylabel("y")
-    axes[1,1].plot(df['x2'], y)
+    axes[1,1].scatter(df['x2'], y)
     axes[1,1].set_xlabel("x2")
     axes[1,1].set_ylabel("y")
 
     partial_plot(X, y, 'x1', 'y', ax=axes[2][0],
-                 ntrees=30, min_samples_leaf=min_samples_leaf)#, yrange=(0,40))
+                 ntrees=30, min_samples_leaf=min_samples_leaf, yrange=yrange,
+                 show_derivative=True)
     # partial_plot(X, y, 'education', 'weight', ntrees=20, min_samples_leaf=7, alpha=.2)
     partial_plot(X, y, 'x2', 'y', ax=axes[3][0], min_samples_leaf=min_samples_leaf,
-                 ntrees=30)#, yrange=(0,40))
+                 ntrees=30, yrange=yrange,
+                 show_derivative=True)
     # cat_partial_plot(axes[2][0], X, y, 'sex', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
     # cat_partial_plot(axes[3][0], X, y, 'pregnant', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
 
-    ice = ICE_predict(rf, X, 'x1', 'y')
-    plot_ICE(ice, 'x1', 'y', ax=axes[2, 1], yrange=(0, 40))
-    ice = ICE_predict(rf, X, 'x2', 'y')
-    plot_ICE(ice, 'x2', 'y', ax=axes[3, 1], yrange=(0, 40))
+    ice = ICE_predict(rf, X, 'x1', 'y', numx=None)
+    plot_ICE(ice, 'x1', 'y', ax=axes[2, 1], yrange=yrange)
+    ice = ICE_predict(rf, X, 'x2', 'y', numx=None)
+    plot_ICE(ice, 'x2', 'y', ax=axes[3, 1], yrange=yrange)
 
     plt.tight_layout()
 
@@ -945,12 +953,12 @@ def additive_assessment():
 
 
 if __name__ == '__main__':
-    cars()
+    # cars()
     # rent()
     # weight()
     # weather()
-    # interaction(crisscross=True)
-    # interaction(n=200, crisscross=False)
+    # interaction(toy_x1_times_x2_data)
+    interaction(toy_2x1_times_3x2_data)
     # bigX()
     # boston()
     # additive_assessment()

@@ -37,6 +37,10 @@ We don't want weighted average in either num or cat case. it messes up.
 can't do a grouping into similar buckets. in contrast, PDP uses all x to make
 predictions.
 
+I noticed on the y = x1^2 + x2 example that controlling for x2, looking at x1, we don't see a very good parabola. Think of that as an ascending valley and then each x2 point/region will look like a noisy parabola in x1 dimension. A small x2 region gives a large number of x1 points, and a line will be in extremely poor estimate of that parabola. Solution is either to make a note of this as a seems to work pretty well on real data sets, or make an option that then trains another random forest on the leaf samples rather than a linear model, assuming that the number of leaf samples goes above a certain threshold. Now we would get a new list of leaves, with finer granularity, that we can add to the same list of approximate partial derivatives.
+
+we can really only do derivative plots from 0, rather than ICE plots which can show samples smeared across target var y range.  We could shift up by leftmost average y value I guess.
+
 ## Advantages
 
 * RF's can deal with categorical variables as a label encoded, so we don't have to worry about one-hot encoding issues
@@ -53,6 +57,10 @@ predictions.
 * LM works great if all numeric data; this works with categorical
 
 * Seems to isolate partial dependencies better
+
+* smooth because we are integrating even a very noisy approximate partial derivative.
+
+* notice the introduction of "region of interest" in the ice plot on the cars ENG axis. it looks as if there's some interesting feature there between 250 and 300 but that's really just saying we don't have any data. It is conjuring up some impossible value and asking for prediction. Our plot simply does not show data. Our plots mirrors the appropriate beta slope as computed by OLS. with uniq x points only, we don't get that bump spike thing as we do setting numx. Looks like it draws a line over the gap.
 
 ## Interactions
 
