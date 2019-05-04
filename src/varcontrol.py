@@ -367,16 +367,14 @@ def catwise_leaves(rf, X, y, colname):
     leaf_histos = pd.DataFrame(index=cats)
     leaf_histos.index.name = 'category'
     ci = 0
+    Xy = pd.concat([X, y], axis=1)
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
     for samples in leaves:
-        leaf_X = X.iloc[samples][colname]
-        leaf_y = y.iloc[samples]
-        combined = pd.concat([leaf_X, leaf_y], axis=1)
-        grouping = combined.groupby(colname)
-#             print("\n", combined)
-        histo = grouping.mean()
-#             print(grouping.count())
-#             print(histo)
+        combined = Xy.iloc[samples]
+        # print("\n", combined)
+        histo = combined.groupby(colname).mean()
+        histo = histo.iloc[:,-1]
+#         print(histo)
         #             print(histo - min_of_first_cat)
         if len(histo) < 2:
             #                 print(f"ignoring len {len(histo)} cat leaf")
