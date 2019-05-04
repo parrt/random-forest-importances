@@ -11,7 +11,7 @@ There are a few basic approaches to identifying the partial effect of a single v
 
 Stratification is great because it's simple to implement and is obviously correctly isolating the effect of a single variable, $x_i$, on the target, $y$. We are grouping samples by all features except for $x_i$ then considering the relationship between that feature and $y$.   Unfortunately, it quickly breaks down when there are many variables because it's impossible to find enough samples that are equivalent across all of those variables.
 
-PDP/ICE plots require that we adjust samples so that we move each $x_i$ through all values of that variable, which can create nonsensical or highly biased plots. Further, we are plotting the predictions, rather than using the raw data.
+PDP/ICE plots require that we adjust samples so that we move each $x_i$ through all values of that variable, which can create nonsensical or highly biased plots. Further, we are plotting the predictions, rather than using the raw data. ICE is also pretty damn slow. Must predict(X) for each value of grid between min/max or, if no numx specified, all unique values. cars() is super slow like 10s / 10s for prediction with nlines=50 and numx=100. Like 30s for all unique values.
 
 [ALE plots](https://christophm.github.io/interpretable-ml-book/ale.html#disadvantages-7). This requires that we have an approximation of the distance between categorical variables for ordering them.  This is dicey at best. The ALE computations are much more complicated than the other approaches.
 

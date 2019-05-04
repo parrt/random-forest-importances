@@ -128,7 +128,7 @@ def conjure_twoclass(X):
     return X_synth, y_synth
 
 
-def ICE_predict(model, X:pd.DataFrame, colname:str, targetname="target", numx=None):
+def ICE_predict(model, X:pd.DataFrame, colname:str, targetname="target", numx=100, nlines=None):
     """
     Return dataframe with one row per observation in X and one column
     per unique value of column identified by colname.
@@ -142,7 +142,10 @@ def ICE_predict(model, X:pd.DataFrame, colname:str, targetname="target", numx=No
     0	62.786672	              70.595222                ... unique X[colname] values
     1	109.270644	              161.270843               ...
     """
+    start = time.time()
     save = X[colname].copy()
+    if nlines is not None:
+        X = X.sample(nlines, replace=False)
     if numx is not None:
         linex = np.linspace(np.min(X[colname]), np.max(X[colname]), numx)
     else:
@@ -159,7 +162,10 @@ def ICE_predict(model, X:pd.DataFrame, colname:str, targetname="target", numx=No
     X[colname] = save
     columns = [f"predicted {targetname}\n{colname}={str(v)}"
                for v in linex]
-    return pd.DataFrame(lines, columns=columns)
+    df = pd.DataFrame(lines, columns=columns)
+    stop = time.time()
+    print(f"ICE_predict {stop - start:.3f}s")
+    return df
 
 
 def ICE_lines(ice:np.ndarray) -> np.ndarray:
@@ -169,23 +175,39 @@ def ICE_lines(ice:np.ndarray) -> np.ndarray:
     in a single ICE line for single sample. Shape of result is:
     (nsamples,nuniquevalues,2)
     """
+    start = time.time()
     linex = ice.iloc[0,:] # get unique x values from first row
+    # If needed, apply_along_axis() is faster than the loop
+    # def getline(liney): return np.array(list(zip(linex, liney)))
+    # lines = np.apply_along_axis(getline, axis=1, arr=ice.iloc[1:])
     lines = []
     for i in range(1,len(ice)): # ignore first row
         liney = ice.iloc[i].values
         line = np.array(list(zip(linex, liney)))
         lines.append(line)
+    stop = time.time()
+    # print(f"ICE_lines {stop - start:.3f}s")
     return np.array(lines)
 
 
 def plot_ICE(ice, colname, targetname="target", cats=None, ax=None, linewidth=.7, color='#9CD1E3',
              alpha=.1, title=None, yrange=None, pdp=True, pdp_linewidth=1, pdp_alpha=1,
              pdp_color='black'):
+    start = time.time()
     if ax is None:
         fig, ax = plt.subplots(1,1)
 
     avg_y = np.mean(ice[1:], axis=0)
-    min_pdp_y = avg_y[0] if cats is None else np.min(avg_y)
+
+    min_pdp_y = avg_y[0] if cats is None else 0
+    # if 0 is in x feature and not on left/right edge, get y at 0
+    # and shift so that is x,y 0 point.
+    linex = ice.iloc[0,:] # get unique x values from first row
+    nx = len(linex)
+    if linex[int(nx*0.05)]<0 or linex[-int(nx*0.05)]>0:
+        closest_x_to_0 = np.abs(linex - 0.0).argmin()
+        min_pdp_y = avg_y[closest_x_to_0]
+
     lines = ICE_lines(ice)
     lines[:,:,1] = lines[:,:,1] - min_pdp_y
     # lines[:,:,0] scans all lines, all points in a line, and gets x column
@@ -216,6 +238,9 @@ def plot_ICE(ice, colname, targetname="target", cats=None, ax=None, linewidth=.7
         uniq_values = ice.iloc[0,:]
         ax.plot(uniq_values, avg_y - min_pdp_y,
                 alpha=pdp_alpha, linewidth=pdp_linewidth, c=pdp_color)
+
+    stop = time.time()
+    # print(f"plot_ICE {stop - start:.3f}s")
 
 # Derived from dtreeviz
 def leaf_samples(tree_model, X):
@@ -381,19 +406,31 @@ def partial_plot(X, y, colname, targetname=None,
                  xrange=None,
                  yrange=None,
                  show_derivative=True):
-    rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=ntrees,
+                               min_samples_leaf=min_samples_leaf,
+                               # max_features=1.0,
+                               # bootstrap=False,
+                               oob_score=False)
     rf.fit(X.drop(colname, axis=1), y)
-    print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
+    # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_ranges, leaf_slopes = collect_leaf_slopes(rf, X, y, colname)
     uniq_x, slope_at_x = avg_slope_at_x(leaf_ranges, leaf_slopes)
-    # print(f'uniq_x = [{", ".join([f"{x:4.1f}" for x in uniq_x])}]')
-    # print(f'slopes = [{", ".join([f"{s:4.1f}" for s in slope_at_x])}]')
+    print(f'uniq_x = [{", ".join([f"{x:4.1f}" for x in uniq_x])}]')
+    print(f'slopes = [{", ".join([f"{s:4.1f}" for s in slope_at_x])}]')
 
     if ax is None:
         fig, ax = plt.subplots(1,1)
 
     curve = cumtrapz(slope_at_x, x=uniq_x)          # we lose one value here
     curve = np.concatenate([np.array([0]), curve])  # add back the 0 we lost
+
+    # if 0 is in x feature and not on left/right edge, get y at 0
+    # and shift so that is x,y 0 point.
+    nx = len(uniq_x)
+    if uniq_x[int(nx*0.05)]<0 or uniq_x[-int(nx*0.05)]>0:
+        closest_x_to_0 = np.abs(uniq_x - 0.0).argmin()
+        y_offset = curve[closest_x_to_0]
+        curve -= y_offset  # shift
 
     ax.scatter(uniq_x, curve,
                s=2, alpha=1,
@@ -418,7 +455,10 @@ def partial_plot(X, y, colname, targetname=None,
 
     ax.set_xlabel(colname)
     ax.set_ylabel(targetname)
-    ax.set_title(f"Effect of {colname} on {targetname} in similar regions\nOOB R^2 {rf.oob_score_:.3f}")
+    if hasattr(rf, 'oob_score_'):
+        ax.set_title(f"Effect of {colname} on {targetname} in similar regions\nOOB R^2 {rf.oob_score_:.3f}")
+    else:
+        ax.set_title(f"Effect of {colname} on {targetname} in similar regions")
 
     if show_derivative:
         other = ax.twinx()
@@ -497,11 +537,11 @@ def cars():
     lm_partial_plot(X, y, 'WGT', 'MPG', ax=axes[1,0])
     partial_plot(X, y, 'WGT', 'MPG', ax=axes[1,1], yrange=(-20,20))
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
+    rf = RandomForestRegressor(n_estimators=50, min_samples_leaf=1, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
-    ice = ICE_predict(rf, X, 'ENG', 'MPG')
+    ice = ICE_predict(rf, X, 'ENG', 'MPG', nlines=50, numx=100)
     plot_ICE(ice, 'ENG', 'MPG', ax=axes[0, 2], yrange=(-20,20))
-    ice = ICE_predict(rf, X, 'WGT', 'MPG')
+    ice = ICE_predict(rf, X, 'WGT', 'MPG', nlines=50, numx=100)
     plot_ICE(ice, 'WGT', 'MPG', ax=axes[1, 2], yrange=(-20,20))
 
     plt.tight_layout()
@@ -740,7 +780,7 @@ def bigX():
     axes[0, 1].axis('off')
 
     axes[1,0].scatter(df['x3'], y, s=5, alpha=.7)
-    axes[1,0].set_xlabel('x2')
+    axes[1,0].set_xlabel('x3')
     axes[1,0].set_ylabel('y')
 
     axes[1,1].scatter(df['x2'], df['y'], s=5, alpha=.7)
@@ -814,12 +854,103 @@ def boston():
     plt.tight_layout()
     plt.show()
 
+
+def additive_assessment():
+    def data(n):
+        x1 = np.random.uniform(-3, 3, size=n)
+        x2 = np.random.uniform(-3, 3, size=n)
+        x3 = np.random.uniform(-3, 3, size=n)
+        x4 = np.random.uniform(-3, 3, size=n)
+
+        y = x1*x1 + x2 + x3 + x4# + np.random.normal(0, 1, size=n)
+        df = pd.DataFrame()
+        df['x1'] = x1
+        df['x2'] = x2
+        df['x3'] = x3
+        df['x4'] = x4
+        df['y'] = y
+        return df
+
+    n = 500
+    df = data(n=n)
+    X = df.drop('y', axis=1)
+    y = df['y']
+
+    fig, axes = plt.subplots(4, 2, figsize=(11, 14), gridspec_kw = {'height_ratios':[.1,4,4,4]})
+
+    axes[0, 0].get_xaxis().set_visible(False)
+    axes[0, 0].axis('off')
+    axes[0, 1].get_xaxis().set_visible(False)
+    axes[0, 1].axis('off')
+
+    # axes[1,0].scatter(df['x1'], y, s=5, alpha=.7)
+    # axes[1,0].set_xlabel('x1')
+    # axes[1,0].set_ylabel('y')
+
+    """
+    When we have too many samples in leaf, we don't get enough detail / points
+    near zero and it looks like line not parabola.
+    
+    Mine looks like parabola but U(-3,3) gives max values of 2.5ish for -3 and 3
+    whereas PDP gives 8 for -3 and 3. n=1000 seems a bit shifted but n=2000 gets
+    center/base of parabola correctly at x1=0.
+    
+    When one is shallow like a line then leaf might get lots of values and
+    therefore bad slope estimate. Just two vars like y=x1^2 + x2 shows us biased
+    too low for x1. 
+    
+    oh shit. the RF is bootstrapping and missing lots of values. try all.
+    Make max_features=1.0 too. we don't care about overfitting here, do we?
+    
+    Turning off bootstrap (no replace, but same sample size) gets much taller
+    parabola, though max_features=1.0 didn't do much.
+    """
+    min_samples_leaf = 2
+    rtreeviz_univar(axes[1,0],
+                    df['x1'], y,
+                    feature_name='x1',
+                    target_name='y',
+                    min_samples_leaf=min_samples_leaf,
+                    fontsize=10)
+    axes[1,0].set_title(f'x1 space partition with min_samples_leaf={min_samples_leaf}')
+    axes[1,0].set_xlabel("x1")
+    axes[1,0].set_ylabel("y")
+
+    rtreeviz_univar(axes[1,1],
+                    df['x2'], y,
+                    feature_name='x2',
+                    target_name='y',
+                    min_samples_leaf=min_samples_leaf,
+                    fontsize=10)
+    axes[1,1].set_title(f'x2 space partition with min_samples_leaf={min_samples_leaf}')
+    axes[1,1].set_xlabel("x2")
+    axes[1,1].set_ylabel("y")
+
+    partial_plot(X, y, 'x1', 'y', ax=axes[2,0], min_samples_leaf=min_samples_leaf)
+    partial_plot(X, y, 'x2', 'y', ax=axes[3,0], min_samples_leaf=min_samples_leaf)
+
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
+    rf.fit(X, y)
+    print(f"RF OOB {rf.oob_score_}")
+
+    ice = ICE_predict(rf, X, 'x1', 'y', numx=20)
+    plot_ICE(ice, 'x1', 'y', ax=axes[2, 1])
+
+    ice = ICE_predict(rf, X, 'x2', 'y', numx=20)
+    plot_ICE(ice, 'x2', 'y', ax=axes[3, 1])
+
+    fig.suptitle("$y = x_1^2 + x_2 + x_3 + x_4$\n$x_1, x_2, x_3$ are U(-3,3)\nSample size "+str(n))
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == '__main__':
-    # cars()
+    cars()
     # rent()
     # weight()
     # weather()
     # interaction(crisscross=True)
     # interaction(n=200, crisscross=False)
     # bigX()
-    boston()
+    # boston()
+    # additive_assessment()
