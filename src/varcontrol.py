@@ -377,7 +377,7 @@ def catwise_leaves(rf, X, y, colname):
 #         print(histo)
         #             print(histo - min_of_first_cat)
         if len(histo) < 2:
-            #                 print(f"ignoring len {len(histo)} cat leaf")
+            # print(f"ignoring len {len(histo)} cat leaf")
             continue
         # record how much bump or drop we get per category above
         # minimum change seen by any category (works even when all are negative)
@@ -521,7 +521,7 @@ def cat_partial_plot(X, y, colname, targetname,
                      cats=None,
                      ax=None,
                      sort='ascending',
-                     ntrees=30, min_samples_leaf=2,
+                     ntrees=30, min_samples_leaf=5,
                      alpha=.03,
                      yrange=None):
     rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True, n_jobs=-1)
