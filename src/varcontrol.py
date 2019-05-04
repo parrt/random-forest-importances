@@ -226,9 +226,9 @@ def plot_ICE(ice, colname, targetname="target", cats=None, ax=None, linewidth=.7
 
     if cats is not None:
         ncats = len(cats)
-        ax.set_xticks(range(0, ncats))
+        ax.set_xticks(range(1, ncats+1))
         ax.set_xticklabels(cats)
-        ax.set_xlim((0, ncats))
+        ax.set_xlim(1, ncats)
     else:
         ax.set_xlim(minx, maxx)
 
@@ -242,28 +242,57 @@ def plot_ICE(ice, colname, targetname="target", cats=None, ax=None, linewidth=.7
     stop = time.time()
     # print(f"plot_ICE {stop - start:.3f}s")
 
+
+def leaf_samples(rf, X:np.ndarray):
+    """
+    Return a list of arrays where each array is the set of X sample indexes
+    residing in a single leaf of some tree in rf forest.
+    """
+    ntrees = len(rf.estimators_)
+    leaf_ids = rf.apply(X) # which leaf does each X_i go to for each tree?
+    d = pd.DataFrame(leaf_ids, columns=[f"leafids_tree{i}" for i in range(ntrees)])
+    d = d.reset_index() # get 0..n-1 as column called index so we can do groupby
+    """
+    d looks like:
+    index	leafids_tree0	leafids_tree1	leafids_tree2	leafids_tree3	leafids_tree4
+    0	0	8	3	4	4	3
+    1	1	8	3	4	4	3
+    """
+    leaf_samples = []
+    for i in range(ntrees):
+        """
+        Each groupby gets a list of all X indexes associated with same leaf. 4 leaves would
+        get 4 arrays of X indexes; e.g.,
+        array([array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+               array([10, 11, 12, 13, 14, 15]), array([16, 17, 18, 19, 20]),
+               array([21, 22, 23, 24, 25, 26, 27, 28, 29]), ... )
+        """
+        leaf_samples.extend(d.groupby('leafids_tree0')['index'].apply(lambda x:x.values))
+    return leaf_samples
+
+
 # Derived from dtreeviz
-def leaf_samples(tree_model, X):
+def old_leaf_samples(tree_model, X):
     """
     Return dictionary mapping node id to list of sample indexes in leaf nodes.
     """
     start = time.time()
     tree = tree_model.tree_
     children_left = tree.children_left
-    children_right = tree.children_right
 
     # Doc say: "Return a node indicator matrix where non zero elements
     #           indicates that the samples goes through the nodes."
     dec_paths = tree_model.decision_path(X)
 
     # each sample has path taken down tree
+    leaf_samples = []
     node_to_leaves = defaultdict(list)
     for sample_i, dec in enumerate(dec_paths):
         _, nz_nodes = dec.nonzero()
         for node_id in nz_nodes:
-            if children_left[node_id] == -1 and \
-               children_right[node_id] == -1:  # is leaf?
+            if children_left[node_id] == -1:  # is leaf?
                 node_to_leaves[node_id].append(sample_i)
+
 
     stop = time.time()
     # print(f"leaf_samples {stop - start:.3f}s")
@@ -295,23 +324,22 @@ def collect_leaf_slopes(rf, X, y, colname):
     leaf_slopes = []
     leaf_xranges = []
     leaf_yranges = []
-    for tree in rf.estimators_:
-        leaves = leaf_samples(tree, X.drop(colname, axis=1))
-        for leaf, samples in leaves.items():
-            if len(samples) < 2:
-                # print(f"ignoring len {len(samples)} leaf")
-                continue
-            leaf_x = X.iloc[samples][colname].values
-            leaf_y = y.iloc[samples].values
-            r = (np.min(leaf_x), np.max(leaf_x))
-            if np.isclose(r[0], r[1]):
-                # print(f"ignoring xleft=xright @ {r[0]}")
-                continue
-            lm = LinearRegression()
-            lm.fit(leaf_x.reshape(-1, 1), leaf_y)
-            leaf_slopes.append(lm.coef_[0])
-            leaf_xranges.append(r)
-            leaf_yranges.append((leaf_y[0], leaf_y[-1]))
+    leaves = leaf_samples(rf, X.drop(colname, axis=1))
+    for samples in leaves:
+        if len(samples) < 2:
+            # print(f"ignoring len {len(samples)} leaf")
+            continue
+        leaf_x = X.iloc[samples][colname].values
+        leaf_y = y.iloc[samples].values
+        r = (np.min(leaf_x), np.max(leaf_x))
+        if np.isclose(r[0], r[1]):
+            # print(f"ignoring xleft=xright @ {r[0]}")
+            continue
+        lm = LinearRegression()
+        lm.fit(leaf_x.reshape(-1, 1), leaf_y)
+        leaf_slopes.append(lm.coef_[0])
+        leaf_xranges.append(r)
+        leaf_yranges.append((leaf_y[0], leaf_y[-1]))
     leaf_slopes = np.array(leaf_slopes)
     leaf_xranges = np.array(leaf_xranges)
     leaf_yranges = np.array(leaf_yranges)
@@ -322,8 +350,9 @@ def collect_leaf_slopes(rf, X, y, colname):
 
 def catwise_leaves(rf, X, y, colname):
     """
-    Return a dataframe with the average y value for each category in each leaf.
-    The index has the complete category list. The columns are the y avg values
+    Return a dataframe with the average y value for each category in each leaf
+    normalized by subtracting min avg y value from all categories.
+    The index has the complete category list. The columns are the y avg value changes
     found in a single leaf. Each row represents a category level. E.g.,
 
                        leaf0       leaf1
@@ -337,28 +366,27 @@ def catwise_leaves(rf, X, y, colname):
     leaf_histos = pd.DataFrame(index=cats)
     leaf_histos.index.name = 'category'
     ci = 0
-    for tree in rf.estimators_:
-        leaves = leaf_samples(tree, X.drop(colname, axis=1))
-        for leaf, samples in leaves.items():
-            leaf_X = X.iloc[samples][colname]
-            leaf_y = y.iloc[samples]
-            combined = pd.concat([leaf_X, leaf_y], axis=1)
-            grouping = combined.groupby(colname)
+    leaves = leaf_samples(rf, X.drop(colname, axis=1))
+    for samples in leaves:
+        leaf_X = X.iloc[samples][colname]
+        leaf_y = y.iloc[samples]
+        combined = pd.concat([leaf_X, leaf_y], axis=1)
+        grouping = combined.groupby(colname)
 #             print("\n", combined)
-            histo = grouping.mean()
+        histo = grouping.mean()
 #             print(grouping.count())
 #             print(histo)
-            #             print(histo - min_of_first_cat)
-            if len(histo) < 2:
-                #                 print(f"ignoring len {len(histo)} cat leaf")
-                continue
-            # record how much bump or drop we get per category above
-            # minimum change seen by any category (works even when all are negative)
-            # This assignment copies cat bumps to appropriate cat row using index
-            # leaving cats w/o representation as nan
-            relative_changes_per_cat = histo - np.min(histo.values)
-            leaf_histos['leaf' + str(ci)] = relative_changes_per_cat
-            ci += 1
+        #             print(histo - min_of_first_cat)
+        if len(histo) < 2:
+            #                 print(f"ignoring len {len(histo)} cat leaf")
+            continue
+        # record how much bump or drop we get per category above
+        # minimum change seen by any category (works even when all are negative)
+        # This assignment copies cat bumps to appropriate cat row using index
+        # leaving cats w/o representation as nan
+        relative_changes_per_cat = histo - np.min(histo.values)
+        leaf_histos['leaf' + str(ci)] = relative_changes_per_cat
+        ci += 1
 
     # print(leaf_histos)
     stop = time.time()
