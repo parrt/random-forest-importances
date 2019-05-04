@@ -228,7 +228,7 @@ def plot_ICE(ice, colname, targetname="target", cats=None, ax=None, linewidth=.7
         ncats = len(cats)
         ax.set_xticks(range(0, ncats))
         ax.set_xticklabels(cats)
-        ax.set_xlim(range(0, ncats))
+        ax.set_xlim((0, ncats))
     else:
         ax.set_xlim(minx, maxx)
 
@@ -352,7 +352,12 @@ def catwise_leaves(rf, X, y, colname):
             if len(histo) < 2:
                 #                 print(f"ignoring len {len(histo)} cat leaf")
                 continue
-            leaf_histos['leaf' + str(ci)] = histo
+            # record how much bump or drop we get per category above
+            # minimum change seen by any category (works even when all are negative)
+            # This assignment copies cat bumps to appropriate cat row using index
+            # leaving cats w/o representation as nan
+            relative_changes_per_cat = histo - np.min(histo.values)
+            leaf_histos['leaf' + str(ci)] = relative_changes_per_cat
             ci += 1
 
     # print(leaf_histos)
@@ -489,7 +494,7 @@ def cat_partial_plot(X, y, colname, targetname,
                      cats=None,
                      ax=None,
                      sort='ascending',
-                     ntrees=30, min_samples_leaf=7,
+                     ntrees=30, min_samples_leaf=2,
                      alpha=.03,
                      yrange=None):
     rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True, n_jobs=-1)
@@ -614,18 +619,21 @@ def weight():
     partial_plot(X, y, 'height', 'weight', ax=axes[2][0],
                  # yrange=(0,160)
                  )
-    if False:
-        cat_partial_plot(X, y, 'sex', 'weight', ax=axes[3][0], ntrees=50,
-                         alpha=.2,
-                         min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
-        cat_partial_plot(X, y, 'pregnant', 'weight', ax=axes[4][0], ntrees=50,
-                         alpha=.2,
-                         min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
+    cat_partial_plot(X, y, 'sex', 'weight', ax=axes[3][0], ntrees=50,
+                     alpha=.2,
+                     min_samples_leaf=2, cats=df_raw['sex'].unique(),
+                     # yrange=(0,2)
+                     )
+    cat_partial_plot(X, y, 'pregnant', 'weight', ax=axes[4][0], ntrees=50,
+                     alpha=.2,
+                     min_samples_leaf=2, cats=df_raw['pregnant'].unique(),
+                     # yrange=(0,10)
+                     )
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
 
-    if False:
+    if True:
         ice = ICE_predict(rf, X, 'education', 'weight')
         plot_ICE(ice, 'education', 'weight', ax=axes[1, 1], yrange=(-12, 0))
         ice = ICE_predict(rf, X, 'height', 'weight')
@@ -659,13 +667,14 @@ def weather():
     axes[0,1].axis('off')
 
     partial_plot(X, y, 'dayofyear', 'temperature', ax=axes[1][0],
-                 ntrees=50, min_samples_leaf=7)#, yrange=(-12,0))
+                 ntrees=50, min_samples_leaf=2)#, yrange=(-12,0))
     # partial_plot(X, y, 'education', 'weight', ntrees=20, min_samples_leaf=7, alpha=.2)
     cat_partial_plot(X, y, 'state', 'temperature', cats=catencoders['state'], ax=axes[2][0])#, yrange=(0,160))
     # cat_partial_plot(axes[2][0], X, y, 'sex', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
     # cat_partial_plot(axes[3][0], X, y, 'pregnant', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
 
-    rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=1, oob_score=True, n_jobs=-1)
+    rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=1, oob_score=True,
+                               n_jobs=-1)
     rf.fit(X, y)
 
     ice = ICE_predict(rf, X, 'dayofyear', 'temperature')
@@ -686,6 +695,16 @@ def weather():
     axes[3,0].set_title('Raw data')
     axes[3, 0].set_ylabel('Temperature')
     axes[3, 0].set_xlabel('Dataframe row index')
+
+    rtreeviz_univar(axes[3,1],
+                    X['state'], y,
+                    feature_name='state',
+                    target_name='y',
+                    min_samples_leaf=2,
+                    fontsize=10)
+    axes[3,1].set_title(f'state space partition with min_samples_leaf={2}')
+    axes[3,1].set_xlabel("state")
+    axes[3,1].set_ylabel("y")
 
     plt.tight_layout()
 
@@ -956,9 +975,9 @@ if __name__ == '__main__':
     # cars()
     # rent()
     # weight()
-    # weather()
+    weather()
     # interaction(toy_x1_times_x2_data)
-    interaction(toy_2x1_times_3x2_data)
+    # interaction(toy_2x1_times_3x2_data)
     # bigX()
     # boston()
     # additive_assessment()
