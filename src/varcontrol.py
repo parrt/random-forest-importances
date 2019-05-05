@@ -76,14 +76,16 @@ def toy_weight_data(n):
 
 def toy_weather_data():
     def temp(x): return np.sin((x+365/2)*(2*np.pi)/365)
+    def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
+
     df = pd.DataFrame()
     df['dayofyear'] = range(1,365+1)
     df['state'] = np.random.choice(['CA','CO','AZ','WA'], len(df))
     df['temperature'] = temp(df['dayofyear'])
-    df.loc[df['state']=='CA','temperature'] = 70 + df.loc[df['state']=='CA','temperature'] * np.random.uniform(-5,5,sum(df['state']=='CA'))
-    df.loc[df['state']=='CO','temperature'] = 40 + df.loc[df['state']=='CO','temperature'] * np.random.uniform(-5,5,sum(df['state']=='CO'))
-    df.loc[df['state']=='AZ','temperature'] = 90 + df.loc[df['state']=='AZ','temperature'] * np.random.uniform(-5,5,sum(df['state']=='AZ'))
-    df.loc[df['state']=='WA','temperature'] = 60 + df.loc[df['state']=='WA','temperature'] * np.random.uniform(-5,5,sum(df['state']=='WA'))
+    df.loc[df['state']=='CA','temperature'] = 70 + df.loc[df['state']=='CA','temperature'] * noise('CA')
+    df.loc[df['state']=='CO','temperature'] = 40 + df.loc[df['state']=='CO','temperature'] * noise('CO')
+    df.loc[df['state']=='AZ','temperature'] = 90 + df.loc[df['state']=='AZ','temperature'] * noise('AZ')
+    df.loc[df['state']=='WA','temperature'] = 60 + df.loc[df['state']=='WA','temperature'] * noise('WA')
     return df
 
 
@@ -316,8 +318,15 @@ def conjure_twoclass(X):
 
 
 def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray):
+    start = time.time()
     X = x.reshape(-1,1)
-    rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=2)
+    """
+    Bootstrapping appears to be important, giving much better sine curve for weather().
+    min_samples_leaf=3 seems pretty good but min_samples_leaf=5 is smoother.
+    n_estimators=3 seems fine for sine curve.  Gotta keep cost down here as we might
+    call this a lot.
+    """
+    rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=5, bootstrap=True)
     rf.fit(X, y)
     leaves = leaf_samples(rf, X)
     leaf_slopes = []
@@ -335,10 +344,12 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray):
         leaf_slopes.append(lm.coef_[0])
         leaf_xranges.append(r)
         leaf_yranges.append((leaf_y[0], leaf_y[-1]))
+    stop = time.time()
+    # print(f"hires_slopes_from_one_leaf {stop - start:.3f}s")
     return leaf_xranges, leaf_yranges, leaf_slopes
 
 
-def collect_leaf_slopes(rf, X, y, colname, hires_threshold=20):
+def collect_leaf_slopes(rf, X, y, colname, hires_threshold=10):
     """
     For each leaf of each tree of the random forest rf (trained on all features
     except colname), get the samples then isolate the column of interest X values
@@ -382,7 +393,7 @@ def collect_leaf_slopes(rf, X, y, colname, hires_threshold=20):
     leaf_xranges = np.array(leaf_xranges)
     leaf_yranges = np.array(leaf_yranges)
     stop = time.time()
-    # print(f"collect_leaf_slopes {stop - start:.3f}s")
+    print(f"collect_leaf_slopes {stop - start:.3f}s")
     return leaf_xranges, leaf_yranges, leaf_slopes
 
 
@@ -731,12 +742,16 @@ def weather():
     axes[0,0].axis('off')
     axes[0,1].axis('off')
 
+    """
+    The scale diff between states, obscures the sinusoidal nature of the
+    dayofyear vs temp plot. With noise N(0,5) gotta zoom in -3,3 on mine too.
+    otherwise, smooth quasilinear plot with lots of bristles showing volatility.
+    Flip to N(-5,5) which is more realistic and we see sinusoid for both, even at
+    scale. yep, the N(0,5) was obscuring sine for both. 
+    """
     partial_plot(X, y, 'dayofyear', 'temperature', ax=axes[1][0],
-                 ntrees=50, min_samples_leaf=2)#, yrange=(-12,0))
-    # partial_plot(X, y, 'education', 'weight', ntrees=20, min_samples_leaf=7, alpha=.2)
+                 ntrees=50, min_samples_leaf=2, yrange=(-5,5))
     cat_partial_plot(X, y, 'state', 'temperature', cats=catencoders['state'], ax=axes[2][0])#, yrange=(0,160))
-    # cat_partial_plot(axes[2][0], X, y, 'sex', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
-    # cat_partial_plot(axes[3][0], X, y, 'pregnant', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
 
     rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=1, oob_score=True,
                                n_jobs=-1)
@@ -744,6 +759,7 @@ def weather():
 
     ice = ICE_predict(rf, X, 'dayofyear', 'temperature')
     plot_ICE(ice, 'dayofyear', 'temperature', ax=axes[1, 1])  #, yrange=(-12,0))
+
     ice = ICE_predict(rf, X, 'state', 'temperature')
     plot_ICE(ice, 'state', 'temperature', cats=catencoders['state'], ax=axes[2, 1])  #, yrange=(-12,0))
 
