@@ -80,10 +80,10 @@ def toy_weather_data():
     df['dayofyear'] = range(1,365+1)
     df['state'] = np.random.choice(['CA','CO','AZ','WA'], len(df))
     df['temperature'] = temp(df['dayofyear'])
-    df.loc[df['state']=='CA','temperature'] = 70 + df.loc[df['state']=='CA','temperature'] * np.random.uniform(-20,40,sum(df['state']=='CA'))
-    df.loc[df['state']=='CO','temperature'] = 40 + df.loc[df['state']=='CO','temperature'] * np.random.uniform(-20,40,sum(df['state']=='CO'))
-    df.loc[df['state']=='AZ','temperature'] = 90 + df.loc[df['state']=='AZ','temperature'] * np.random.uniform(-20,40,sum(df['state']=='AZ'))
-    df.loc[df['state']=='WA','temperature'] = 60 + df.loc[df['state']=='WA','temperature'] * np.random.uniform(-20,40,sum(df['state']=='WA'))
+    df.loc[df['state']=='CA','temperature'] = 70 + df.loc[df['state']=='CA','temperature'] * np.random.uniform(-5,5,sum(df['state']=='CA'))
+    df.loc[df['state']=='CO','temperature'] = 40 + df.loc[df['state']=='CO','temperature'] * np.random.uniform(-5,5,sum(df['state']=='CO'))
+    df.loc[df['state']=='AZ','temperature'] = 90 + df.loc[df['state']=='AZ','temperature'] * np.random.uniform(-5,5,sum(df['state']=='AZ'))
+    df.loc[df['state']=='WA','temperature'] = 60 + df.loc[df['state']=='WA','temperature'] * np.random.uniform(-5,5,sum(df['state']=='WA'))
     return df
 
 
@@ -128,7 +128,7 @@ def conjure_twoclass(X):
     return X_synth, y_synth
 
 
-def ICE_predict(model, X:pd.DataFrame, colname:str, targetname="target", numx=100, nlines=None):
+def ICE_predict(model, X:pd.DataFrame, colname:str, targetname="target", numx=50, nlines=None):
     """
     Return dataframe with one row per observation in X and one column
     per unique value of column identified by colname.
@@ -225,10 +225,15 @@ def plot_ICE(ice, colname, targetname="target", cats=None, ax=None, linewidth=.7
     ax.add_collection(lines)
 
     if cats is not None:
-        ncats = len(cats)
-        ax.set_xticks(range(1, ncats+1))
-        ax.set_xticklabels(cats)
-        ax.set_xlim(1, ncats)
+        if True in cats or False in cats:
+            ax.set_xticks(range(0, 1+1))
+            ax.set_xticklabels(cats)
+            ax.set_xlim(0, 1)
+        else:
+            ncats = len(cats)
+            ax.set_xticks(range(1, ncats+1))
+            ax.set_xticklabels(cats)
+            ax.set_xlim(1, ncats)
     else:
         ax.set_xlim(minx, maxx)
 
@@ -268,7 +273,9 @@ def leaf_samples(rf, X:np.ndarray):
                array([21, 22, 23, 24, 25, 26, 27, 28, 29]), ... )
         """
         sample_idxs_in_leaf = d.groupby(f'tree{i}')['index'].apply(lambda x: x.values)
-        leaf_samples.extend(sample_idxs_in_leaf)
+        if len(sample_idxs_in_leaf) >= 2:
+            # can't detect changes with just one sample
+            leaf_samples.extend(sample_idxs_in_leaf)
     return leaf_samples
 
 
@@ -308,7 +315,30 @@ def conjure_twoclass(X):
     return X_synth, y_synth
 
 
-def collect_leaf_slopes(rf, X, y, colname):
+def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray):
+    X = x.reshape(-1,1)
+    rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=2)
+    rf.fit(X, y)
+    leaves = leaf_samples(rf, X)
+    leaf_slopes = []
+    leaf_xranges = []
+    leaf_yranges = []
+    for samples in leaves:
+        leaf_x = X[samples]
+        leaf_y = y[samples]
+        r = (np.min(leaf_x), np.max(leaf_x))
+        if np.isclose(r[0], r[1]):
+            # print(f"ignoring xleft=xright @ {r[0]}")
+            continue
+        lm = LinearRegression()
+        lm.fit(leaf_x.reshape(-1, 1), leaf_y)
+        leaf_slopes.append(lm.coef_[0])
+        leaf_xranges.append(r)
+        leaf_yranges.append((leaf_y[0], leaf_y[-1]))
+    return leaf_xranges, leaf_yranges, leaf_slopes
+
+
+def collect_leaf_slopes(rf, X, y, colname, hires_threshold=20):
     """
     For each leaf of each tree of the random forest rf (trained on all features
     except colname), get the samples then isolate the column of interest X values
@@ -327,11 +357,18 @@ def collect_leaf_slopes(rf, X, y, colname):
     leaf_yranges = []
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
     for samples in leaves:
-        if len(samples) < 2:
-            # print(f"ignoring len {len(samples)} leaf")
-            continue
-        leaf_x = X.iloc[samples][colname].values
+        one_leaf_samples = X.iloc[samples]
+        leaf_x = one_leaf_samples[colname].values
         leaf_y = y.iloc[samples].values
+        if len(samples)>hires_threshold:
+            # print(f"BIG {len(samples)}!!!")
+            leaf_xranges_, leaf_yranges_, leaf_slopes_ = \
+                hires_slopes_from_one_leaf(leaf_x, leaf_y)
+            leaf_slopes.extend(leaf_slopes_)
+            leaf_xranges.extend(leaf_xranges_)
+            leaf_yranges.extend(leaf_yranges_)
+            continue
+
         r = (np.min(leaf_x), np.max(leaf_x))
         if np.isclose(r[0], r[1]):
             # print(f"ignoring xleft=xright @ {r[0]}")
@@ -345,7 +382,7 @@ def collect_leaf_slopes(rf, X, y, colname):
     leaf_xranges = np.array(leaf_xranges)
     leaf_yranges = np.array(leaf_yranges)
     stop = time.time()
-    print(f"collect_leaf_slopes {stop - start:.3f}s")
+    # print(f"collect_leaf_slopes {stop - start:.3f}s")
     return leaf_xranges, leaf_yranges, leaf_slopes
 
 
@@ -447,6 +484,7 @@ def partial_plot(X, y, colname, targetname=None,
                  ntrees=30,
                  min_samples_leaf=2,
                  alpha=.05,
+                 hires_threshold=20,
                  xrange=None,
                  yrange=None,
                  show_derivative=False):
@@ -457,7 +495,7 @@ def partial_plot(X, y, colname, targetname=None,
                                oob_score=False)
     rf.fit(X.drop(colname, axis=1), y)
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_xranges, leaf_yranges, leaf_slopes = collect_leaf_slopes(rf, X, y, colname)
+    leaf_xranges, leaf_yranges, leaf_slopes = collect_leaf_slopes(rf, X, y, colname, hires_threshold=hires_threshold)
     uniq_x, slope_at_x = avg_slope_at_x(leaf_xranges, leaf_slopes)
     # print(f'uniq_x = [{", ".join([f"{x:4.1f}" for x in uniq_x])}]')
     # print(f'slopes = [{", ".join([f"{s:4.1f}" for s in slope_at_x])}]')
@@ -624,7 +662,7 @@ def rent():
 
 
 def weight():
-    df_raw = toy_weight_data(50)
+    df_raw = toy_weight_data(100)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -648,12 +686,12 @@ def weight():
                  )
     cat_partial_plot(X, y, 'sex', 'weight', ax=axes[3][0], ntrees=50,
                      alpha=.2,
-                     min_samples_leaf=2, cats=df_raw['sex'].unique(),
+                     cats=df_raw['sex'].unique(),
                      # yrange=(0,2)
                      )
     cat_partial_plot(X, y, 'pregnant', 'weight', ax=axes[4][0], ntrees=50,
                      alpha=.2,
-                     min_samples_leaf=2, cats=df_raw['pregnant'].unique(),
+                     cats=df_raw['pregnant'].unique(),
                      # yrange=(0,10)
                      )
 
