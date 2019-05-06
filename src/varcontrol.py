@@ -3,7 +3,7 @@ import pandas as pd
 from typing import Mapping, List, Tuple
 from collections import defaultdict
 import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.datasets import load_boston, load_iris, load_wine, load_digits, \
@@ -349,7 +349,7 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray):
     return leaf_xranges, leaf_yranges, leaf_slopes
 
 
-def collect_leaf_slopes(rf, X, y, colname, hires_threshold=10):
+def collect_leaf_slopes(rf, X, y, colname, hires_threshold):
     """
     For each leaf of each tree of the random forest rf (trained on all features
     except colname), get the samples then isolate the column of interest X values
@@ -372,7 +372,7 @@ def collect_leaf_slopes(rf, X, y, colname, hires_threshold=10):
         leaf_x = one_leaf_samples[colname].values
         leaf_y = y.iloc[samples].values
         if len(samples)>hires_threshold:
-            # print(f"BIG {len(samples)}!!!")
+            print(f"BIG {len(samples)}!!!")
             leaf_xranges_, leaf_yranges_, leaf_slopes_ = \
                 hires_slopes_from_one_leaf(leaf_x, leaf_y)
             leaf_slopes.extend(leaf_slopes_)
@@ -574,7 +574,7 @@ def cat_partial_plot(X, y, colname, targetname,
                      ntrees=30, min_samples_leaf=5,
                      alpha=.03,
                      yrange=None):
-    rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True, n_jobs=-1)
+    rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_histos = catwise_leaves(rf, X, y, colname)
@@ -632,7 +632,7 @@ def cars():
     lm_partial_plot(X, y, 'WGT', 'MPG', ax=axes[1,0])
     partial_plot(X, y, 'WGT', 'MPG', ax=axes[1,1], show_derivative=True, yrange=(-20,20))
 
-    rf = RandomForestRegressor(n_estimators=50, min_samples_leaf=1, oob_score=True, n_jobs=-1)
+    rf = RandomForestRegressor(n_estimators=50, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
     ice = ICE_predict(rf, X, 'ENG', 'MPG', nlines=50, numx=None)
     plot_ICE(ice, 'ENG', 'MPG', ax=axes[0, 2], yrange=(-20,20))
@@ -646,35 +646,38 @@ def cars():
 
 def rent():
     df_rent = pd.read_csv("/Users/parrt/github/mlbook-private/data/rent-ideal.csv")
-    df_rent = df_rent.sample(n=1500)
+    df_rent = df_rent.sample(n=2000)
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
     fig, axes = plt.subplots(4, 2, figsize=(8,16))
-    partial_plot(X, y, 'bedrooms', 'price', ax=axes[0,0], yrange=(0,3000))
-    partial_plot(X, y, 'bathrooms', 'price', ax=axes[1,0], yrange=(0,5000))
-    partial_plot(X, y, 'latitude', 'price', ax=axes[2,0], yrange=(0,1300))
-    partial_plot(X, y, 'longitude', 'price', ax=axes[3,0], yrange=(-3000,250))
+    partial_plot(X, y, 'bedrooms', 'price', ax=axes[0,0], alpha=.03, yrange=(0,3000))
+    partial_plot(X, y, 'bathrooms', 'price', ax=axes[1,0], alpha=.03, yrange=(0,5000))
+    partial_plot(X, y, 'latitude', 'price', ax=axes[2,0], alpha=.03, yrange=(0,1700))
+    partial_plot(X, y, 'longitude', 'price', ax=axes[3,0], alpha=.03, yrange=(-3000,250))
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
+    # rf = Lasso()
+    # rf.fit(X, y)
+
     ice = ICE_predict(rf, X, 'bedrooms', 'price')
-    plot_ICE(ice, 'bedrooms', 'price', ax=axes[0, 1], yrange=(0,3000))
+    plot_ICE(ice, 'bedrooms', 'price', ax=axes[0, 1], alpha=.05, yrange=(0,3000))
     ice = ICE_predict(rf, X, 'bathrooms', 'price')
-    plot_ICE(ice, 'bathrooms', 'price', ax=axes[1, 1])
+    plot_ICE(ice, 'bathrooms', 'price', alpha=.05, ax=axes[1, 1])
     ice = ICE_predict(rf, X, 'latitude', 'price')
-    plot_ICE(ice, 'latitude', 'price', ax=axes[2, 1], yrange=(0,1300))
+    plot_ICE(ice, 'latitude', 'price', ax=axes[2, 1], alpha=.05, yrange=(0,1700))
     ice = ICE_predict(rf, X, 'longitude', 'price')
-    plot_ICE(ice, 'longitude', 'price', ax=axes[3, 1], yrange=(-3000,250))
+    plot_ICE(ice, 'longitude', 'price', ax=axes[3, 1], alpha=.05, yrange=(-750,3000))
 
     plt.tight_layout()
-
+    plt.savefig("/tmp/rent.svg")
     plt.show()
 
 
 def weight():
-    df_raw = toy_weight_data(100)
+    df_raw = toy_weight_data(2000)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -690,24 +693,23 @@ def weight():
     axes[0,1].axis('off')
 
     partial_plot(X, y, 'education', 'weight', ax=axes[1][0],
-                 ntrees=30, min_samples_leaf=2
-                 # yrange=(-12,0)
+                 yrange=(-12,0)
                  )
     partial_plot(X, y, 'height', 'weight', ax=axes[2][0],
-                 # yrange=(0,160)
+                 yrange=(0,160)
                  )
     cat_partial_plot(X, y, 'sex', 'weight', ax=axes[3][0], ntrees=50,
                      alpha=.2,
                      cats=df_raw['sex'].unique(),
-                     # yrange=(0,2)
+                     yrange=(0,5)
                      )
     cat_partial_plot(X, y, 'pregnant', 'weight', ax=axes[4][0], ntrees=50,
                      alpha=.2,
                      cats=df_raw['pregnant'].unique(),
-                     # yrange=(0,10)
+                     yrange=(0,10)
                      )
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
     if True:
@@ -716,7 +718,7 @@ def weight():
         ice = ICE_predict(rf, X, 'height', 'weight')
         plot_ICE(ice, 'height', 'weight', ax=axes[2, 1], yrange=(0, 160))
         ice = ICE_predict(rf, X, 'sex', 'weight')
-        plot_ICE(ice, 'sex', 'weight', ax=axes[3,1], yrange=(0,2), cats=df_raw['sex'].unique())
+        plot_ICE(ice, 'sex', 'weight', ax=axes[3,1], yrange=(0,5), cats=df_raw['sex'].unique())
         ice = ICE_predict(rf, X, 'pregnant', 'weight')
         plot_ICE(ice, 'pregnant', 'weight', ax=axes[4,1], yrange=(0,10), cats=df_raw['pregnant'].unique())
 
@@ -754,8 +756,7 @@ def weather():
                  ntrees=50, min_samples_leaf=2, yrange=(-5,5))
     cat_partial_plot(X, y, 'state', 'temperature', cats=catencoders['state'], ax=axes[2][0])#, yrange=(0,160))
 
-    rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=1, oob_score=True,
-                               n_jobs=-1)
+    rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
     ice = ICE_predict(rf, X, 'dayofyear', 'temperature')
@@ -844,7 +845,7 @@ def interaction(f, n=100):
     # cat_partial_plot(axes[2][0], X, y, 'sex', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['sex'].unique(), yrange=(0,2))
     # cat_partial_plot(axes[3][0], X, y, 'pregnant', 'weight', ntrees=50, min_samples_leaf=7, cats=df_raw['pregnant'].unique(), yrange=(0,10))
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
     ice = ICE_predict(rf, X, 'x1', 'y', numx=None)
@@ -911,7 +912,7 @@ def bigX():
     # Partial deriv wrt x3 of 1_x3>=0 is 0 everywhere so result must be 0
     partial_plot(X, y, 'x3', 'y', ax=axes[4,0], yrange=(-4,4))
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
     print(f"RF OOB {rf.oob_score_}")
 
@@ -952,7 +953,7 @@ def boston():
 
     partial_plot(X, y, 'age', 'medv', ax=axes[2,0], show_derivative=True, yrange=(-20,20))
 
-    rf = RandomForestRegressor(n_estimators=100, oob_score=True, n_jobs=-1)
+    rf = RandomForestRegressor(n_estimators=100, oob_score=True)
     rf.fit(X, y)
     print(f"RF OOB {rf.oob_score_}")
 
@@ -1038,7 +1039,7 @@ def additive_assessment():
     partial_plot(X, y, 'x1', 'y', ax=axes[2,0], min_samples_leaf=min_samples_leaf)
     partial_plot(X, y, 'x2', 'y', ax=axes[3,0], min_samples_leaf=min_samples_leaf)
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
     print(f"RF OOB {rf.oob_score_}")
 
@@ -1056,10 +1057,10 @@ def additive_assessment():
 if __name__ == '__main__':
     # cars()
     # rent()
-    # weight()
+    weight()
     # weather()
     # interaction(toy_x1_times_x2_data)
     # interaction(toy_2x1_times_3x2_data)
     # bigX()
     # boston()
-    additive_assessment()
+    # additive_assessment()

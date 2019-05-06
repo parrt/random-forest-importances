@@ -1,5 +1,37 @@
 # Partial dependence through stratification and approximating partial derivatives
 
+## Naming
+
+Model independent partial derivative; MIPD
+Model independent net effect; MINE
+
+d = data, derivative, dependence
+
+dine
+
+NEPD
+NAPD
+NIPD
+
+NM
+
+nonparametric estimation
+ 
+marginal effect
+ 
+Accumulated partial derivative; APD
+Integration of partial derivative; IPD
+
+stratification
+
+S A I P D M N
+
+VAMPD
+var accu marg partial deriv
+
+VAMPED
+
+
 ## Existing approaches
 
 There are a few basic approaches to identifying the partial effect of a single variable on the target or response variable:
