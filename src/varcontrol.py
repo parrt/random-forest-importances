@@ -519,11 +519,12 @@ def partial_plot(X, y, colname, targetname=None,
 
     # if 0 is in x feature and not on left/right edge, get y at 0
     # and shift so that is x,y 0 point.
-    nx = len(uniq_x)
-    if uniq_x[int(nx*0.05)]<0 or uniq_x[-int(nx*0.05)]>0:
-        closest_x_to_0 = np.abs(uniq_x - 0.0).argmin()
-        y_offset = curve[closest_x_to_0]
-        curve -= y_offset  # shift
+    # nx = len(uniq_x)
+    # if uniq_x[int(nx*0.05)]<0 or uniq_x[-int(nx*0.05)]>0:
+    #     closest_x_to_0 = np.abs(uniq_x - 0.0).argmin()
+    #     y_offset = curve[closest_x_to_0]
+    #     curve -= y_offset  # shift
+    # Nah. starting with 0 is best
 
     ax.scatter(uniq_x, curve,
                s=3, alpha=1,
@@ -626,10 +627,10 @@ def cars():
 
     fig, axes = plt.subplots(2, 3, figsize=(12,8))
     lm_partial_plot(X, y, 'ENG', 'MPG', ax=axes[0,0])
-    partial_plot(X, y, 'ENG', 'MPG', ax=axes[0,1], yrange=(-20,20))
+    partial_plot(X, y, 'ENG', 'MPG', ax=axes[0,1], show_derivative=True, yrange=(-20,20))
 
     lm_partial_plot(X, y, 'WGT', 'MPG', ax=axes[1,0])
-    partial_plot(X, y, 'WGT', 'MPG', ax=axes[1,1], yrange=(-20,20))
+    partial_plot(X, y, 'WGT', 'MPG', ax=axes[1,1], show_derivative=True, yrange=(-20,20))
 
     rf = RandomForestRegressor(n_estimators=50, min_samples_leaf=1, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
@@ -949,7 +950,7 @@ def boston():
     axes[1,0].set_xlabel('age')
     axes[1,0].set_ylabel('median home value')
 
-    partial_plot(X, y, 'age', 'medv', ax=axes[2,0], yrange=(-20,20))
+    partial_plot(X, y, 'age', 'medv', ax=axes[2,0], show_derivative=True, yrange=(-20,20))
 
     rf = RandomForestRegressor(n_estimators=100, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
@@ -1045,7 +1046,7 @@ def additive_assessment():
     plot_ICE(ice, 'x1', 'y', ax=axes[2, 1])
 
     ice = ICE_predict(rf, X, 'x2', 'y', numx=20)
-    plot_ICE(ice, 'x2', 'y', ax=axes[3, 1])
+    plot_ICE(ice, 'x2', 'y', ax=axes[3, 1], yrange=(-3,3))
 
     fig.suptitle("$y = x_1^2 + x_2 + x_3 + x_4$\n$x_1, x_2, x_3$ are U(-3,3)\nSample size "+str(n))
     plt.tight_layout()
@@ -1056,9 +1057,9 @@ if __name__ == '__main__':
     # cars()
     # rent()
     # weight()
-    weather()
+    # weather()
     # interaction(toy_x1_times_x2_data)
     # interaction(toy_2x1_times_3x2_data)
     # bigX()
     # boston()
-    # additive_assessment()
+    additive_assessment()
