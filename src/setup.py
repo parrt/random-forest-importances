@@ -11,14 +11,14 @@ feature importances in random forests.
 
 setup(
     name='rfpimp',
-    version='1.3.4',
+    version='1.4',
     url='https://github.com/parrt/random-forest-importances',
     license='MIT',
     py_modules=['rfpimp'],
     python_requires='>=3.6',
     author='Terence Parr, Kerem Turgutlu',
     author_email='parrt@antlr.org, kcturgutlu@dons.usfca.edu',
-    install_requires=['numpy','pandas','sklearn','matplotlib'],
+    install_requires=['stratx>=0.2','numpy','pandas','sklearn','matplotlib'],
     description='Permutation and drop-column importance for scikit-learn random forests and other models',
     long_description=long_description,
     long_description_content_type="text/markdown",
