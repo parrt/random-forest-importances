@@ -25,7 +25,7 @@ from copy import copy
 import warnings
 import tempfile
 from os import getpid, makedirs
-from stratx.partdep import PD
+from stratx.partdep import partial_dependence
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 GREY = '#444443'
@@ -108,7 +108,7 @@ def pd_importances(X:pd.DataFrame,
     for j, colname in enumerate(X.columns):
         # Ask stratx package for the partial derivative of y with respect to X[colname]
         leaf_xranges, leaf_slopes, dx, dydx, pdpx, pdpy, ignored = \
-            PD(X=X, y=y, colname=colname)
+            partial_dependence(X=X, y=y, colname=colname)
         variations[j] = np.mean(np.abs(dydx)) # record average abs of derivative
         total_dy_mass += variations[j]
 
