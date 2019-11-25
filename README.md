@@ -1,4 +1,4 @@
-# Feature importances for scikit machine learning models
+# Feature importances for scikit-learn machine learning models
 
 By <a href="http://explained.ai/">Terence Parr</a> and <a href="https://www.linkedin.com/in/kerem-turgutlu-12906b65/">Kerem Turgutlu</a>. See [Explained.ai](http://explained.ai) for more stuff.
 
@@ -7,7 +7,7 @@ To get reliable results, use permutation importance, provided in the `rfpimp` pa
 
 `pip install rfpimp`
 
-We include permuation and drop-column importance measures that work with any sklearn model.
+We include permutation and drop-column importance measures that work with any sklearn model.  Yes, `rfpimp` is an increasingly-ill-suited name, but we still like it.
 
 ## Description
 
