@@ -58,8 +58,8 @@ class PimpViz:
         plt.close()
 
 
-def pd_importances(X:pd.DataFrame,
-                   y:pd.Series) -> pd.DataFrame:
+def variation_importances(X: pd.DataFrame,
+                          y: pd.Series) -> pd.DataFrame:
     """
     Compute model-free feature importances of dataset X,y using partial
     derivatives computed by the the StratPD algorithm.[1]  The feature
