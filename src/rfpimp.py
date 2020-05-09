@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.ensemble.forest import _generate_unsampled_indices
+from sklearn.ensemble.forest import _generate_unsampled_indices, _get_n_samples_bootstrap
 from sklearn.ensemble import forest
 from sklearn.model_selection import cross_val_score
 from sklearn.base import clone
@@ -25,7 +25,6 @@ from copy import copy
 import warnings
 import tempfile
 from os import getpid, makedirs
-from stratx.partdep import partial_dependence
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 GREY = '#444443'
@@ -427,7 +426,8 @@ def oob_classifier_accuracy(rf, X_train, y_train):
     n_classes = len(np.unique(y))
     predictions = np.zeros((n_samples, n_classes))
     for tree in rf.estimators_:
-        unsampled_indices = _generate_unsampled_indices(tree.random_state, n_samples)
+        n_samples_bootstrap = _get_n_samples_bootstrap(n_samples, n_samples)
+        unsampled_indices = _generate_unsampled_indices(tree.random_state, n_samples, n_samples_bootstrap)
         tree_preds = tree.predict_proba(X[unsampled_indices, :])
         predictions[unsampled_indices] += tree_preds
 
@@ -453,7 +453,8 @@ def oob_regression_r2_score(rf, X_train, y_train):
     predictions = np.zeros(n_samples)
     n_predictions = np.zeros(n_samples)
     for tree in rf.estimators_:
-        unsampled_indices = _generate_unsampled_indices(tree.random_state, n_samples)
+        n_samples_bootstrap = _get_n_samples_bootstrap(n_samples, n_samples)
+        unsampled_indices = _generate_unsampled_indices(tree.random_state, n_samples, n_samples_bootstrap)
         tree_preds = tree.predict(X[unsampled_indices, :])
         predictions[unsampled_indices] += tree_preds
         n_predictions[unsampled_indices] += 1
