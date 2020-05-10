@@ -10,9 +10,10 @@ Kerem Turgutlu, https://www.linkedin.com/in/kerem-turgutlu-12906b65
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import sklearn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.ensemble.forest import _generate_unsampled_indices, _get_n_samples_bootstrap
+from sklearn.ensemble.forest import _generate_unsampled_indices
 from sklearn.ensemble import forest
 from sklearn.model_selection import cross_val_score
 from sklearn.base import clone
@@ -415,13 +416,14 @@ def _get_unsampled_indices(tree, n_samples):
     """
     An interface to get unsampled indices regardless of sklearn version.
     """
-    try:  # Version 0.21 or older uses only two arguments.
-        return _generate_unsampled_indices(tree.random_state, n_samples)
-    except TypeError:  # Version 0.22 or newer uses only two arguments.
+    if sklearn.__version__.startswith("0.22"):
+        # Version 0.22 or newer uses 3 arguments.
+        from sklearn.ensemble.forest import _get_n_samples_bootstrap
         n_samples_bootstrap = _get_n_samples_bootstrap(n_samples, n_samples)
-        return _generate_unsampled_indices(
-            tree.random_state, n_samples, n_samples_bootstrap
-        )
+        return _generate_unsampled_indices(tree.random_state, n_samples, n_samples_bootstrap)
+    else:
+        # Version 0.21 or older uses only two arguments.
+        return _generate_unsampled_indices(tree.random_state, n_samples)
 
 
 def oob_classifier_accuracy(rf, X_train, y_train):
