@@ -1,10 +1,4 @@
 """
-Attention! This is a slight customized version of rfpimp. The official
-distribution had some functions broken by sklearn 0.22 version. As soon
-as the official version gets fixed up, this file should be removed from
-the project.
-
-
 A simple library of functions that provide feature importances
 for scikit-learn random forest regressors and classifiers.
 
