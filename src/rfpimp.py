@@ -411,15 +411,13 @@ def permutation_importances_raw(rf, X_train, y_train, metric, n_samples=5000):
     return np.array(imp)
 
 
-def _get_unsample_indices(tree, n_samples):
+def _get_unsampled_indices(tree, n_samples):
     """
     An interface to get unsampled indices regardless of sklearn version.
     """
-    # Version 0.21 or older uses only two arguments.
-    try:
+    try:  # Version 0.21 or older uses only two arguments.
         return _generate_unsampled_indices(tree.random_state, n_samples)
-    # Version 0.22 or newer uses only two arguments.
-    except TypeError:
+    except TypeError:  # Version 0.22 or newer uses only two arguments.
         n_samples_bootstrap = _get_n_samples_bootstrap(n_samples, n_samples)
         return _generate_unsampled_indices(
             tree.random_state, n_samples, n_samples_bootstrap
@@ -441,7 +439,7 @@ def oob_classifier_accuracy(rf, X_train, y_train):
     n_classes = len(np.unique(y))
     predictions = np.zeros((n_samples, n_classes))
     for tree in rf.estimators_:
-        unsampled_indices = _get_unsample_indices
+        unsampled_indices = _get_unsampled_indices(tree, n_samples)
         tree_preds = tree.predict_proba(X[unsampled_indices, :])
         predictions[unsampled_indices] += tree_preds
 
@@ -467,7 +465,7 @@ def oob_regression_r2_score(rf, X_train, y_train):
     predictions = np.zeros(n_samples)
     n_predictions = np.zeros(n_samples)
     for tree in rf.estimators_:
-        unsampled_indices = _get_unsample_indices(tree, n_samples)
+        unsampled_indices = _get_unsampled_indices(tree, n_samples)
         tree_preds = tree.predict(X[unsampled_indices, :])
         predictions[unsampled_indices] += tree_preds
         n_predictions[unsampled_indices] += 1
