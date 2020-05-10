@@ -1,4 +1,10 @@
 """
+Attention! This is a slight customized version of rfpimp. The official
+distribution had some functions broken by sklearn 0.22 version. As soon
+as the official version gets fixed up, this file should be removed from
+the project.
+
+
 A simple library of functions that provide feature importances
 for scikit-learn random forest regressors and classifiers.
 
@@ -411,6 +417,21 @@ def permutation_importances_raw(rf, X_train, y_train, metric, n_samples=5000):
     return np.array(imp)
 
 
+def _get_unsample_indices(tree, n_samples):
+    """
+    An interface to get unsampled indices regardless of sklearn version.
+    """
+    # Version 0.21 or older uses only two arguments.
+    try:
+        return _generate_unsampled_indices(tree.random_state, n_samples)
+    # Version 0.22 or newer uses only two arguments.
+    except TypeError:
+        n_samples_bootstrap = _get_n_samples_bootstrap(n_samples, n_samples)
+        return _generate_unsampled_indices(
+            tree.random_state, n_samples, n_samples_bootstrap
+        )
+
+
 def oob_classifier_accuracy(rf, X_train, y_train):
     """
     Compute out-of-bag (OOB) accuracy for a scikit-learn random forest
@@ -426,8 +447,7 @@ def oob_classifier_accuracy(rf, X_train, y_train):
     n_classes = len(np.unique(y))
     predictions = np.zeros((n_samples, n_classes))
     for tree in rf.estimators_:
-        n_samples_bootstrap = _get_n_samples_bootstrap(n_samples, n_samples)
-        unsampled_indices = _generate_unsampled_indices(tree.random_state, n_samples, n_samples_bootstrap)
+        unsampled_indices = _get_unsample_indices
         tree_preds = tree.predict_proba(X[unsampled_indices, :])
         predictions[unsampled_indices] += tree_preds
 
@@ -453,8 +473,7 @@ def oob_regression_r2_score(rf, X_train, y_train):
     predictions = np.zeros(n_samples)
     n_predictions = np.zeros(n_samples)
     for tree in rf.estimators_:
-        n_samples_bootstrap = _get_n_samples_bootstrap(n_samples, n_samples)
-        unsampled_indices = _generate_unsampled_indices(tree.random_state, n_samples, n_samples_bootstrap)
+        unsampled_indices = _get_unsample_indices(tree, n_samples)
         tree_preds = tree.predict(X[unsampled_indices, :])
         predictions[unsampled_indices] += tree_preds
         n_predictions[unsampled_indices] += 1
