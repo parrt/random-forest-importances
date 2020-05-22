@@ -27,6 +27,7 @@ import warnings
 import tempfile
 from os import getpid, makedirs
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from distutils.version import LooseVersion
 
 GREY = '#444443'
 
@@ -416,7 +417,7 @@ def _get_unsampled_indices(tree, n_samples):
     """
     An interface to get unsampled indices regardless of sklearn version.
     """
-    if sklearn.__version__.startswith("0.22"):
+    if LooseVersion(sklearn.__version__) >= LooseVersion("0.22"):
         # Version 0.22 or newer uses 3 arguments.
         from sklearn.ensemble.forest import _get_n_samples_bootstrap
         n_samples_bootstrap = _get_n_samples_bootstrap(n_samples, n_samples)
