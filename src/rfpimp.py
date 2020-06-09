@@ -477,7 +477,7 @@ def oob_classifier_f1_score(rf, X_train, y_train):
     predicted_class_indexes = np.argmax(predictions, axis=1)
     predicted_classes = [rf.classes_[i] for i in predicted_class_indexes]
 
-    oob_score = f1_score(y, predicted_classes, average='weighted')
+    oob_score = f1_score(y, predicted_classes, average='macro')
     return oob_score
 
 
