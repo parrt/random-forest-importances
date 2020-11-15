@@ -861,13 +861,16 @@ def plot_dependence_heatmap(D,
 
 def get_feature_corr(df, method="spearman"):
     if isinstance(df, pd.DataFrame):
-        return df.corr(method=method).values
+        result = df.corr(method=method).values
+    elif callable(method):
+        result = method(df)
     elif method == "spearman":
-        return stats.spearmanr(df).correlation
+        result = stats.spearmanr(df).correlation
     elif method == "pearson":
-        return np.corrcoef(df)
+        result = np.corrcoef(df)
     else:
         raise ValueError("unsupported correlation method")
+    return result
 
 
 def feature_corr_matrix(df):
