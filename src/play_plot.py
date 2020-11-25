@@ -20,6 +20,7 @@ target = 'interest_level'
 
 df = df_all[num_features + [target]]
 
+
 def test1():
     # compute median per num bedrooms
     df_median_price_per_bedrooms = df.groupby(by='bedrooms')['price'].median().reset_index()
@@ -77,11 +78,11 @@ def test3():
     return I
 
 
-viz = plot_importances(test1())
-viz.save(filename='/tmp/t.svg')
-I = test2()
-viz = plot_importances(I)
-viz.save(filename='/tmp/t2.svg')
+# viz = plot_importances(test1())
+# viz.save(filename='/tmp/t.svg')
+# I = test2()
+# viz = plot_importances(I)
+# viz.save(filename='/tmp/t2.svg')
 
 # I = test3()
 # viz = plot_importances(I)
@@ -95,3 +96,5 @@ viz.save(filename='/tmp/t2.svg')
 # D = feature_dependence_matrix(df, n_samples=5000)
 # viz = plot_dependence_heatmap(D, figsize=(4,4))
 # viz.view()
+
+print(feature_dependence_matrix(df))

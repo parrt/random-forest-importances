@@ -873,9 +873,9 @@ def get_feature_corr(df, method="spearman"):
     return result
 
 
-def feature_corr_matrix(df):
+def feature_corr_matrix(df, method="spearman"):
     """
-    Return the Spearman's rank-order correlation between all pairs
+    Return the Spearman's rank-order correlation (or another method) between all pairs
     of features as a matrix with feature names as index and column names.
     The diagonal will be all 1.0 as features are self correlated.
 
@@ -885,11 +885,11 @@ def feature_corr_matrix(df):
     assume a linear relationship between the variables; it looks for
     monotonic relationships.
 
-    :param df_train: dataframe containing features as columns, and
-                     without the target variable.
+    :param df: dataframe containing features as columns, and without the target variable.
+    :param method: A string ("spearman", "pearson") or a callable function.
     :return: a data frame with the correlation matrix
     """
-    corr = np.round(get_feature_corr(df), 4)
+    corr = np.round(get_feature_corr(df, method=method), 4)
     df_corr = pd.DataFrame(data=corr, index=df.columns, columns=df.columns)
     return df_corr
 
@@ -901,7 +901,8 @@ def plot_corr_heatmap(df,
                       value_fontsize=8,
                       label_fontsize=9,
                       precision=2,
-                      xrot=80):
+                      xrot=80,
+                      method="spearman"):
     """
     Display the feature spearman's correlation matrix as a heatmap with
     any abs(value)>color_threshold appearing with background color.
@@ -919,7 +920,7 @@ def plot_corr_heatmap(df,
                       figsize=(7,5), label_fontsize=13, value_fontsize=11)
     viz.view() # or just viz in notebook
     """
-    corr = get_feature_corr(df)
+    corr = get_feature_corr(df, method=method)
     if len(corr.shape) == 0:
         corr = np.array([[1.0, corr],
                          [corr, 1.0]])
