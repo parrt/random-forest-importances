@@ -18,6 +18,8 @@ from sklearn.ensemble import forest
 from sklearn.model_selection import cross_val_score
 from sklearn.base import clone
 from sklearn.metrics import r2_score
+from sklearn.metrics import f1_score
+from sklearn.preprocessing import LabelEncoder
 from scipy.stats import spearmanr
 from pandas.api.types import is_numeric_dtype
 from matplotlib.colors import ListedColormap
@@ -453,6 +455,32 @@ def oob_classifier_accuracy(rf, X_train, y_train):
     return oob_score
 
 
+def oob_classifier_f1_score(rf, X_train, y_train):
+    """
+    Compute out-of-bag (OOB) f1 score for a scikit-learn random forest
+    classifier. We learned the guts of scikit's RF from the BSD licensed
+    code:
+
+    https://github.com/scikit-learn/scikit-learn/blob/a24c8b46/sklearn/ensemble/forest.py#L425
+    """
+    X = X_train.values
+    y = y_train.values
+
+    n_samples = len(X)
+    n_classes = len(np.unique(y))
+    predictions = np.zeros((n_samples, n_classes))
+    for tree in rf.estimators_:
+        unsampled_indices = _get_unsampled_indices(tree, n_samples)
+        tree_preds = tree.predict_proba(X[unsampled_indices, :])
+        predictions[unsampled_indices] += tree_preds
+
+    predicted_class_indexes = np.argmax(predictions, axis=1)
+    predicted_classes = [rf.classes_[i] for i in predicted_class_indexes]
+
+    oob_score = f1_score(y, predicted_classes, average='macro')
+    return oob_score
+
+
 def oob_regression_r2_score(rf, X_train, y_train):
     """
     Compute out-of-bag (OOB) R^2 for a scikit-learn random forest
@@ -699,16 +727,19 @@ def oob_dependences(rf, X_train, n_samples=5000):
 
 
 def feature_dependence_matrix(X_train,
-                              rfmodel=RandomForestRegressor(n_estimators=50, oob_score=True),
+                              rfrmodel=RandomForestRegressor(n_estimators=50, oob_score=True),
+                              rfcmodel=RandomForestClassifier(n_estimators=50, oob_score=True),
+                              cat_count=20,
                               zero=0.001,
                               sort_by_dependence=False,
                               n_samples=5000):
     """
     Given training observation independent variables in X_train (a dataframe),
     compute the feature importance using each var as a dependent variable using
-    a RandomForestRegressor (even if var is actually categorical).
-    We retrain a random forest for each var as target using the others as
-    independent vars.  Only numeric columns are considered.
+    a RandomForestRegressor or RandomForestClassifier. A RandomForestClassifer is 
+    used when the number of the unique values for the dependent variable is less or 
+    equal to the cat_count arg. We retrain a random forest for each var as target 
+    using the others as independent vars. Only numeric columns are considered.
 
     By default, sample up to 5000 observations to compute feature dependencies.
 
@@ -720,19 +751,31 @@ def feature_dependence_matrix(X_train,
     """
     numeric_cols = [col for col in X_train if is_numeric_dtype(X_train[col])]
 
+    cat_cols = [col for col in numeric_cols if X_train[col].value_counts().count() <= cat_count]
+    cat_cols_le = [col for col in cat_cols if X_train[col].dtypes == 'float' ]
+    for col in cat_cols_le:
+        le = LabelEncoder()
+        X_train[col] = le.fit_transform(X_train[col])
+
     X_train = sample_rows(X_train, n_samples)
 
     df_dep = pd.DataFrame(index=X_train.columns, columns=['Dependence']+X_train.columns.tolist())
     for i,col in enumerate(numeric_cols):
         X, y = X_train.drop(col, axis=1), X_train[col]
-        rf = clone(rfmodel)
-        rf.fit(X,y)
-        imp = permutation_importances_raw(rf, X, y, oob_regression_r2_score, n_samples)
+        if col in cat_cols:
+            rf = clone(rfcmodel)
+            rf.fit(X,y)
+            imp = permutation_importances_raw(rf, X, y, oob_classifier_f1_score, n_samples)
+        else:
+            rf = clone(rfrmodel)
+            rf.fit(X,y)
+            imp = permutation_importances_raw(rf, X, y, oob_regression_r2_score, n_samples)
         """
-        Some importances could come back > 1.0 because removing that feature sends R^2
-        very negative. Clip them at 1.0.  Also, features with negative importance
-        means that taking them out helps predict but we don't care about that here.
-        We want to know which features are collinear/predictive. Clip at 0.0.
+        Some RandomForestRegressor importances could come back > 1.0 because removing
+        that feature sends R^2 very negative. Clip them at 1.0.  Also, features with 
+        negative importance means that taking them out helps predict but we don't care
+        about that here. We want to know which features are collinear/predictive. Clip
+        at 0.0.
         """
         imp = np.clip(imp, a_min=0.0, a_max=1.0)
         imp[imp<zero] = 0.0
