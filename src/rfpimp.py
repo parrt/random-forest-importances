@@ -20,7 +20,7 @@ from sklearn.base import clone
 from sklearn.metrics import r2_score
 from sklearn.metrics import f1_score
 from sklearn.preprocessing import LabelEncoder
-from scipy.stats import spearmanr
+from scipy import stats
 from pandas.api.types import is_numeric_dtype
 from matplotlib.colors import ListedColormap
 from matplotlib.ticker import FormatStrFormatter
@@ -859,6 +859,20 @@ def plot_dependence_heatmap(D,
     return PimpViz()
 
 
+def get_feature_corr(df, method="spearman"):
+    if isinstance(df, pd.DataFrame):
+        result = df.corr(method=method).values
+    elif callable(method):
+        result = method(df)
+    elif method == "spearman":
+        result = stats.spearmanr(df).correlation
+    elif method == "pearson":
+        result = np.corrcoef(df)
+    else:
+        raise ValueError("unsupported correlation method")
+    return result
+
+
 def feature_corr_matrix(df):
     """
     Return the Spearman's rank-order correlation between all pairs
@@ -875,7 +889,7 @@ def feature_corr_matrix(df):
                      without the target variable.
     :return: a data frame with the correlation matrix
     """
-    corr = np.round(spearmanr(df).correlation, 4)
+    corr = np.round(get_feature_corr(df), 4)
     df_corr = pd.DataFrame(data=corr, index=df.columns, columns=df.columns)
     return df_corr
 
@@ -905,7 +919,7 @@ def plot_corr_heatmap(df,
                       figsize=(7,5), label_fontsize=13, value_fontsize=11)
     viz.view() # or just viz in notebook
     """
-    corr = spearmanr(df).correlation
+    corr = get_feature_corr(df)
     if len(corr.shape) == 0:
         corr = np.array([[1.0, corr],
                          [corr, 1.0]])
