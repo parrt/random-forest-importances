@@ -7,14 +7,23 @@ Terence Parr, http://parrt.cs.usfca.edu
 Kerem Turgutlu, https://www.linkedin.com/in/kerem-turgutlu-12906b65
 """
 
+from distutils.version import LooseVersion
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import sklearn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.ensemble.forest import _generate_unsampled_indices
-from sklearn.ensemble import forest
+
+if LooseVersion(sklearn.__version__) >= LooseVersion("0.24"):
+    # In sklearn version 0.24, forest module changed to be private.
+    from sklearn.ensemble._forest import _generate_unsampled_indices
+    from sklearn.ensemble import _forest as forest
+else:
+    # Before sklearn version 0.24, forest was public, supporting this.
+    from sklearn.ensemble.forest import _generate_unsampled_indices
+    from sklearn.ensemble import forest
+
 from sklearn.model_selection import cross_val_score
 from sklearn.base import clone
 from sklearn.metrics import r2_score
@@ -29,7 +38,7 @@ import warnings
 import tempfile
 from os import getpid, makedirs
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from distutils.version import LooseVersion
+
 
 GREY = '#444443'
 
