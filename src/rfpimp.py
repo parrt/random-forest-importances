@@ -13,7 +13,17 @@ import matplotlib.pyplot as plt
 import sklearn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.ensemble._forest import _generate_unsampled_indices
+
+from distutils.version import LooseVersion
+if LooseVersion(sklearn.__version__) >= LooseVersion("0.24"):
+    # In sklearn version 0.24, forest module changed to be private.
+    from sklearn.ensemble._forest import _generate_unsampled_indices
+    from sklearn.ensemble import _forest as forest
+else:
+    # Before sklearn version 0.24, forest was public, supporting this.
+    from sklearn.ensemble.forest import _generate_unsampled_indices
+    from sklearn.ensemble import forest
+
 from sklearn.model_selection import cross_val_score
 from sklearn.base import clone
 from sklearn.metrics import r2_score
@@ -28,7 +38,6 @@ import warnings
 import tempfile
 from os import getpid, makedirs
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from distutils.version import LooseVersion
 
 GREY = '#444443'
 
@@ -1013,24 +1022,16 @@ def rfmaxdepths(rf):
 
 def jeremy_trick_RF_sample_size(n):
     if LooseVersion(sklearn.__version__) >= LooseVersion("0.24"):
-        from sklearn.ensemble import _forest as forest
         forest._generate_sample_indices = \
             (lambda rs, n_samples, _:
              forest.check_random_state(rs).randint(0, n_samples, n))
     else:
-        from sklearn.ensemble import forest
         forest._generate_sample_indices = \
             (lambda rs, n_samples: forest.check_random_state(rs).randint(0, n_samples, n))
 
 def jeremy_trick_reset_RF_sample_size():
-    if LooseVersion(sklearn.__version__) >= LooseVersion("0.24"):
-        from sklearn.ensemble import _forest as forest
-        forest._generate_sample_indices = (lambda rs, n_samples:
-            forest.check_random_state(rs).randint(0, n_samples, n_samples))
-    else:
-        from sklearn.ensemble import forest
-        forest._generate_sample_indices = (lambda rs, n_samples:
-            forest.check_random_state(rs).randint(0, n_samples, n_samples))
+    forest._generate_sample_indices = (lambda rs, n_samples:
+        forest.check_random_state(rs).randint(0, n_samples, n_samples))
 
 def myround(v,ndigits=2):
     if np.isclose(v, 0.0):
