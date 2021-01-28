@@ -78,11 +78,12 @@ def test3():
     return I
 
 
-# viz = plot_importances(test1())
-# viz.save(filename='/tmp/t.svg')
-# I = test2()
-# viz = plot_importances(I)
+viz = plot_importances(test1())
+viz.save(filename='/tmp/t.svg')
+I = test2()
+viz = plot_importances(I)
 # viz.save(filename='/tmp/t2.svg')
+viz.view()
 
 # I = test3()
 # viz = plot_importances(I)
@@ -97,4 +98,4 @@ def test3():
 # viz = plot_dependence_heatmap(D, figsize=(4,4))
 # viz.view()
 
-print(feature_dependence_matrix(df))
+#print(feature_dependence_matrix(df))

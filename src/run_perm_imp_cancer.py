@@ -31,8 +31,10 @@ rf = RandomForestClassifier(n_estimators=50,
 rf.fit(X, y)
 start = timer() # ------------
 
+jeremy_trick_RF_sample_size(100)
 I = oob_importances(rf, X, y, n_samples=3000)
 print(I)
+jeremy_trick_reset_RF_sample_size()
 
 # sample_weights = df.loc[df.target==0, ]
 I = importances(rf, X, y, features=X.columns, n_samples=3000)

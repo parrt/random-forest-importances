@@ -13,8 +13,7 @@ import matplotlib.pyplot as plt
 import sklearn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.ensemble.forest import _generate_unsampled_indices
-from sklearn.ensemble import forest
+from sklearn.ensemble._forest import _generate_unsampled_indices
 from sklearn.model_selection import cross_val_score
 from sklearn.base import clone
 from sklearn.metrics import r2_score
@@ -419,7 +418,12 @@ def _get_unsampled_indices(tree, n_samples):
     """
     An interface to get unsampled indices regardless of sklearn version.
     """
-    if LooseVersion(sklearn.__version__) >= LooseVersion("0.22"):
+    if LooseVersion(sklearn.__version__) >= LooseVersion("0.24"):
+        # Version 0.24 moved forest package name
+        from sklearn.ensemble._forest import _get_n_samples_bootstrap
+        n_samples_bootstrap = _get_n_samples_bootstrap(n_samples, n_samples)
+        return _generate_unsampled_indices(tree.random_state, n_samples, n_samples_bootstrap)
+    elif LooseVersion(sklearn.__version__) >= LooseVersion("0.22"):
         # Version 0.22 or newer uses 3 arguments.
         from sklearn.ensemble.forest import _get_n_samples_bootstrap
         n_samples_bootstrap = _get_n_samples_bootstrap(n_samples, n_samples)
@@ -1008,16 +1012,25 @@ def rfmaxdepths(rf):
 
 
 def jeremy_trick_RF_sample_size(n):
-    # Jeremy's trick; hmm.. this won't work as a separate function?
-    # def batch_size_for_node_splitting(rs, n_samples):
-    #     forest.check_random_state(rs).randint(0, n_samples, 20000)
-    # forest._generate_sample_indices = batch_size_for_node_splitting
-    forest._generate_sample_indices = \
-        (lambda rs, n_samples: forest.check_random_state(rs).randint(0, n_samples, n))
+    if LooseVersion(sklearn.__version__) >= LooseVersion("0.24"):
+        from sklearn.ensemble import _forest as forest
+        forest._generate_sample_indices = \
+            (lambda rs, n_samples, _:
+             forest.check_random_state(rs).randint(0, n_samples, n))
+    else:
+        from sklearn.ensemble import forest
+        forest._generate_sample_indices = \
+            (lambda rs, n_samples: forest.check_random_state(rs).randint(0, n_samples, n))
 
 def jeremy_trick_reset_RF_sample_size():
-    forest._generate_sample_indices = (lambda rs, n_samples:
-        forest.check_random_state(rs).randint(0, n_samples, n_samples))
+    if LooseVersion(sklearn.__version__) >= LooseVersion("0.24"):
+        from sklearn.ensemble import _forest as forest
+        forest._generate_sample_indices = (lambda rs, n_samples:
+            forest.check_random_state(rs).randint(0, n_samples, n_samples))
+    else:
+        from sklearn.ensemble import forest
+        forest._generate_sample_indices = (lambda rs, n_samples:
+            forest.check_random_state(rs).randint(0, n_samples, n_samples))
 
 def myround(v,ndigits=2):
     if np.isclose(v, 0.0):
