@@ -7,7 +7,6 @@ Terence Parr, http://parrt.cs.usfca.edu
 Kerem Turgutlu, https://www.linkedin.com/in/kerem-turgutlu-12906b65
 """
 
-from distutils.version import LooseVersion
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,6 +14,7 @@ import sklearn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
 
+from distutils.version import LooseVersion
 if LooseVersion(sklearn.__version__) >= LooseVersion("0.24"):
     # In sklearn version 0.24, forest module changed to be private.
     from sklearn.ensemble._forest import _generate_unsampled_indices
@@ -38,7 +38,6 @@ import warnings
 import tempfile
 from os import getpid, makedirs
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
 
 GREY = '#444443'
 
@@ -428,7 +427,12 @@ def _get_unsampled_indices(tree, n_samples):
     """
     An interface to get unsampled indices regardless of sklearn version.
     """
-    if LooseVersion(sklearn.__version__) >= LooseVersion("0.22"):
+    if LooseVersion(sklearn.__version__) >= LooseVersion("0.24"):
+        # Version 0.24 moved forest package name
+        from sklearn.ensemble._forest import _get_n_samples_bootstrap
+        n_samples_bootstrap = _get_n_samples_bootstrap(n_samples, n_samples)
+        return _generate_unsampled_indices(tree.random_state, n_samples, n_samples_bootstrap)
+    elif LooseVersion(sklearn.__version__) >= LooseVersion("0.22"):
         # Version 0.22 or newer uses 3 arguments.
         from sklearn.ensemble.forest import _get_n_samples_bootstrap
         n_samples_bootstrap = _get_n_samples_bootstrap(n_samples, n_samples)
@@ -1017,12 +1021,13 @@ def rfmaxdepths(rf):
 
 
 def jeremy_trick_RF_sample_size(n):
-    # Jeremy's trick; hmm.. this won't work as a separate function?
-    # def batch_size_for_node_splitting(rs, n_samples):
-    #     forest.check_random_state(rs).randint(0, n_samples, 20000)
-    # forest._generate_sample_indices = batch_size_for_node_splitting
-    forest._generate_sample_indices = \
-        (lambda rs, n_samples: forest.check_random_state(rs).randint(0, n_samples, n))
+    if LooseVersion(sklearn.__version__) >= LooseVersion("0.24"):
+        forest._generate_sample_indices = \
+            (lambda rs, n_samples, _:
+             forest.check_random_state(rs).randint(0, n_samples, n))
+    else:
+        forest._generate_sample_indices = \
+            (lambda rs, n_samples: forest.check_random_state(rs).randint(0, n_samples, n))
 
 def jeremy_trick_reset_RF_sample_size():
     forest._generate_sample_indices = (lambda rs, n_samples:
