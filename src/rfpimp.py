@@ -40,6 +40,8 @@ from os import getpid, makedirs
 
 GREY = '#444443'
 
+__version__='1.3.7'
+
 
 class PimpViz:
     """
