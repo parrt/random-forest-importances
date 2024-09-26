@@ -350,7 +350,7 @@ def dropcol_importances(model, X_train, y_train, X_valid=None, y_valid=None, met
     return I
 
 
-def oob_dropcol_importances(rf, X_train, y_train):
+def oob_dropcol_importances(rf, X_train, y_train, metric=None):
     """
     Compute drop-column feature importances for scikit-learn.
 
@@ -371,16 +371,20 @@ def oob_dropcol_importances(rf, X_train, y_train):
     rf.fit(X_train, y_train)
     imp = oob_dropcol_importances(rf, X_train, y_train)
     """
+
+    if not callable(metric):
+        metric = True
+        
     rf_ = clone(rf)
     rf_.random_state = 999
-    rf_.oob_score = True
+    rf_.oob_score = metric
     rf_.fit(X_train, y_train)
     baseline = rf_.oob_score_
     imp = []
     for col in X_train.columns:
         rf_ = clone(rf)
         rf_.random_state = 999
-        rf_.oob_score = True
+        rf_.oob_score = metric
         rf_.fit(X_train.drop(col, axis=1), y_train)
         drop_in_score = baseline - rf_.oob_score_
         imp.append(drop_in_score)
